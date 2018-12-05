@@ -2538,12 +2538,38 @@ AND CONVERT(DATE,plan_date,103) &lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
     <DataSet Name="DataSet1">
       <Query>
         <DataSourceName>SQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@Department">
-            <Value>=Parameters!Department.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>SELECT client_code AS [Client]
+        <CommandText>
+DECLARE @Department AS NVARCHAR(MAX) 
+SET @Department='Motor'
+
+SELECT client collate database_default AS [Client] 
+,matter collate database_default AS Matter
+,case_public_desc1 collate database_default AS [Matter Description]
+,name collate database_default AS [Fee Earner]
+,activity_desc collate database_default AS [Activity Description]
+,activity_date AS [Activity Date]
+,plan_date AS [Plan Date]
+,DATEDIFF(DAY,plan_date,GETDATE()) AS [Days Left uncompleted]
+,CASE WHEN stream_no='POST' THEN 1 ELSE 0 END AS [Streamed Post]
+,1 AS NumberIncomplete
+,initiating_entity
+,hierarchylevel2hist
+,hierarchylevel3hist
+,'FED' AS SourceSystem
+FROM axxia01.dbo.casact WITH(NOLOCK)
+INNER JOIN axxia01.dbo.cashdr
+  ON casact.case_id=cashdr.case_id
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON initiating_entity=fed_code collate database_default
+AND dss_current_flag='Y'
+AND leaver=0
+WHERE tran_done IS NULL 
+AND p_a_marker='p'
+AND hierarchylevel3hist = @Department
+AND date_closed IS NULL
+AND CONVERT(DATE,plan_date,103) &lt;=CONVERT(DATE,GETDATE(),103)
+UNION
+
+SELECT client_code AS [Client]
 ,matter_number AS Matter
 ,matter_description AS [Matter Description]
 ,name AS [Fee Earner]
@@ -2556,17 +2582,34 @@ AND CONVERT(DATE,plan_date,103) &lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
 ,fed_code AS initiating_entity
 ,hierarchylevel2hist
 ,hierarchylevel3hist
+,'MS' AS SourceSystem
 FROM MS_Prod.dbo.dbTasks
 INNER JOIN red_dw.dbo.dim_matter_header_current
  ON dbTasks.fileID=dim_matter_header_current.ms_fileid
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON fed_code=fee_earner_code collate database_default
+LEFT OUTER JOIN (SELECT fed_code,hierarchylevel2hist,hierarchylevel3hist,hierarchylevel4hist,dim_fed_hierarchy_history.leaver,worksforDetail.worksforemail,name 
+FROM red_dw.dbo.dim_fed_hierarchy_history 
+LEFT OUTER JOIN (
+SELECT dim_employee.employeeid,leaver,workemail,CASE WHEN leaver=1 tHEN worksforemail ELSE workemail END AS worksforemail FROM red_dw.dbo.dim_fed_hierarchy_history 
+INNER JOIN red_dw.dbo.dim_employee 
+ON dim_fed_hierarchy_history.dim_employee_key=dim_employee.dim_employee_key
+WHERE activeud=1
 AND dss_current_flag='Y'
-WHERE tskComplete=0 
+) AS worksforDetail
+ ON dim_fed_hierarchy_history.worksforemployeeid=worksforDetail.employeeid
+WHERE activeud=1
+AND dss_current_flag='Y') AS Structure
+ ON dim_matter_header_current.fee_earner_code=fed_code collate database_default
+LEFT OUTER JOIN MS_Prod.dbo.dbUser
+ ON feeusrID=dbUser.usrID
 
-AND hierarchylevel3hist = @Department
-AND date_closed_practice_management IS NULL
-AND tskFilter &lt;&gt;'tsk_01_010_MIProcess'
-AND CONVERT(DATE,tskDue,103) &lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
+WHERE tskComplete=0 
+AND client_code &lt;&gt;'00030645'
+--AND hierarchylevel3hist = @Department
+--AND tskType='Paperlite'
+AND tskType&lt;&gt;'MILESTONE'
+AND CONVERT(DATE,tskDue,103) &lt;=CONVERT(DATE,GETDATE(),103)
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client">
@@ -2619,6 +2662,10 @@ AND CONVERT(DATE,tskDue,103) &lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
         </Field>
         <Field Name="hierarchylevel3hist">
           <DataField>hierarchylevel3hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="SourceSystem">
+          <DataField>SourceSystem</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
