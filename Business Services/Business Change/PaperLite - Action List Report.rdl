@@ -2430,7 +2430,7 @@
         <DataSourceName>ReportStylingOnDWH01</DataSourceName>
         <CommandText>SELECT stream_id, file_stream, name
 FROM dbo.ReportImages
-WHERE  name ='Motor Action List Report.png'</CommandText>
+WHERE  name ='PaperLite - Action List.png'</CommandText>
       </Query>
       <Fields>
         <Field Name="stream_id">
@@ -2543,34 +2543,7 @@ AND CONVERT(DATE,plan_date,103) &lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
             <Value>=Parameters!Department.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT client collate database_default AS [Client] 
-,matter collate database_default AS Matter
-,case_public_desc1 collate database_default AS [Matter Description]
-,name collate database_default AS [Fee Earner]
-,activity_desc collate database_default AS [Activity Description]
-,activity_date AS [Activity Date]
-,plan_date AS [Plan Date]
-,DATEDIFF(DAY,plan_date,GETDATE()) AS [Days Left uncompleted]
-,CASE WHEN stream_no='POST' THEN 1 ELSE 0 END AS [Streamed Post]
-,1 AS NumberIncomplete
-,initiating_entity
-,hierarchylevel2hist
-,hierarchylevel3hist
-,'FED' AS SourceSystem
-FROM axxia01.dbo.casact WITH(NOLOCK)
-INNER JOIN axxia01.dbo.cashdr
-  ON casact.case_id=cashdr.case_id
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON initiating_entity=fed_code collate database_default
-AND dss_current_flag='Y'
-AND leaver=0
-WHERE tran_done IS NULL 
-AND p_a_marker='p'
-AND hierarchylevel3hist = @Department
-AND date_closed IS NULL
-AND CONVERT(DATE,plan_date,103) &lt;=CONVERT(DATE,GETDATE(),103)
-UNION
-
-SELECT client_code AS [Client]
+        <CommandText>SELECT client_code AS [Client]
 ,matter_number AS Matter
 ,matter_description AS [Matter Description]
 ,name AS [Fee Earner]
@@ -2587,6 +2560,7 @@ SELECT client_code AS [Client]
 FROM MS_Prod.dbo.dbTasks
 INNER JOIN red_dw.dbo.dim_matter_header_current
  ON dbTasks.fileID=dim_matter_header_current.ms_fileid
+INNER JOIN MS_Prod.dbo.dbUser ON dbTasks.feeusrID=dbUser.usrID
 LEFT OUTER JOIN (SELECT fed_code,hierarchylevel2hist,hierarchylevel3hist,hierarchylevel4hist,dim_fed_hierarchy_history.leaver,worksforDetail.worksforemail,name 
 FROM red_dw.dbo.dim_fed_hierarchy_history 
 LEFT OUTER JOIN (
@@ -2599,18 +2573,16 @@ AND dss_current_flag='Y'
  ON dim_fed_hierarchy_history.worksforemployeeid=worksforDetail.employeeid
 WHERE activeud=1
 AND dss_current_flag='Y') AS Structure
- ON dim_matter_header_current.fee_earner_code=fed_code collate database_default
-LEFT OUTER JOIN MS_Prod.dbo.dbUser
- ON feeusrID=dbUser.usrID
+ ON dbUser.usrAlias=fed_code collate database_default
+
 
 WHERE tskComplete=0 
 AND client_code &lt;&gt;'00030645'
---AND hierarchylevel3hist = @Department
+AND hierarchylevel3hist = @Department
 --AND tskType='Paperlite'
 AND tskType&lt;&gt;'MILESTONE'
 AND CONVERT(DATE,tskDue,103) &lt;=CONVERT(DATE,GETDATE(),103)
-AND  date_closed_practice_management IS NULL
-</CommandText>
+AND  date_closed_practice_management IS NULL</CommandText>
       </Query>
       <Fields>
         <Field Name="Client">
