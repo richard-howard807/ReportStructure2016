@@ -13,81 +13,71 @@
     <DataSet Name="NonStreamed">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT 
-client_code AS [Client]
-,matter_number AS [Matter Number]
-,matter_description AS [Description of matter]
-,dbtasks.Created AS [Date added into case plan]
-,usrFullName AS [Who by]
-,name AS [Matter manager/owner of file]
-,hierarchylevel4hist AS [Team]
-,worksforname AS [Team Manager]
-,tskType AS [Task Type]
-,CASE WHEN tskType='PAPERLITE' THEN 'Yes' ELSE 'No' END AS [Streamed Correctly]
+        <CommandText>SELECT clno AS [Client]
+,fileno AS [Matter]
+,fileDesc AS [Matter Description]
+,FEDCode AS [FED Reference]
+,usrFullName AS [Doc Created By]
+,NumberDocuments As [Number Documents Created]
+,NumberStreamedPost AS [Number of Paperlite Streamed]
+FROM 
+(SELECT clno,fileno,FEDCode,dbUser.usrFullName,fileDesc,COUNT(1) AS NumberDocuments 
+,NumberStreamedPost
+FROM MS_Prod.config.dbDocument WITH(NOLOCK)
+INNER JOIN MS_Prod.dbo.dbUser WITH(NOLOCK)
+ ON dbDocument.Createdby=usrID
+INNER JOIN MS_Prod.config.dbFile WITH(NOLOCK)
+ ON dbFile.fileID=dbDocument.fileID
+INNER JOIN MS_Prod.dbo.udExtFile
+  ON dbFile.fileID=udExtFile.fileID
+INNER JOIN MS_Prod.config.dbClient WITH(NOLOCK)
+ ON dbFile.clID=dbClient.clID
+LEFT OUTER JOIN ( SELECT fileID,usrFullName,COUNT(1) AS NumberStreamedPost
+ FROM MS_Prod.dbo.dbTasks WITH(NOLOCK)
+INNER JOIN MS_Prod.dbo.dbUser WITH(NOLOCK)
+ ON dbTasks.Createdby=dbUser.usrID
+WHERE tskType='PAPERLITE'
+  GROUP BY fileid,usrFullName) AS StreamedPost
+   ON dbUser.usrFullName=StreamedPost.usrFullName
+   AND dbDocument.fileID=StreamedPost.fileID
+   
+    
+GROUP BY clno,fileno,dbUser.usrFullName,NumberStreamedPost,FEDCode,fileDesc
+) AS AllData
+WHERE ISNULL(NumberDocuments,0) &lt;&gt; ISNULL(NumberStreamedPost,0)
+AND clNo&lt;&gt;'30645'
+ORDER BY clno,fileno,usrFullName,NumberStreamedPost
 
-FROM MS_Prod.dbo.dbTasks WITH(NOLOCK)
-INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)
- ON dbTasks.fileID=ms_fileid
-INNER JOIN MS_Prod.dbo.dbUser WITH(NOLOCK) 
- ON dbTasks.CreatedBy=dbUser.usrID
-LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK) 
- ON dim_matter_header_current.fee_earner_code=fed_code collate database_default AND dss_current_flag='Y'
-LEFT OUTER JOIN red_dw.dbo.dim_employee WITH(NOLOCK) 
- ON dim_fed_hierarchy_history.dim_employee_key=dim_employee.dim_employee_key
-WHERE usrFullName IN 
-(
-'Kate Price'
-,'Lydia Harnick'
-,'Megan Parr'
-,'Rebecca Curran'
-,'Steve Calvert'
-
-)
-AND tskType &lt;&gt;'MILESTONE'
-AND (CASE WHEN tskType='PAPERLITE' THEN 'Yes' ELSE 'No' END)='No'
-
-ORDER BY client_code,matter_number</CommandText>
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client">
           <DataField>Client</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Matter_Number">
-          <DataField>Matter Number</DataField>
+        <Field Name="Matter">
+          <DataField>Matter</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Description_of_matter">
-          <DataField>Description of matter</DataField>
+        <Field Name="Matter_Description">
+          <DataField>Matter Description</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Date_added_into_case_plan">
-          <DataField>Date added into case plan</DataField>
-          <rd:TypeName>System.DateTime</rd:TypeName>
-        </Field>
-        <Field Name="Who_by">
-          <DataField>Who by</DataField>
+        <Field Name="FED_Reference">
+          <DataField>FED Reference</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Matter_manager_owner_of_file">
-          <DataField>Matter manager/owner of file</DataField>
+        <Field Name="Doc_Created_By">
+          <DataField>Doc Created By</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Team">
-          <DataField>Team</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="Number_Documents_Created">
+          <DataField>Number Documents Created</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="Team_Manager">
-          <DataField>Team Manager</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Task_Type">
-          <DataField>Task Type</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Streamed_Correctly">
-          <DataField>Streamed Correctly</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="Number_of_Paperlite_Streamed">
+          <DataField>Number of Paperlite Streamed</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -109,25 +99,16 @@ ORDER BY client_code,matter_number</CommandText>
                   <Width>8.5325cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>2.5cm</Width>
+                  <Width>6.12479cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>5cm</Width>
+                  <Width>3.95521cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>5.51625cm</Width>
+                  <Width>4.69604cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>5.78083cm</Width>
-                </TablixColumn>
-                <TablixColumn>
-                  <Width>5.27813cm</Width>
-                </TablixColumn>
-                <TablixColumn>
-                  <Width>2.5cm</Width>
-                </TablixColumn>
-                <TablixColumn>
-                  <Width>2.5cm</Width>
+                  <Width>4.48438cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -298,14 +279,14 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox11">
+                        <Textbox Name="Textbox2">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Date added into case plan</Value>
+                                  <Value>FED Reference</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -316,7 +297,7 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox11</rd:DefaultName>
+                          <rd:DefaultName>Textbox2</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -352,14 +333,14 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox13">
+                        <Textbox Name="Textbox4">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Who by</Value>
+                                  <Value>Created By</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -370,7 +351,7 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox13</rd:DefaultName>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -406,14 +387,14 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox15">
+                        <Textbox Name="Textbox6">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Matter manager owner of file</Value>
+                                  <Value>Number Documents Created</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -424,7 +405,7 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox15</rd:DefaultName>
+                          <rd:DefaultName>Textbox6</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -460,14 +441,14 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox17">
+                        <Textbox Name="Textbox10">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Team</Value>
+                                  <Value>Number of Paperlite Streamed</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -478,169 +459,7 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox17</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Style>Solid</Style>
-                            </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
-                            <BackgroundColor>Teal</BackgroundColor>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox19">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>Team Manager</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Unicode</FontFamily>
-                                    <FontWeight>Bold</FontWeight>
-                                    <Color>White</Color>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox19</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Style>Solid</Style>
-                            </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
-                            <BackgroundColor>Teal</BackgroundColor>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox21">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>Task Type</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Unicode</FontFamily>
-                                    <FontWeight>Bold</FontWeight>
-                                    <Color>White</Color>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox21</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Style>Solid</Style>
-                            </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
-                            <BackgroundColor>Teal</BackgroundColor>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox23">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>Streamed Correctly</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Unicode</FontFamily>
-                                    <FontWeight>Bold</FontWeight>
-                                    <Color>White</Color>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox23</rd:DefaultName>
+                          <rd:DefaultName>Textbox10</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -740,7 +559,7 @@ ORDER BY client_code,matter_number</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Matter_Number.Value</Value>
+                                  <Value>=Fields!Matter.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <Language>en-GB</Language>
@@ -792,7 +611,7 @@ ORDER BY client_code,matter_number</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Description_of_matter.Value</Value>
+                                  <Value>=Fields!Matter_Description.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <Language>en-GB</Language>
@@ -837,47 +656,14 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Date_added_into_case_plan">
+                        <Textbox Name="FED_Reference">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Date_added_into_case_plan.Value</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Unicode</FontFamily>
-                                    <Format>d</Format>
-                                    <Language>en-GB</Language>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Date_added_into_case_plan</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Style>Solid</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Who_by">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>=Fields!Who_by.Value</Value>
+                                  <Value>=Fields!FED_Reference.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <Language>en-GB</Language>
@@ -887,7 +673,7 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Who_by</rd:DefaultName>
+                          <rd:DefaultName>FED_Reference</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -922,14 +708,14 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Matter_manager_owner_of_file">
+                        <Textbox Name="Doc_Created_By">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Matter_manager_owner_of_file.Value</Value>
+                                  <Value>=Fields!Doc_Created_By.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <Language>en-GB</Language>
@@ -939,7 +725,7 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Matter_manager_owner_of_file</rd:DefaultName>
+                          <rd:DefaultName>Doc_Created_By</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -974,16 +760,17 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Team">
+                        <Textbox Name="Number_Documents_Created">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Team.Value</Value>
+                                  <Value>=Fields!Number_Documents_Created.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>0;(0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -991,31 +778,11 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Team</rd:DefaultName>
+                          <rd:DefaultName>Number_Documents_Created</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
                             </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1026,16 +793,17 @@ ORDER BY client_code,matter_number</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Team_Manager">
+                        <Textbox Name="Number_of_Paperlite_Streamed">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Team_Manager.Value</Value>
+                                  <Value>=Fields!Number_of_Paperlite_Streamed.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>0;(0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -1043,135 +811,11 @@ ORDER BY client_code,matter_number</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Team_Manager</rd:DefaultName>
+                          <rd:DefaultName>Number_of_Paperlite_Streamed</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
                             </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Task_Type">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>=Fields!Task_Type.Value</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Unicode</FontFamily>
-                                    <Language>en-GB</Language>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Task_Type</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Style>Solid</Style>
-                            </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Streamed_Correctly">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>=Fields!Streamed_Correctly.Value</Value>
-                                  <Style>
-                                    <FontFamily>Lucida Sans Unicode</FontFamily>
-                                    <Language>en-GB</Language>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Streamed_Correctly</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Style>Solid</Style>
-                            </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1193,9 +837,6 @@ ORDER BY client_code,matter_number</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
-                <TablixMember />
-                <TablixMember />
-                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
@@ -1210,7 +851,7 @@ ORDER BY client_code,matter_number</CommandText>
             </TablixRowHierarchy>
             <DataSetName>NonStreamed</DataSetName>
             <Height>1.2cm</Height>
-            <Width>42.60771cm</Width>
+            <Width>32.79292cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -1221,7 +862,7 @@ ORDER BY client_code,matter_number</CommandText>
         <Height>0.47244in</Height>
         <Style />
       </Body>
-      <Width>16.77469in</Width>
+      <Width>12.9106in</Width>
       <Page>
         <PageHeight>29.7cm</PageHeight>
         <PageWidth>21cm</PageWidth>
