@@ -2790,7 +2790,7 @@ dim_matter_header_current[matter_number]</Statement>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Lookup">
-          <Value>=fields!dim_client_client_code_.Value+"/"+fields!dim_matter_header_current_matter_number_.Value</Value>
+          <Value>=trim(fields!dim_client_client_code_.Value)+"/"+trim(fields!dim_matter_header_current_matter_number_.Value)</Value>
         </Field>
         <Field Name="dim_detail_property_case_classification_">
           <DataField>dim_detail_property[case_classification]</DataField>
@@ -2824,30 +2824,45 @@ dim_matter_header_current[matter_number]</Statement>
     </DataSet>
     <DataSet Name="DaxTimeTran">
       <Query>
-        <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
-        <CommandText>EVALUATE(
-filter(
-CALCULATETABLE(
-SUMMARIZE(
-TimeTransactions,
-dimClient[ClientCode],
-Matter[MasterClientCode],
-dim_instruction_type[instruction_type],
-Matter[MatterNumber],
-"min",min(dimDateTransactionDate[TransactionDateDate]),
-"max",max(dimDateTransactionDate[TransactionDateDate])
-),
-TimeTransactions[ReportingExclusions] = 0
-),
-(PATHCONTAINS("Real Estate Advisory Work (BAU)",dim_instruction_type[instruction_type]) &amp;&amp; Matter[MasterClientCode] = "P00022") ||
-(PATHCONTAINS("Real Estate Advisory Work|Real Estate Transactional Work",dim_instruction_type[instruction_type]) &amp;&amp; Matter[MasterClientCode] = "P1001") ||
-(PATHCONTAINS("Miscellaneous|Real Estate Advisory Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Transactional Work (Volume)",dim_instruction_type[instruction_type]) &amp;&amp; Matter[MasterClientCode] = "R1001") ||
-(PATHCONTAINS("787558|787559|787560|787561", Matter[MasterClientCode]))
-
+        <DataSourceName>DWH2012</DataSourceName>
+        <CommandText>SELECT 
+dim_matter_header_current.client_code,
+master_client_code,
+instruction_type,
+dim_matter_header_current.matter_number,
+MIN(calendar_date) min,
+MAX(calendar_date) max
+FROM red_dw.dbo.fact_all_time_activity
+LEFT JOIN red_Dw.dbo.dim_date ON fact_all_time_activity.dim_transaction_date_key = dim_date.dim_date_key
+LEFT JOIN red_Dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_all_time_activity.dim_matter_header_curr_key
+LEFT JOIN red_Dw.dbo.dim_instruction_type ON dim_instruction_type.dim_instruction_type_key = dim_matter_header_current.dim_instruction_type_key
+WHERE 
+(
+	instruction_type = 'Real Estate Advisory Work (BAU)'  
+	AND master_client_code = 'P00022'
+) OR 
+(
+	instruction_type in ('Real Estate Advisory Work','Real Estate Transactional Work')
+	AND master_client_code = 'P1001'
+) OR
+(
+	instruction_type in ('Miscellaneous','Real Estate Advisory Work (Volume)','Real Estate Litigation Work (BAU)','Real Estate Litigation Work (Volume)','Real Estate Transactional Work (BAU)','Real Estate Transactional Work (Volume)')
+	AND master_client_code = 'R1001'
 )
-) order by 
-dimClient[ClientCode],
-Matter[MatterNumber]</CommandText>
+OR 
+	(
+	master_client_code IN (	'787558','787559','787560','787561')
+	)
+	GROUP BY
+	dim_matter_header_current.client_code,
+master_client_code,
+instruction_type,
+dim_matter_header_current.matter_number
+ORDER BY client_code,
+dim_matter_header_current.matter_number
+
+
+SELECT * FROM  red_dw.dbo.fact_all_time_activity</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -2960,32 +2975,32 @@ Matter[MatterNumber]</Statement>
         </rd:DesignerState>
       </Query>
       <Fields>
-        <Field Name="dimClient_ClientCode_">
-          <DataField>dimClient[ClientCode]</DataField>
+        <Field Name="client_code">
+          <DataField>client_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Matter_MasterClientCode_">
-          <DataField>Matter[MasterClientCode]</DataField>
+        <Field Name="master_client_code">
+          <DataField>master_client_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="dim_instruction_type_instruction_type_">
-          <DataField>dim_instruction_type[instruction_type]</DataField>
+        <Field Name="instruction_type">
+          <DataField>instruction_type</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Matter_MatterNumber_">
-          <DataField>Matter[MatterNumber]</DataField>
+        <Field Name="matter_number">
+          <DataField>matter_number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="ID_min_">
-          <DataField>[min]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="min">
+          <DataField>min</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
-        <Field Name="ID_max_">
-          <DataField>[max]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="max">
+          <DataField>max</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="Lookup">
-          <Value>=fields!dimClient_ClientCode_.Value+"/"+fields!Matter_MatterNumber_.Value</Value>
+          <Value>=trim(fields!client_code.Value)+"/"+trim(fields!matter_number.Value)</Value>
         </Field>
       </Fields>
     </DataSet>
@@ -6611,7 +6626,7 @@ WHERE        (client_code IN ('P00010', 'P00021', '00787561', '00787558', 'P0001
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=lookup(fields!Lookup.Value,fields!Lookup.Value,Fields!ID_min_.Value, "DaxTimeTran")</Value>
+                                      <Value>=lookup(fields!Lookup.Value,fields!Lookup.Value,Fields!min.Value, "DaxTimeTran")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6679,7 +6694,7 @@ WHERE        (client_code IN ('P00010', 'P00021', '00787561', '00787558', 'P0001
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=lookup(fields!Lookup.Value,fields!Lookup.Value,Fields!ID_max_.Value, "DaxTimeTran")</Value>
+                                      <Value>=lookup(fields!Lookup.Value,fields!Lookup.Value,Fields!max.Value, "DaxTimeTran")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6736,6 +6751,7 @@ WHERE        (client_code IN ('P00010', 'P00021', '00787561', '00787558', 'P0001
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
@@ -6805,7 +6821,6 @@ WHERE        (client_code IN ('P00010', 'P00021', '00787561', '00787558', 'P0001
                                 <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
