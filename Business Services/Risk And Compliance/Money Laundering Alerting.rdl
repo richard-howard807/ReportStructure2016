@@ -3778,14 +3778,20 @@ fact_dimension_main
     <DataSet Name="DataSet1">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT dim_client.client_code
-,CASE WHEN date_closed_practice_management IS NOT NULL THEN 'Exclude' ELSE 'Include' END AS HideFlag
-FROM red_dw.dbo.dim_client
-INNER JOIN red_dw.dbo.dim_matter_header_current
-  ON dim_client.client_code=dim_matter_header_current.client_code
+        <CommandText>SELECT client_code
+,CASE WHEN LiveMatters IS NOT NULL THEN 'Exclude' ELSE 'Include' END AS HideFlag
+FROM
+( 
+SELECT dim_client.client_code,COUNT(1) AS LiveMatters
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_client
+ ON dim_matter_header_current.client_code=dim_client.client_code
 WHERE client_status='PENDING'
-AND matter_number='00000001'
-AND dim_client.client_code LIKe 'W%'</CommandText>
+AND matter_number NOT IN ('ML','0')
+GROUP BY dim_client.client_code
+) AS Data
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="client_code">
@@ -3816,6 +3822,28 @@ WHERE  matter_number='00000001'</CommandText>
         <Field Name="matter_owner_full_name">
           <DataField>matter_owner_full_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="ActiveMattersClients">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT dim_client.client_code,COUNT(1) FROM red_dw.dbo.dim_matter_header_current  WITH(NOLOCK)
+INNER JOIN red_dw.dbo.dim_client WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_client.client_code
+WHERE client_status='PENDING'
+AND matter_number NOT IN ('ML','0')
+AND date_closed_practice_management IS NULL
+GROUP BY dim_client.client_code</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_code">
+          <DataField>client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID">
+          <DataField />
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
