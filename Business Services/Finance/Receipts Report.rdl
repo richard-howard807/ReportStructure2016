@@ -21,13 +21,16 @@
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT YEAR(receipt_date) AS [Receipt Year]
+        <CommandText>SELECT 
+YEAR(receipt_date) AS [Receipt Year]
+,MONTH(receipt_date) AS [Receipt Month ]
 ,COUNT (bill_number) AS [Number Receipt]
 ,SUM(receipt_total) AS [Receipt Total]  
 ,SUM(receipt_fees) AS [Receipt Fees]  
 ,SUM(receipt_hard_costs) AS [Receipt Hard Costs] 
 ,SUM(receipt_soft_costs) AS [Receipt Soft Costs]  
 ,SUM(receipt_tax) AS [Receipt Vat] 
+, CAST(dim_bill_date.bill_fin_year-1 AS NVARCHAR(4)) + '/' + CAST(RIGHT(dim_bill_date.bill_fin_year,2) AS NVARCHAR(2)) AS  [Financial year billed ]
 ,CASE WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 0 AND 30 THEN '0-30'
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 31 AND 60 THEN '31-60'
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 61 AND 90 THEN '61-90'
@@ -36,13 +39,22 @@ WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) 
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) &gt; 365 THEN '&gt;365'  ELSE '&gt;365' END  AS Age
 
 FROM red_dw.dbo.fact_bill_receipts WITH(NOLOCK)
-WHERE receipt_date BETWEEN @StartDate AND @EndDate
-GROUP BY YEAR(receipt_date),DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date)
-ORDER BY YEAR(receipt_date)</CommandText>
+INNER JOIN red_dw.dbo.dim_bill_date ON dim_bill_date.bill_date = red_dw.dbo.fact_bill_receipts.bill_date
+WHERE receipt_date  BETWEEN @StartDate AND @EndDate 
+and client_code is not null
+GROUP BY YEAR(receipt_date),MONTH(receipt_date) ,DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date), CAST(dim_bill_date.bill_fin_year-1 AS NVARCHAR(4)) + '/' + CAST(RIGHT(dim_bill_date.bill_fin_year,2) AS NVARCHAR(2))
+ORDER BY YEAR(receipt_date)
+
+</CommandText>
+        <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
         <Field Name="Receipt_Year">
           <DataField>Receipt Year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Receipt_Month_">
+          <DataField>Receipt Month </DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="Number_Receipt">
@@ -68,6 +80,10 @@ ORDER BY YEAR(receipt_date)</CommandText>
         <Field Name="Receipt_Vat">
           <DataField>Receipt Vat</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Financial_year_billed_">
+          <DataField>Financial year billed </DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Age">
           <DataField>Age</DataField>
@@ -238,30 +254,24 @@ ORDER BY YEAR(receipt_date)</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Receipt_Total</rd:DefaultName>
+                          <ActionInfo>
+                            <Actions>
+                              <Action>
+                                <Drillthrough>
+                                  <ReportName>Receipt Report Drill</ReportName>
+                                  <Parameters>
+                                    <Parameter Name="Age">
+                                      <Value>=Fields!Age.Value</Value>
+                                    </Parameter>
+                                  </Parameters>
+                                </Drillthrough>
+                              </Action>
+                            </Actions>
+                          </ActionInfo>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
                             </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -349,30 +359,19 @@ ORDER BY YEAR(receipt_date)</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox18</rd:DefaultName>
+                          <ActionInfo>
+                            <Actions>
+                              <Action>
+                                <Drillthrough>
+                                  <ReportName>Receipt Report Drill</ReportName>
+                                </Drillthrough>
+                              </Action>
+                            </Actions>
+                          </ActionInfo>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
                             </Border>
-                            <TopBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </TopBorder>
-                            <BottomBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </BottomBorder>
-                            <LeftBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </LeftBorder>
-                            <RightBorder>
-                              <Color>Black</Color>
-                              <Style>Solid</Style>
-                              <Width>1pt</Width>
-                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -844,7 +843,6 @@ ORDER BY YEAR(receipt_date)</CommandText>
             </TablixRowHierarchy>
             <DataSetName>DataSet1</DataSetName>
             <Top>3.75861cm</Top>
-            <Left>0cm</Left>
             <Height>1.8cm</Height>
             <Width>19.34104cm</Width>
             <Style>
@@ -1260,7 +1258,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                 <TablixMember>
                   <Group Name="Receipt_Year1">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!Receipt_Year.Value</GroupExpression>
+                      <GroupExpression>=Fields!Financial_year_billed_.Value</GroupExpression>
                     </GroupExpressions>
                   </Group>
                   <SortExpressions>
@@ -1271,16 +1269,17 @@ ORDER BY YEAR(receipt_date)</CommandText>
                   <TablixHeader>
                     <Size>2.5cm</Size>
                     <CellContents>
-                      <Textbox Name="Receipt_Year1">
+                      <Textbox Name="Financial_year_billed_">
                         <CanGrow>true</CanGrow>
                         <KeepTogether>true</KeepTogether>
                         <Paragraphs>
                           <Paragraph>
                             <TextRuns>
                               <TextRun>
-                                <Value>=Fields!Receipt_Year.Value</Value>
+                                <Value>=Fields!Financial_year_billed_.Value</Value>
                                 <Style>
                                   <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <Color>Blue</Color>
                                 </Style>
                               </TextRun>
                             </TextRuns>
@@ -1289,31 +1288,25 @@ ORDER BY YEAR(receipt_date)</CommandText>
                             </Style>
                           </Paragraph>
                         </Paragraphs>
-                        <rd:DefaultName>Receipt_Year1</rd:DefaultName>
+                        <rd:DefaultName>Financial_year_billed_</rd:DefaultName>
+                        <ActionInfo>
+                          <Actions>
+                            <Action>
+                              <Drillthrough>
+                                <ReportName>Receipt Report Drill</ReportName>
+                                <Parameters>
+                                  <Parameter Name="receiptyear">
+                                    <Value>=Fields!Receipt_Year.Value</Value>
+                                  </Parameter>
+                                </Parameters>
+                              </Drillthrough>
+                            </Action>
+                          </Actions>
+                        </ActionInfo>
                         <Style>
                           <Border>
                             <Style>Solid</Style>
                           </Border>
-                          <TopBorder>
-                            <Color>Black</Color>
-                            <Style>Solid</Style>
-                            <Width>1pt</Width>
-                          </TopBorder>
-                          <BottomBorder>
-                            <Color>Black</Color>
-                            <Style>Solid</Style>
-                            <Width>1pt</Width>
-                          </BottomBorder>
-                          <LeftBorder>
-                            <Color>Black</Color>
-                            <Style>Solid</Style>
-                            <Width>1pt</Width>
-                          </LeftBorder>
-                          <RightBorder>
-                            <Color>Black</Color>
-                            <Style>Solid</Style>
-                            <Width>1pt</Width>
-                          </RightBorder>
                           <PaddingLeft>2pt</PaddingLeft>
                           <PaddingRight>2pt</PaddingRight>
                           <PaddingTop>2pt</PaddingTop>
@@ -1366,7 +1359,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
             <DataSetName>DataSet1</DataSetName>
             <Top>1.78222cm</Top>
             <Height>1.8cm</Height>
-            <Width>10.63688cm</Width>
+            <Width>10.63687cm</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -1378,7 +1371,6 @@ ORDER BY YEAR(receipt_date)</CommandText>
             <Source>Embedded</Source>
             <Value>WeightmansLLP_BrandedImage_Receipt_Report_Receipt_Report_SelectColour_Small_0_dual_line</Value>
             <Sizing>FitProportional</Sizing>
-            <Left>0cm</Left>
             <Height>1.60583cm</Height>
             <Width>19.34104cm</Width>
             <ZIndex>2</ZIndex>
@@ -1389,10 +1381,10 @@ ORDER BY YEAR(receipt_date)</CommandText>
             </Style>
           </Image>
         </ReportItems>
-        <Height>2.18843in</Height>
+        <Height>3.84468in</Height>
         <Style />
       </Body>
-      <Width>7.61458in</Width>
+      <Width>9.73958in</Width>
       <Page>
         <PageHeight>29.7cm</PageHeight>
         <PageWidth>21cm</PageWidth>
@@ -1410,18 +1402,13 @@ ORDER BY YEAR(receipt_date)</CommandText>
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>01/01/2010 00:00:00</Value>
+          <Value>01/01/2019 00:00:00</Value>
         </Values>
       </DefaultValue>
       <Prompt>Start Date</Prompt>
     </ReportParameter>
     <ReportParameter Name="EndDate">
       <DataType>DateTime</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>11/12/2018 00:00:00</Value>
-        </Values>
-      </DefaultValue>
       <Prompt>End Date</Prompt>
     </ReportParameter>
   </ReportParameters>
