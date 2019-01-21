@@ -3778,19 +3778,13 @@ fact_dimension_main
     <DataSet Name="DataSet1">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT client_code
-,CASE WHEN LiveMatters IS NOT NULL THEN 'Exclude' ELSE 'Include' END AS HideFlag
-FROM
-( 
-SELECT dim_client.client_code,COUNT(1) AS LiveMatters
+        <CommandText>SELECT dim_client.client_code,SUM(CASE WHEN date_closed_practice_management IS NOT NULL THEN 1 ELSE 0 END)   AS HideFlag
 FROM red_dw.dbo.dim_matter_header_current
 INNER JOIN red_dw.dbo.dim_client
  ON dim_matter_header_current.client_code=dim_client.client_code
 WHERE client_status='PENDING'
 AND matter_number NOT IN ('ML','0')
 GROUP BY dim_client.client_code
-) AS Data
-
 </CommandText>
       </Query>
       <Fields>
@@ -3800,7 +3794,7 @@ GROUP BY dim_client.client_code
         </Field>
         <Field Name="HideFlag">
           <DataField>HideFlag</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -7015,8 +7009,8 @@ RTRIM(Fields!MattersToExclude.Value), "Exclusions")
                 </Style>
               </Tablix>
             </ReportItems>
-            <Top>0.3175cm</Top>
-            <Left>0.00009cm</Left>
+            <Top>0.39687cm</Top>
+            <Left>0.00014cm</Left>
             <Height>1.27777in</Height>
             <Width>21.91666in</Width>
             <Style>
@@ -7589,7 +7583,7 @@ RTRIM(Fields!MattersToExclude.Value), "Exclusions")
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value EvaluationMode="Constant">No. Live Files</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -7643,6 +7637,7 @@ RTRIM(Fields!MattersToExclude.Value), "Exclusions")
                             <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -8849,9 +8844,6 @@ RTRIM(Fields!MattersToExclude.Value), "Exclusions")
                 </TablixMember>
                 <TablixMember>
                   <Group Name="Details2" />
-                  <Visibility>
-                    <Hidden>=IIF((LOOKUP(TRIM(Fields!dim_client_client_code_.Value),TRIM(Fields!client_code.Value),Fields!HideFlag.Value, "DataSet1"))="Exclude",true,false)</Hidden>
-                  </Visibility>
                 </TablixMember>
                 <TablixMember>
                   <Visibility>
