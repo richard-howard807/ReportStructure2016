@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
@@ -2440,7 +2440,7 @@
         <DataSourceName>ReportStylingOnDWH01</DataSourceName>
         <CommandText>SELECT stream_id, file_stream, name
 FROM dbo.ReportImages
-WHERE  name ='receiptreport.png'</CommandText>
+WHERE  name ='receiptreportdrill.png'</CommandText>
       </Query>
       <Fields>
         <Field Name="stream_id">
@@ -2461,33 +2461,68 @@ WHERE  name ='receiptreport.png'</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@Receiptyear">
+            <Value>=Parameters!Receiptyear.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@Age">
             <Value>=Parameters!Age.Value</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>
-WITH cte AS (
-SELECT client_code [Client Code], matter_number [Matter Number ], 
-CASE WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 0 AND 30 THEN '0-30'
+
+SELECT 
+
+client_code
+,matter_number
+
+, YEAR(receipt_date) [Receipt Year ]
+,COUNT (bill_number) AS [Number Receipt]
+,SUM(receipt_total) AS [Receipt Total]  
+,SUM(receipt_fees) AS [Receipt Fees]  
+,SUM(receipt_hard_costs) AS [Receipt Hard Costs] 
+,bill_number [Bill_number]
+,fact_bill_receipts.bill_date AS [Bill Date ]
+,SUM(receipt_soft_costs) AS [Receipt Soft Costs]  
+,SUM(receipt_tax) AS [Receipt Vat] 
+
+,CAST(dim_bill_date.bill_fin_year-1 AS NVARCHAR(4)) + '/' + CAST(RIGHT(dim_bill_date.bill_fin_year,2) AS NVARCHAR(2)) AS  [Financial year billed ]
+--,CASE WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 0 AND 30 THEN '0-30'
+,CASE WHEN (DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 0 AND 30 OR bill_number IS NULL) THEN '0-30'
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 31 AND 60 THEN '31-60'
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 61 AND 90 THEN '61-90'
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 90 AND 180 THEN '91-180'
 WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 180 AND 365 THEN '181-365'
-WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) &gt; 365 THEN '&gt;365'  ELSE '&gt;365' END  AS Age
-,CAST(dim_bill_date.bill_fin_year-1 AS NVARCHAR(4)) + '/' + CAST(RIGHT(dim_bill_date.bill_fin_year,2) AS NVARCHAR(2)) AS  [Financial year billed ]
-,YEAR(receipt_date) AS [Receipt Year]
-
-
+WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) &gt; 365 THEN '&gt;365'  
+WHEN client_code IS NULL THEN '0-30'
+ELSE '&gt;365' END  AS AgeReal
+,DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) [difference ], dim_bill_date.bill_date , receipt_date  
 FROM red_dw.dbo.fact_bill_receipts WITH(NOLOCK)
+left outer JOIN red_dw.dbo.dim_bill_date ON dim_bill_date.bill_date = red_dw.dbo.fact_bill_receipts.bill_date
 
-                
-INNER JOIN red_dw.dbo.dim_bill_date ON dim_bill_date.bill_date = red_dw.dbo.fact_bill_receipts.bill_date
+--WHERE cte.[Receipt Year] IN  (@Receiptyear)
+--AND cte.Age IN (@Age)
+WHERE 
+YEAR(receipt_date) IN (@Receiptyear)
+--and client_code IS NULL AND matter_number IS NULL 
+----and client_code is not null
+AND (CASE WHEN (DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 0 AND 30 OR bill_number IS NULL) THEN '0-30'
+WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 31 AND 60 THEN '31-60'
+WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 61 AND 90 THEN '61-90'
+WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 90 AND 180 THEN '91-180'
+WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 180 AND 365 THEN '181-365'
+WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) &gt; 365 THEN '&gt;365' 
+WHEN client_code IS NULL THEN '0-30' ELSE '&gt;365' END ) IN (@Age)
 
-WHERE client_code IS NOT NULL 
-
-GROUP BY	CASE
-            WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
-            BETWEEN 0 AND 30 THEN
+GROUP BY	YEAR(receipt_date),
+            CAST(dim_bill_date.bill_fin_year - 1 AS NVARCHAR(4)) + '/'
+            + CAST(RIGHT(dim_bill_date.bill_fin_year, 2) AS NVARCHAR(2)),
+            CASE
+            WHEN
+            (
+            DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
+            BETWEEN 0 AND 30
+            OR bill_number IS NULL
+            ) THEN
             '0-30'
             WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
             BETWEEN 31 AND 60 THEN
@@ -2503,81 +2538,20 @@ GROUP BY	CASE
             '181-365'
             WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date) &gt; 365 THEN
             '&gt;365'
+            WHEN client_code IS NULL THEN
+            '0-30'
             ELSE
             '&gt;365'
             END,
-            CAST(dim_bill_date.bill_fin_year - 1 AS NVARCHAR(4)) + '/'
-            + CAST(RIGHT(dim_bill_date.bill_fin_year, 2) AS NVARCHAR(2)),
-            YEAR(receipt_date),
+            DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date),
             client_code,
-            matter_number
+            matter_number,
+            bill_number,
+            fact_bill_receipts.bill_date,
+            dim_bill_date.bill_date,
+            receipt_date
 
-)
-
-SELECT 
-
-client_code
-,matter_number
-
-,YEAR(receipt_date) AS [Receipt Year]
-,COUNT (bill_number) AS [Number Receipt]
-,SUM(receipt_total) AS [Receipt Total]  
-,SUM(receipt_fees) AS [Receipt Fees]  
-,SUM(receipt_hard_costs) AS [Receipt Hard Costs] 
-,bill_number [Bill_number]
-,fact_bill_receipts.bill_date AS [Bill Date ]
-,SUM(receipt_soft_costs) AS [Receipt Soft Costs]  
-,SUM(receipt_tax) AS [Receipt Vat] 
-,CAST(dim_bill_date.bill_fin_year-1 AS NVARCHAR(4)) + '/' + CAST(RIGHT(dim_bill_date.bill_fin_year,2) AS NVARCHAR(2)) AS  [Financial year billed ]
-,CASE WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 0 AND 30 THEN '0-30'
-WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 31 AND 60 THEN '31-60'
-WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 61 AND 90 THEN '61-90'
-WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 90 AND 180 THEN '91-180'
-WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) BETWEEN 180 AND 365 THEN '181-365'
-WHEN DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) &gt; 365 THEN '&gt;365'  ELSE '&gt;365' END  AS Age
-,DATEDIFF(DAY,fact_bill_receipts.bill_date,fact_bill_receipts.receipt_date) [difference ], receipt_date [receiptdateval]
-
-FROM red_dw.dbo.fact_bill_receipts WITH(NOLOCK)
-INNER JOIN red_dw.dbo.dim_bill_date ON dim_bill_date.bill_date = red_dw.dbo.fact_bill_receipts.bill_date
-INNER JOIN cte ON cte.[Client Code] = fact_bill_receipts.client_code AND cte.[Matter Number ] = fact_bill_receipts.matter_number
-WHERE 
---cte.[Receipt Year] IN (@Receiptyear)
---AND 
-cte.Age IN (@Age)
-
-
-and client_code is not null
-GROUP BY		YEAR(receipt_date),
-                CAST(dim_bill_date.bill_fin_year - 1 AS NVARCHAR(4)) + '/'
-                + CAST(RIGHT(dim_bill_date.bill_fin_year, 2) AS NVARCHAR(2)),
-                CASE
-                WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
-                BETWEEN 0 AND 30 THEN
-                '0-30'
-                WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
-                BETWEEN 31 AND 60 THEN
-                '31-60'
-                WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
-                BETWEEN 61 AND 90 THEN
-                '61-90'
-                WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
-                BETWEEN 90 AND 180 THEN
-                '91-180'
-                WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date)
-                BETWEEN 180 AND 365 THEN
-                '181-365'
-                WHEN DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date) &gt; 365 THEN
-                '&gt;365'
-                ELSE
-                '&gt;365'
-                END,
-                DATEDIFF(DAY, fact_bill_receipts.bill_date, fact_bill_receipts.receipt_date),
-                client_code,
-                matter_number,
-                bill_number,
-                fact_bill_receipts.bill_date,
-                receipt_date
-ORDER BY YEAR(receipt_date)</CommandText>
+order by bill_date DESC</CommandText>
       </Query>
       <Fields>
         <Field Name="client_code">
@@ -2588,8 +2562,8 @@ ORDER BY YEAR(receipt_date)</CommandText>
           <DataField>matter_number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Receipt_Year">
-          <DataField>Receipt Year</DataField>
+        <Field Name="Receipt_Year_">
+          <DataField>Receipt Year </DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="Number_Receipt">
@@ -2628,16 +2602,20 @@ ORDER BY YEAR(receipt_date)</CommandText>
           <DataField>Financial year billed </DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Age">
-          <DataField>Age</DataField>
+        <Field Name="AgeReal">
+          <DataField>AgeReal</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="difference_">
           <DataField>difference </DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="receiptdateval">
-          <DataField>receiptdateval</DataField>
+        <Field Name="bill_date">
+          <DataField>bill_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="receipt_date">
+          <DataField>receipt_date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
@@ -3443,7 +3421,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Fields!client_code.Value</Value>
+                                          <Value>=iif( Fields!client_code.Value = nothing , "No Reference", Fields!client_code.Value)</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3705,14 +3683,14 @@ ORDER BY YEAR(receipt_date)</CommandText>
                             </TablixCell>
                             <TablixCell>
                               <CellContents>
-                                <Textbox Name="receiptdateval">
+                                <Textbox Name="receipt_date">
                                   <CanGrow>true</CanGrow>
                                   <KeepTogether>true</KeepTogether>
                                   <Paragraphs>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Fields!receiptdateval.Value</Value>
+                                          <Value>=Fields!receipt_date.Value</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3732,7 +3710,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                                       </Style>
                                     </Paragraph>
                                   </Paragraphs>
-                                  <rd:DefaultName>receiptdateval</rd:DefaultName>
+                                  <rd:DefaultName>receipt_date</rd:DefaultName>
                                   <Style>
                                     <Border>
                                       <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4972,7 +4950,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                   </Tablix>
                 </ReportItems>
                 <Height>1.0486in</Height>
-                <Width>14.8875in</Width>
+                <Width>12.19653in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -4983,7 +4961,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
             <KeepTogether>true</KeepTogether>
             <Top>0.04167in</Top>
             <Height>1.0486in</Height>
-            <Width>14.8875in</Width>
+            <Width>12.21042in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -4991,7 +4969,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
             </Style>
           </Rectangle>
         </ReportItems>
-        <Height>3.53124in</Height>
+        <Height>1.19791in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5027,134 +5005,12 @@ ORDER BY YEAR(receipt_date)</CommandText>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>14.8875in</Width>
+      <Width>12.425in</Width>
       <Page>
         <PageHeader>
-          <Height>0.79763in</Height>
+          <Height>0.01319in</Height>
           <PrintOnFirstPage>true</PrintOnFirstPage>
           <PrintOnLastPage>true</PrintOnLastPage>
-          <ReportItems>
-            <Rectangle Name="rctReportName">
-              <KeepTogether>true</KeepTogether>
-              <Top>0.65624in</Top>
-              <Height>0.0893in</Height>
-              <Width>12.21042in</Width>
-              <Visibility>
-                <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!rctReportName_ToolTip.Value, "DefaultProperties")</ToolTip>
-              <Style>
-                <Border>
-                  <Color>=First(Fields!rctReportName_BorderColor_Default.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                </Border>
-                <TopBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Top.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                </TopBorder>
-                <BottomBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                </BottomBorder>
-                <LeftBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Left.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                </LeftBorder>
-                <RightBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Right.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                </RightBorder>
-                <BackgroundColor>=First(Fields!rctReportName_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-              </Style>
-            </Rectangle>
-            <Image Name="WeightmansLogo">
-              <Source>Database</Source>
-              <Value>=First(Fields!file_stream.Value, "ReportLogo")</Value>
-              <MIMEType>=First(Fields!imgLogo1_Mimetype.Value, "DefaultProperties")</MIMEType>
-              <Sizing>FitProportional</Sizing>
-              <ActionInfo>
-                <Actions>
-                  <Action>
-                    <Hyperlink>=First(Fields!imgLogo1_Action_GoToURL.Value, "DefaultProperties")</Hyperlink>
-                  </Action>
-                </Actions>
-              </ActionInfo>
-              <Top>0.01389in</Top>
-              <Height>0.62846in</Height>
-              <Width>1.7in</Width>
-              <ZIndex>1</ZIndex>
-              <Visibility>
-                <Hidden>=CBool(First(Fields!imgLogo1_Hidden.Value, "DefaultProperties"))</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!imgLogo1_Tooltip.Value, "DefaultProperties")</ToolTip>
-              <Style>
-                <Border>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Default.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                </Border>
-                <TopBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Top.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                </TopBorder>
-                <BottomBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                </BottomBorder>
-                <LeftBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Left.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                </LeftBorder>
-                <RightBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Right.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                </RightBorder>
-                <PaddingLeft>=First(Fields!imgLogo1_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                <PaddingRight>=First(Fields!imgLogo1_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                <PaddingTop>=First(Fields!imgLogo1_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                <PaddingBottom>=First(Fields!imgLogo1_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-              </Style>
-            </Image>
-            <Image Name="ReportTitle">
-              <Source>Database</Source>
-              <Value>=First(Fields!file_stream.Value, "ReportTitle")</Value>
-              <MIMEType>=First(Fields!imgLogo2_Mimetype.Value, "DefaultProperties")</MIMEType>
-              <Sizing>FitProportional</Sizing>
-              <ActionInfo>
-                <Actions>
-                  <Action>
-                    <Hyperlink>=First(Fields!imgLogo2_Action_GoToURL.Value, "DefaultProperties")</Hyperlink>
-                  </Action>
-                </Actions>
-              </ActionInfo>
-              <Left>1.7in</Left>
-              <Height>0.63222in</Height>
-              <Width>10.49653in</Width>
-              <ZIndex>2</ZIndex>
-              <Visibility>
-                <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!imgLogo2_Tooltip.Value, "DefaultProperties")</ToolTip>
-              <Style>
-                <Border>
-                  <Style>None</Style>
-                </Border>
-                <PaddingLeft>=First(Fields!imgLogo2_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                <PaddingRight>=First(Fields!imgLogo2_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                <PaddingTop>=First(Fields!imgLogo2_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                <PaddingBottom>=First(Fields!imgLogo2_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-              </Style>
-            </Image>
-          </ReportItems>
           <Style>
             <Border>
               <Color>=First(Fields!PageHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5223,8 +5079,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0cm</Top>
-              <Left>3.32317cm</Left>
+              <Top>0.07056cm</Top>
               <Height>0.25in</Height>
               <Width>12.21042in</Width>
               <Visibility>
@@ -5376,8 +5231,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0.55556in</Top>
-              <Left>3.32317cm</Left>
+              <Top>0.54167in</Top>
               <Height>0.36938in</Height>
               <Width>12.21042in</Width>
               <ZIndex>1</ZIndex>
@@ -5431,8 +5285,7 @@ ORDER BY YEAR(receipt_date)</CommandText>
                   </Action>
                 </Actions>
               </ActionInfo>
-              <Top>0.22974in</Top>
-              <Left>3.32317cm</Left>
+              <Top>0.28529in</Top>
               <Height>0.25638in</Height>
               <Width>12.21042in</Width>
               <ZIndex>2</ZIndex>
@@ -5508,21 +5361,19 @@ ORDER BY YEAR(receipt_date)</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
-    <ReportParameter Name="Receiptyear">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <Prompt>receiptyear</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
     <ReportParameter Name="Age">
       <DataType>String</DataType>
       <Prompt>Age</Prompt>
     </ReportParameter>
+    <ReportParameter Name="Receiptyear">
+      <DataType>String</DataType>
+      <Prompt>Receiptyear</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>6</NumberOfRows>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5531,13 +5382,13 @@ ORDER BY YEAR(receipt_date)</CommandText>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>Receiptyear</ParameterName>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Age</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>5</RowIndex>
-          <ParameterName>Age</ParameterName>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Receiptyear</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
