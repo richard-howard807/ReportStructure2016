@@ -2458,37 +2458,54 @@ WHERE        (name = 'EQCAS_Report.png')</CommandText>
             <Value>=Parameters!ENDDATE.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT 
-dim_fed_hierarchy_history.hierarchylevel4hist Team, 
-dim_fed_hierarchy_history.hierarchylevel3hist Department,
-dim_fed_hierarchy_history.hierarchylevel2hist Division,
-hier2.hierarchylevel4hist Team2, 
-hier2.hierarchylevel3hist Department2,
-hier2.hierarchylevel2hist Division2,
-CAST(YEAR(transaction_date) AS VARCHAR(4)) AS TranYear,
-CAST(MONTH(transaction_date) AS VARCHAR(2)) AS TranMonth,
-SUM(page_count) as mono,
-SUM(color_page_count) as color
+        <CommandText>SELECT  
+pcb.ct3name as usercode,
+EMP.name AS FullName1,
+EMP.hierarchylevel4hist AS Team,
+EMP.hierarchylevel3hist AS Department,
+EMP.hierarchylevel2hist AS Division,
+CAST(YEAR(cat_transaction.trxdate) AS VARCHAR(4)) AS TranYear,
+CAST(MONTH(cat_transaction.trxdate) AS VARCHAR(2)) AS TranMonth,
+SUM(doc.pagecount - doc.colorpagecount) as mono,
+SUM(doc.colorpagecount) as color
+ 
+FROM red_Dw.dbo.ds_sh_eqcas_cat_transaction cat_transaction with (nolock)
+                                      
+LEFT JOIN red_Dw.dbo.ds_sh_eqcas_cas_trx_pcb_ext pcb with (nolock)
+            ON cat_transaction.id = pcb.xd_id
+ 
+LEFT JOIN red_Dw.dbo.ds_sh_eqcas_cat_validation cv1 with (nolock) ON pcb.ct1name = cv1.name
+ 
+LEFT JOIN red_Dw.dbo.ds_sh_eqcas_cas_trx_doc_ext doc with (nolock) ON cat_transaction.id = doc.x_id
+LEFT JOIN red_Dw.dbo.dim_fed_hierarchy_history AS EMP WITH (NOLOCK) ON pcb.ct3name = EMP.windowsusername COLLATE DATABASE_DEFAULT 
+AND EMP.dss_current_flag = 'Y' AND activeud = 1
 
-FROM red_dw.dbo.dim_eqcas_billing
-INNER JOIN red_dw.dbo.fact_eqcas_billing ON fact_eqcas_billing.dim_eqcas_billing_key = dim_eqcas_billing.dim_eqcas_billing_key
-LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history ON windows_user_name = windowsusername
-AND transaction_date BETWEEN dss_start_date AND dss_end_date
-LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history hier2 
-on hier2.dim_fed_hierarchy_history_key = dim_eqcas_billing.dim_fed_hierarchy_history_key
-WHERE transaction_date BETWEEN @STARTDATE AND @ENDDATE 
-AND transaction_type in ('Copy','Print')
-GROUP BY hier2.hierarchylevel4hist, hier2.hierarchylevel3hist,hier2.hierarchylevel2hist,
-dim_fed_hierarchy_history.hierarchylevel4hist , 
-dim_fed_hierarchy_history.hierarchylevel3hist ,
-dim_fed_hierarchy_history.hierarchylevel2hist ,
-CAST(YEAR(transaction_date) AS VARCHAR(4)),
-CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
+WHERE
+cv1.expiration is null
+AND cat_transaction.trxdate BETWEEN  @STARTDATE AND @ENDDATE 
+AND (cat_transaction.trxsubtype = 'cpy' OR cat_transaction.trxsubtype = 'prn')
+GROUP BY 
+pcb.ct3name ,
+EMP.name,
+EMP.hierarchylevel4hist ,
+EMP.hierarchylevel3hist ,
+EMP.hierarchylevel2hist ,
+              CAST(YEAR(cat_transaction.trxdate) AS VARCHAR(4)),
+              CAST(MONTH(cat_transaction.trxdate) AS VARCHAR(2))
+			  ORDER BY TranMonth</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
+        <Field Name="usercode">
+          <DataField>usercode</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Team">
           <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FullName1">
+          <DataField>FullName1</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Department">
@@ -2497,18 +2514,6 @@ CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
         </Field>
         <Field Name="Division">
           <DataField>Division</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Team2">
-          <DataField>Team2</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Department2">
-          <DataField>Department2</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Division2">
-          <DataField>Division2</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="TranYear">
@@ -3048,7 +3053,7 @@ CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Team2.Value</Value>
+                                      <Value>=Fields!Team.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3115,7 +3120,7 @@ CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Department2.Value</Value>
+                                      <Value>=Fields!Department.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3182,7 +3187,7 @@ CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Division2.Value</Value>
+                                      <Value>=Fields!Division.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3305,6 +3310,7 @@ CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
@@ -4446,7 +4452,7 @@ CAST(MONTH(transaction_date) AS VARCHAR(2))</CommandText>
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
-                      <Value>© </Value>
+                      <Value>ï¿½ </Value>
                       <Style>
                         <FontStyle>Normal</FontStyle>
                         <FontFamily>arial</FontFamily>
