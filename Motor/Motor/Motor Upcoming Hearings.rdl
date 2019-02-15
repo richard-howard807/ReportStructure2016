@@ -2467,7 +2467,8 @@ WHERE  name ='Motor_Upcoming_Hearings.png'</CommandText>
             <Value>=Parameters!ClientCode.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>; WITH KeyDateTasks AS 
+        <CommandText>
+; WITH KeyDateTasks AS 
 (
 SELECT a.client_code
 	, a.matter_number
@@ -2489,10 +2490,14 @@ SELECT a.client_code
 		END AS [Flag]
 	, NULL AS dim_task_due_date_key
 	
-FROM red_dw.dbo.dim_matter_header_current AS a
-INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
+FROM red_dw.dbo.dim_matter_header_current AS a WITH (NOLOCK)
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) 
+ ON fed_code=fee_earner_code collate database_default
+ AND dss_current_flag='Y'
+INNER JOIN MS_Prod.dbo.dbTasks WITH (NOLOCK) ON a.ms_fileid=dbTasks.fileID
 AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
 AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND hierarchylevel3hist='Motor'
 AND RTRIM(tskDesc) IN 
 (
 'REM: Appeal hearing today [CASE MAN]'
@@ -2685,27 +2690,29 @@ SELECT DISTINCT dim_matter_header_current.client_code AS [Client Code]
 
 
 	
-FROM red_dw.dbo.fact_dimension_main
-INNER JOIN KeyDateTasksXML ON KeyDateTasksXML.client_code=fact_dimension_main.client_code
-AND KeyDateTasksXML.matter_number=fact_dimension_main.matter_number
-INNER JOIN KeyDateTasksDeletedXML ON KeyDateTasksDeletedXML.client_code=fact_dimension_main.client_code
-AND KeyDateTasksDeletedXML.matter_number=fact_dimension_main.matter_number
-INNER JOIN KeyDateNarrativeTasksXML ON KeyDateNarrativeTasksXML.client_code=fact_dimension_main.client_code
-AND KeyDateNarrativeTasksXML.matter_number=fact_dimension_main.matter_number
-INNER JOIN KeyDateNarrativeDeletedTasksXML ON KeyDateNarrativeDeletedTasksXML.client_code=fact_dimension_main.client_code
-AND KeyDateNarrativeDeletedTasksXML.matter_number=fact_dimension_main.matter_number
-INNER JOIN KeyDateTasks ON KeyDateTasks.client_code=fact_dimension_main.client_code
+FROM red_dw.dbo.fact_dimension_main WITH (NOLOCK)
+INNER JOIN KeyDateTasks WITH (NOLOCK) ON KeyDateTasks.client_code=fact_dimension_main.client_code
 AND KeyDateTasks.matter_number=fact_dimension_main.matter_number
-LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
-LEFT OUTER JOIN red_dw.dbo.dim_client ON dim_client.client_code = fact_dimension_main.client_code
-LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
-LEFT OUTER JOIN red_dw.dbo.dim_detail_finance ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
-LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
-LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
-LEFT OUTER JOIN red_dw.dbo.dim_court_involvement ON dim_court_involvement.dim_court_involvement_key = fact_dimension_main.dim_court_involvement_key
-LEFT OUTER JOIN red_dw.dbo.dim_detail_court ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
-LEFT OUTER JOIN red_dw.dbo.fact_detail_court ON fact_detail_court.master_fact_key = fact_dimension_main.master_fact_key
 
+
+
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH (NOLOCK) ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_client WITH (NOLOCK) ON dim_client.client_code = fact_dimension_main.client_code
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_finance WITH (NOLOCK)  ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details WITH (NOLOCK) ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome WITH (NOLOCK) ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_court_involvement WITH (NOLOCK) ON dim_court_involvement.dim_court_involvement_key = fact_dimension_main.dim_court_involvement_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court WITH (NOLOCK) ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.fact_detail_court WITH (NOLOCK) ON fact_detail_court.master_fact_key = fact_dimension_main.master_fact_key
+LEFT OUTER JOIN KeyDateTasksXML WITH (NOLOCK) ON KeyDateTasksXML.client_code=fact_dimension_main.client_code
+AND KeyDateTasksXML.matter_number=fact_dimension_main.matter_number
+LEFT OUTER JOIN KeyDateTasksDeletedXML WITH (NOLOCK) ON KeyDateTasksDeletedXML.client_code=fact_dimension_main.client_code
+AND KeyDateTasksDeletedXML.matter_number=fact_dimension_main.matter_number
+LEFT OUTER JOIN KeyDateNarrativeTasksXML WITH (NOLOCK) ON KeyDateNarrativeTasksXML.client_code=fact_dimension_main.client_code
+AND KeyDateNarrativeTasksXML.matter_number=fact_dimension_main.matter_number
+LEFT OUTER JOIN KeyDateNarrativeDeletedTasksXML WITH (NOLOCK) ON KeyDateNarrativeDeletedTasksXML.client_code=fact_dimension_main.client_code
+AND KeyDateNarrativeDeletedTasksXML.matter_number=fact_dimension_main.matter_number
 
 WHERE hierarchylevel2hist='Legal Ops - Claims'
 AND hierarchylevel3hist='Motor'
@@ -3005,11 +3012,50 @@ AND dim_client.client_code IN (@ClientCode)
           </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT DISTINCT hierarchylevel4hist AS [Team]
-FROM red_dw.dbo.fact_tasks
-INNER JOIN red_dw.dbo.dim_tasks ON dim_tasks.dim_tasks_key = fact_tasks.dim_tasks_key AND dim_tasks.task_code IN ('POLA0117','WPSA0168','TRAA0345','REGA0123','REGA0211','PIDA0140','NHSA0183','PSRA0120','PSRA0141','REGA0128','PIDA0120','LLSA0107','EMPA0134','FTRA9908','FTRA0132','FTRA0122','TRAA0348')
-INNER JOIN red_dw.dbo.dim_task_due_date ON dim_task_due_date.dim_task_due_date_key = fact_tasks.dim_task_due_date_key AND calendar_date&gt;=@StartDate AND calendar_date&lt;=@EndDate
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.fed_code=fact_tasks.matter_owner AND hierarchylevel3hist='Motor'
-ORDER BY hierarchylevel4hist </CommandText>
+FROM red_dw.dbo.dim_matter_header_current AS a
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code collate database_default
+ AND dss_current_flag='Y'
+INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
+AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND RTRIM(tskDesc) IN 
+(
+'REM: Appeal hearing today [CASE MAN]'
+,'REM: Application hearing date today [CASE MAN]'
+,'REM: CMC today - [CASE MAN]'
+,'REM: Court hearing today [CASE MAN]'
+,'REM: Date of Inquest due today [CASE MAN]'
+,'REM: Detailed assessment hearing today - [CASE MAN]'
+,'REM: Disposal hearing due today [CASE MAN]'
+,'REM: Hearing date today [CASE MAN]'
+,'REM: Infant approval due today [CASE MAN]'
+,'REM: Inquest today [CASE MAN]'
+,'REM: Interlocutory hearing today -  [CASE MAN]'
+,'REM: Joint settlement meeting due today (CM)'
+,'REM: Preliminary hearing due today - [CASE MAN]'
+,'REM: Small claim track hearing due today - [CM]'
+,'REM: Stage 3 infant approval hearing due today [CM]'
+,'REM: Stage 3 oral hearing due today [CM]'
+,'REM: Trial due today - [CASE MAN]'
+,'Appeal hearing - today'
+,'Application hearing - today'
+,'CMC due - today'
+,'Court hearing due - today'
+,'Inquest date - today'
+,'Detailed assessment hearing due - today'
+,'Disposal hearing due - today'
+,'Hearing – today'
+,'Infant approval - today'
+,'Interlocutory hearing - today'
+,'Joint settlement meeting - today'
+,'Preliminary hearing - today'
+,'Small Claim Track hearing due - today'
+,'Stage 3 infant approval hearing - today'
+,'Stage 3 oral hearing - today'
+,'Trial date - today'
+)
+AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
         <Field Name="Team">
@@ -3028,16 +3074,52 @@ ORDER BY hierarchylevel4hist </CommandText>
           <QueryParameter Name="@EndDate">
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT DISTINCT name AS [Matter Owner]
-FROM red_dw.dbo.fact_tasks
-INNER JOIN red_dw.dbo.dim_tasks ON dim_tasks.dim_tasks_key = fact_tasks.dim_tasks_key AND dim_tasks.task_code IN ('POLA0117','WPSA0168','TRAA0345','REGA0123','REGA0211','PIDA0140','NHSA0183','PSRA0120','PSRA0141','REGA0128','PIDA0120','LLSA0107','EMPA0134','FTRA9908','FTRA0132','FTRA0122','TRAA0348')
-INNER JOIN red_dw.dbo.dim_task_due_date ON dim_task_due_date.dim_task_due_date_key = fact_tasks.dim_task_due_date_key AND calendar_date&gt;=@StartDate AND calendar_date&lt;=@EndDate
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.fed_code=fact_tasks.matter_owner AND hierarchylevel3hist='Motor' AND hierarchylevel4hist IN (@Team)
-ORDER BY name</CommandText>
+FROM red_dw.dbo.dim_matter_header_current AS a
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code collate database_default
+ AND dss_current_flag='Y'
+INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
+AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND RTRIM(tskDesc) IN 
+(
+'REM: Appeal hearing today [CASE MAN]'
+,'REM: Application hearing date today [CASE MAN]'
+,'REM: CMC today - [CASE MAN]'
+,'REM: Court hearing today [CASE MAN]'
+,'REM: Date of Inquest due today [CASE MAN]'
+,'REM: Detailed assessment hearing today - [CASE MAN]'
+,'REM: Disposal hearing due today [CASE MAN]'
+,'REM: Hearing date today [CASE MAN]'
+,'REM: Infant approval due today [CASE MAN]'
+,'REM: Inquest today [CASE MAN]'
+,'REM: Interlocutory hearing today -  [CASE MAN]'
+,'REM: Joint settlement meeting due today (CM)'
+,'REM: Preliminary hearing due today - [CASE MAN]'
+,'REM: Small claim track hearing due today - [CM]'
+,'REM: Stage 3 infant approval hearing due today [CM]'
+,'REM: Stage 3 oral hearing due today [CM]'
+,'REM: Trial due today - [CASE MAN]'
+,'Appeal hearing - today'
+,'Application hearing - today'
+,'CMC due - today'
+,'Court hearing due - today'
+,'Inquest date - today'
+,'Detailed assessment hearing due - today'
+,'Disposal hearing due - today'
+,'Hearing – today'
+,'Infant approval - today'
+,'Interlocutory hearing - today'
+,'Joint settlement meeting - today'
+,'Preliminary hearing - today'
+,'Small Claim Track hearing due - today'
+,'Stage 3 infant approval hearing - today'
+,'Stage 3 oral hearing - today'
+,'Trial date - today'
+)
+AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
         <Field Name="Matter_Owner">
@@ -3056,19 +3138,53 @@ ORDER BY name</CommandText>
           <QueryParameter Name="@EndDate">
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@MatterOwner">
-            <Value>=Parameters!MatterOwner.Value</Value>
-          </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT DISTINCT client_group_name AS [Client Group Name]
-FROM red_dw.dbo.fact_tasks
-INNER JOIN red_dw.dbo.dim_tasks ON dim_tasks.dim_tasks_key = fact_tasks.dim_tasks_key AND dim_tasks.task_code IN ('POLA0117','WPSA0168','TRAA0345','REGA0123','REGA0211','PIDA0140','NHSA0183','PSRA0120','PSRA0141','REGA0128','PIDA0120','LLSA0107','EMPA0134','FTRA9908','FTRA0132','FTRA0122','TRAA0348')
-INNER JOIN red_dw.dbo.dim_task_due_date ON dim_task_due_date.dim_task_due_date_key = fact_tasks.dim_task_due_date_key AND calendar_date&gt;=@StartDate AND calendar_date&lt;=@EndDate
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.fed_code=fact_tasks.matter_owner AND hierarchylevel3hist='Motor' AND hierarchylevel4hist IN (@Team) AND name IN (@MatterOwner)
-INNER JOIN red_dw.dbo.dim_client ON dim_client.client_code = fact_tasks.client_code</CommandText>
+        <CommandText>
+SELECT DISTINCT client_group_name AS [Client Group Name]
+FROM red_dw.dbo.dim_matter_header_current AS a
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code collate database_default
+ AND dss_current_flag='Y'
+INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
+AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND RTRIM(tskDesc) IN 
+(
+'REM: Appeal hearing today [CASE MAN]'
+,'REM: Application hearing date today [CASE MAN]'
+,'REM: CMC today - [CASE MAN]'
+,'REM: Court hearing today [CASE MAN]'
+,'REM: Date of Inquest due today [CASE MAN]'
+,'REM: Detailed assessment hearing today - [CASE MAN]'
+,'REM: Disposal hearing due today [CASE MAN]'
+,'REM: Hearing date today [CASE MAN]'
+,'REM: Infant approval due today [CASE MAN]'
+,'REM: Inquest today [CASE MAN]'
+,'REM: Interlocutory hearing today -  [CASE MAN]'
+,'REM: Joint settlement meeting due today (CM)'
+,'REM: Preliminary hearing due today - [CASE MAN]'
+,'REM: Small claim track hearing due today - [CM]'
+,'REM: Stage 3 infant approval hearing due today [CM]'
+,'REM: Stage 3 oral hearing due today [CM]'
+,'REM: Trial due today - [CASE MAN]'
+,'Appeal hearing - today'
+,'Application hearing - today'
+,'CMC due - today'
+,'Court hearing due - today'
+,'Inquest date - today'
+,'Detailed assessment hearing due - today'
+,'Disposal hearing due - today'
+,'Hearing – today'
+,'Infant approval - today'
+,'Interlocutory hearing - today'
+,'Joint settlement meeting - today'
+,'Preliminary hearing - today'
+,'Small Claim Track hearing due - today'
+,'Stage 3 infant approval hearing - today'
+,'Stage 3 oral hearing - today'
+,'Trial date - today'
+)
+AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Group_Name">
@@ -3087,20 +3203,53 @@ INNER JOIN red_dw.dbo.dim_client ON dim_client.client_code = fact_tasks.client_c
           <QueryParameter Name="@EndDate">
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@MatterOwner">
-            <Value>=Parameters!MatterOwner.Value</Value>
-          </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT DISTINCT dim_client.client_code AS [Client Code]
-FROM red_dw.dbo.fact_tasks
-INNER JOIN red_dw.dbo.dim_tasks ON dim_tasks.dim_tasks_key = fact_tasks.dim_tasks_key AND dim_tasks.task_code IN ('POLA0117','WPSA0168','TRAA0345','REGA0123','REGA0211','PIDA0140','NHSA0183','PSRA0120','PSRA0141','REGA0128','PIDA0120','LLSA0107','EMPA0134','FTRA9908','FTRA0132','FTRA0122','TRAA0348')
-INNER JOIN red_dw.dbo.dim_task_due_date ON dim_task_due_date.dim_task_due_date_key = fact_tasks.dim_task_due_date_key AND calendar_date&gt;=@StartDate AND calendar_date&lt;=@EndDate
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.fed_code=fact_tasks.matter_owner AND hierarchylevel3hist='Motor' AND hierarchylevel4hist IN (@Team) AND name IN (@MatterOwner)
-INNER JOIN red_dw.dbo.dim_client ON dim_client.client_code = fact_tasks.client_code
-ORDER BY dim_client.client_code</CommandText>
+        <CommandText>
+SELECT DISTINCT a.client_code AS [Client Code]
+FROM red_dw.dbo.dim_matter_header_current AS a
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code collate database_default
+ AND dss_current_flag='Y'
+INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
+AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND RTRIM(tskDesc) IN 
+(
+'REM: Appeal hearing today [CASE MAN]'
+,'REM: Application hearing date today [CASE MAN]'
+,'REM: CMC today - [CASE MAN]'
+,'REM: Court hearing today [CASE MAN]'
+,'REM: Date of Inquest due today [CASE MAN]'
+,'REM: Detailed assessment hearing today - [CASE MAN]'
+,'REM: Disposal hearing due today [CASE MAN]'
+,'REM: Hearing date today [CASE MAN]'
+,'REM: Infant approval due today [CASE MAN]'
+,'REM: Inquest today [CASE MAN]'
+,'REM: Interlocutory hearing today -  [CASE MAN]'
+,'REM: Joint settlement meeting due today (CM)'
+,'REM: Preliminary hearing due today - [CASE MAN]'
+,'REM: Small claim track hearing due today - [CM]'
+,'REM: Stage 3 infant approval hearing due today [CM]'
+,'REM: Stage 3 oral hearing due today [CM]'
+,'REM: Trial due today - [CASE MAN]'
+,'Appeal hearing - today'
+,'Application hearing - today'
+,'CMC due - today'
+,'Court hearing due - today'
+,'Inquest date - today'
+,'Detailed assessment hearing due - today'
+,'Disposal hearing due - today'
+,'Hearing – today'
+,'Infant approval - today'
+,'Interlocutory hearing - today'
+,'Joint settlement meeting - today'
+,'Preliminary hearing - today'
+,'Small Claim Track hearing due - today'
+,'Stage 3 infant approval hearing - today'
+,'Stage 3 oral hearing - today'
+,'Trial date - today'
+)
+AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Code">
