@@ -2469,39 +2469,98 @@ WHERE  name ='Motor_Upcoming_Hearings.png'</CommandText>
         </QueryParameters>
         <CommandText>; WITH KeyDateTasks AS 
 (
-SELECT dim_tasks.client_code
-	, dim_tasks.matter_number
-	, RTRIM(CONVERT(VARCHAR(10), calendar_date, 103)) AS [Key Date]
-	, RTRIM(task_desccription) AS [Key Date Narrative]
-	, task_amended_deleted_flag
-	, task_status
-	, CASE WHEN calendar_date &gt;= GETDATE() THEN 'Future'
-			WHEN calendar_date &lt; GETDATE() THEN 'Expired/Deleted'
-			WHEN task_amended_deleted_flag IS NOT NULL THEN 'Expired/Deleted'
+SELECT a.client_code
+	, a.matter_number
+	, RTRIM(CONVERT(VARCHAR(10), CONVERT(DATE,tskDue,103), 103)) AS [Key Date]
+	, RTRIM(tskDesc) AS [Key Date Narrative]
+	, NULL AS task_amended_deleted_flag
+	, CASE WHEN tskComplete=1 THEN 'a' ELSE 'p' END  task_status
+	, CASE WHEN CONVERT(DATE,tskDue,103) &gt;= GETDATE() THEN 'Future'
+			WHEN CONVERT(DATE,tskDue,103) &lt; GETDATE() THEN 'Expired/Deleted'
+			
 	  END AS [Filter]
-	, CASE WHEN calendar_date &gt;= GETDATE() AND task_amended_deleted_flag IS NULL AND task_status='p' THEN 'Live'
-		WHEN task_status='a' THEN 'Deleted/Completed'
-		WHEN calendar_date &lt; GETDATE() OR task_amended_deleted_flag='d' THEN 'Deleted/Completed'
-		ELSE NULL
+	, CASE WHEN CONVERT(DATE,tskDue,103) &gt;= GETDATE() AND tskComplete=0 THEN 'Live'
+		WHEN tskComplete=1 THEN 'Deleted/Completed'
+		
 		END AS [Tab Filter]
-	, CASE WHEN task_status='a' THEN 'Completed'
-		WHEN calendar_date &lt; GETDATE() OR task_amended_deleted_flag='d' THEN 'Deleted'
+	, CASE WHEN  tskComplete=0 THEN 'Completed'
+		WHEN CONVERT(DATE,tskDue,103) &lt; GETDATE()  THEN 'Expired/Deleted'
 		ELSE NULL
 		END AS [Flag]
-	, dim_task_due_date.dim_task_due_date_key
+	, NULL AS dim_task_due_date_key
+	
+FROM red_dw.dbo.dim_matter_header_current AS a
+INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
+AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND RTRIM(tskDesc) IN 
+(
+'REM: Appeal hearing today [CASE MAN]'
+,'REM: Application hearing date today [CASE MAN]'
+,'REM: CMC today - [CASE MAN]'
+,'REM: Court hearing today [CASE MAN]'
+,'REM: Date of Inquest due today [CASE MAN]'
+,'REM: Detailed assessment hearing today - [CASE MAN]'
+,'REM: Disposal hearing due today [CASE MAN]'
+,'REM: Hearing date today [CASE MAN]'
+,'REM: Infant approval due today [CASE MAN]'
+,'REM: Inquest today [CASE MAN]'
+,'REM: Interlocutory hearing today -  [CASE MAN]'
+,'REM: Joint settlement meeting due today (CM)'
+,'REM: Preliminary hearing due today - [CASE MAN]'
+,'REM: Small claim track hearing due today - [CM]'
+,'REM: Stage 3 infant approval hearing due today [CM]'
+,'REM: Stage 3 oral hearing due today [CM]'
+,'REM: Trial due today - [CASE MAN]'
+,'Appeal hearing - today'
+,'Application hearing - today'
+,'CMC due - today'
+,'Court hearing due - today'
+,'Inquest date - today'
+,'Detailed assessment hearing due - today'
+,'Disposal hearing due - today'
+,'Hearing – today'
+,'Infant approval - today'
+,'Interlocutory hearing - today'
+,'Joint settlement meeting - today'
+,'Preliminary hearing - today'
+,'Small Claim Track hearing due - today'
+,'Stage 3 infant approval hearing - today'
+,'Stage 3 oral hearing - today'
+,'Trial date - today'
+)--SELECT dim_tasks.client_code
+--	, dim_tasks.matter_number
+--	, RTRIM(CONVERT(VARCHAR(10), calendar_date, 103)) AS [Key Date]
+--	, RTRIM(task_desccription) AS [Key Date Narrative]
+--	, task_amended_deleted_flag
+--	, task_status
+--	, CASE WHEN calendar_date &gt;= GETDATE() THEN 'Future'
+--			WHEN calendar_date &lt; GETDATE() THEN 'Expired/Deleted'
+--			WHEN task_amended_deleted_flag IS NOT NULL THEN 'Expired/Deleted'
+--	  END AS [Filter]
+--	, CASE WHEN calendar_date &gt;= GETDATE() AND task_amended_deleted_flag IS NULL AND task_status='p' THEN 'Live'
+--		WHEN task_status='a' THEN 'Deleted/Completed'
+--		WHEN calendar_date &lt; GETDATE() OR task_amended_deleted_flag='d' THEN 'Deleted/Completed'
+--		ELSE NULL
+--		END AS [Tab Filter]
+--	, CASE WHEN task_status='a' THEN 'Completed'
+--		WHEN calendar_date &lt; GETDATE() OR task_amended_deleted_flag='d' THEN 'Deleted'
+--		ELSE NULL
+--		END AS [Flag]
+--	, dim_task_due_date.dim_task_due_date_key
 
-FROM red_dw.dbo.fact_tasks
-LEFT OUTER JOIN red_dw.dbo.dim_tasks ON dim_tasks.dim_tasks_key = fact_tasks.dim_tasks_key
-LEFT OUTER JOIN red_dw.dbo.dim_task_due_date ON dim_task_due_date.dim_task_due_date_key = fact_tasks.dim_task_due_date_key
-WHERE red_dw.dbo.dim_tasks.task_code IN ('POLA0117','WPSA0168','TRAA0345','REGA0123','REGA0211','PIDA0140','NHSA0183','PSRA0120','PSRA0141','REGA0128','PIDA0120','LLSA0107','EMPA0134','FTRA9908','FTRA0132','FTRA0122','TRAA0348')
-AND ISNULL(task_amended_deleted_flag,'')&lt;&gt;'a'
---AND dim_tasks.client_code='W15419' AND dim_tasks.matter_number='00000988' 
---AND task_amended_deleted_flag IS NULL
-AND calendar_date&gt;=@StartDate
-AND calendar_date&lt;=@EndDate
---AND calendar_date&gt;='2018-10-15'
---AND calendar_date&lt;='2018-11-20'
---AND dim_tasks.client_code='00030645' AND dim_tasks.matter_number='00010653' 
+--FROM red_dw.dbo.fact_tasks
+--LEFT OUTER JOIN red_dw.dbo.dim_tasks ON dim_tasks.dim_tasks_key = fact_tasks.dim_tasks_key
+--LEFT OUTER JOIN red_dw.dbo.dim_task_due_date ON dim_task_due_date.dim_task_due_date_key = fact_tasks.dim_task_due_date_key
+--WHERE red_dw.dbo.dim_tasks.task_code IN ('POLA0117','WPSA0168','TRAA0345','REGA0123','REGA0211','PIDA0140','NHSA0183','PSRA0120','PSRA0141','REGA0128','PIDA0120','LLSA0107','EMPA0134','FTRA9908','FTRA0132','FTRA0122','TRAA0348')
+--AND ISNULL(task_amended_deleted_flag,'')&lt;&gt;'a'
+----AND dim_tasks.client_code='W15419' AND dim_tasks.matter_number='00000988' 
+----AND task_amended_deleted_flag IS NULL
+--AND calendar_date&gt;=@StartDate
+--AND calendar_date&lt;=@EndDate
+----AND calendar_date&gt;='2018-10-15'
+----AND calendar_date&lt;='2018-11-20'
+----AND dim_tasks.client_code='00030645' AND dim_tasks.matter_number='00010653' 
 
 )
 
@@ -2653,8 +2712,7 @@ AND hierarchylevel3hist='Motor'
 AND hierarchylevel4hist IN (@Team)
 AND name IN (@MatterOwner)
 AND dim_client.client_code IN (@ClientCode)
---AND fact_dimension_main.client_code='W15419' AND fact_dimension_main.matter_number='00000988' 
-</CommandText>
+--AND fact_dimension_main.client_code='W15419' AND fact_dimension_main.matter_number='00000988' </CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Code">
@@ -30898,7 +30956,7 @@ ORDER BY dim_client.client_code</CommandText>
             </SortExpressions>
             <Top>4.25538cm</Top>
             <Height>1.26041in</Height>
-            <Width>70.65833in</Width>
+            <Width>70.65834in</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -30947,7 +31005,7 @@ ORDER BY dim_client.client_code</CommandText>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>70.65833in</Width>
+      <Width>70.65834in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
