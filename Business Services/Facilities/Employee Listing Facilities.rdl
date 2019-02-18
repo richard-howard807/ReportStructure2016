@@ -2454,6 +2454,9 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
           <QueryParameter Name="@name">
             <Value>=Parameters!name.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@fed_code">
+            <Value>=Parameters!fed_code.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT knownas [KnownAs], surname [Surname],c.Description [Office], d.[Description] [Team], f.reportingbcmname [Manager], e.AltNumber [old fed code],f.fed_code current_personnel_code
 FROM [red_dw].[dbo].[stage_ds_sh_3e_user_sync_01] a
@@ -2461,7 +2464,10 @@ INNER JOIN TE_3E_Prod.dbo.Office c ON a.office = c.Code COLLATE DATABASE_DEFAULT
 INNER JOIN TE_3E_Prod.dbo.Section d ON a.team = d.Code COLLATE DATABASE_DEFAULT
 INNER JOIN TE_3E_Prod.dbo.Timekeeper e ON e.Entity = a.Entity
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history f ON f.employeeid = a.employeeid AND f.dss_current_flag = 'Y' AND f.activeud = 1 AND f.leaver = 0
-WHERE LOWER(f.name) LIKE '%'+LOWER(@name)+'%'
+WHERE LOWER(f.name) LIKE '%'+LOWER(@name)+'%' and
+CASE WHEN ISNULL(@fed_code,'') = '' THEN 1 
+WHEN @fed_code = (f.fed_code) THEN 1
+ELSE 0 END = 1
 
 ORDER BY Surname ASC</CommandText>
       </Query>
@@ -2662,6 +2668,7 @@ ORDER BY Surname ASC</CommandText>
                             <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -4060,11 +4067,17 @@ ORDER BY Surname ASC</CommandText>
       <AllowBlank>true</AllowBlank>
       <Prompt>Name (first or surname)</Prompt>
     </ReportParameter>
+    <ReportParameter Name="fed_code">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Personnel Code</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4075,6 +4088,11 @@ ORDER BY Surname ASC</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>name</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>fed_code</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
