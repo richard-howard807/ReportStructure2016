@@ -2455,14 +2455,6 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
     <DataSet Name="MainDataset">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@Startdate">
-            <Value>=Parameters!Startdate.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Enddate">
-            <Value>=Parameters!Enddate.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
         <CommandText>SELECT RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Weightmans Reference],
        fact_dimension_main.client_code,
        dim_detail_incident.[year_of_account] [Year Of Account],
@@ -2474,7 +2466,7 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
        dim_matter_header_current.date_opened_case_management [Entered Date],
        dim_detail_critical_mi.[date_closed] [Date Closed ],
        dim_detail_critical_mi.[claim_status] [Claim Status ],
-	              dim_claimant_thirdparty_involvement.[claimant_name] AS [Claimant Name],
+       dim_claimant_thirdparty_involvement.[claimant_name] AS [Claimant Name],
        dim_detail_client.[subsidiary] [Subsidary],
        dim_detail_client.[cause_description] [Cause Description],
        dim_detail_client.[cause_description_additional] [Cause Description Additional ],
@@ -2482,8 +2474,18 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
        dim_detail_client.[effect_description_additional] [Effect Description Additional],
        dim_detail_incident.[sap_code] [Insurer EL Reference / SAP Code],
        dim_detail_client.[working_deductible] [Working Deductible ],
-       1 AS [Outstanding Reserve Severn Trent],
-       1 AS [Outstanding Reserve Lyra],
+       ISNULL(fact_detail_reserve_detail.[el_stw_damages_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[el_stw_tp_costs_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[el_stw_own_costs_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[mo_stw_damages_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[mo_stw_tp_costs_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[mo_stw_own_costs_reserve], 0) AS [Outstanding Reserve Severn Trent],
+       ISNULL(fact_detail_reserve_detail.[el_insurer_damages_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[el_insurer_tp_costs_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[el_insurer_own_costs_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[mo_insurer_damages_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[mo_insurer_tp_costs_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[mo_insurer_own_costs_reserve], 0) AS [Outstanding Reserve Lyra],
        fact_detail_client.[payment_amount_gross] AS [Paid ST],
        ISNULL(fact_detail_client.[recovery_amout], 0) [Total Expected Net Recoveries],
        1 AS [Pending Payments Lyra ],
@@ -2520,6 +2522,8 @@ FROM red_dw.dbo.fact_dimension_main
         ON dim_detail_critical_mi.dim_detail_critical_mi_key = fact_dimension_main.dim_detail_critical_mi_key
     LEFT OUTER JOIN red_dw.dbo.fact_detail_client
         ON fact_detail_client.master_fact_key = fact_dimension_main.master_fact_key
+    LEFT OUTER JOIN red_dw.dbo.fact_detail_reserve_detail
+        ON fact_detail_reserve_detail.master_fact_key = fact_dimension_main.master_fact_key
 WHERE (
           (
               dim_client.client_group_code = '00000068'
@@ -2534,8 +2538,10 @@ WHERE (
           )
       )
       AND reporting_exclusions = 0
- AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate
+--AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate
 ORDER BY 1;
+
+
 
 
 
@@ -2616,11 +2622,11 @@ ORDER BY 1;
         </Field>
         <Field Name="Outstanding_Reserve_Severn_Trent">
           <DataField>Outstanding Reserve Severn Trent</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="Outstanding_Reserve_Lyra">
           <DataField>Outstanding Reserve Lyra</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="Paid_ST">
           <DataField>Paid ST</DataField>
@@ -4623,14 +4629,14 @@ ORDER BY 1;
                             </TablixCell>
                             <TablixCell>
                               <CellContents>
-                                <Textbox Name="Converge_Ref">
+                                <Textbox Name="Weightmans_Reference">
                                   <CanGrow>true</CanGrow>
                                   <KeepTogether>true</KeepTogether>
                                   <Paragraphs>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Fields!Converge_Ref.Value</Value>
+                                          <Value>=Fields!Weightmans_Reference.Value</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4649,7 +4655,7 @@ ORDER BY 1;
                                       </Style>
                                     </Paragraph>
                                   </Paragraphs>
-                                  <rd:DefaultName>Converge_Ref</rd:DefaultName>
+                                  <rd:DefaultName>Weightmans_Reference</rd:DefaultName>
                                   <Style>
                                     <Border>
                                       <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -6153,7 +6159,7 @@ ORDER BY 1;
                     <DataSetName>MainDataset</DataSetName>
                     <Top>0.17639cm</Top>
                     <Height>0.70625in</Height>
-                    <Width>32.53125in</Width>
+                    <Width>32.53126in</Width>
                     <Style>
                       <Border>
                         <Style>None</Style>
@@ -6167,7 +6173,7 @@ ORDER BY 1;
                   </Tablix>
                 </ReportItems>
                 <Height>0.77569in</Height>
-                <Width>32.53125in</Width>
+                <Width>32.53126in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6176,7 +6182,7 @@ ORDER BY 1;
               </Rectangle>
             </ReportItems>
             <Height>0.77569in</Height>
-            <Width>32.53125in</Width>
+            <Width>32.53126in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -6220,7 +6226,7 @@ ORDER BY 1;
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>32.53125in</Width>
+      <Width>32.53126in</Width>
       <Page>
         <PageHeader>
           <Height>0.95388in</Height>
@@ -6772,7 +6778,7 @@ ORDER BY 1;
       <DataType>DateTime</DataType>
       <DefaultValue>
         <Values>
-          <Value>01/01/2018 00:00:00</Value>
+          <Value>01/01/2017 00:00:00</Value>
         </Values>
       </DefaultValue>
       <Prompt>Startdate</Prompt>
