@@ -2545,20 +2545,22 @@ FROM
 (
 SELECT a.client_code
 	, a.matter_number
-	, RTRIM(CONVERT(VARCHAR(10), CONVERT(DATE,tskDue,103), 103)) AS [Key Date]
+	, CONVERT(DATE,tskDue,103) AS [Key Date]
 	, RTRIM(tskDesc) AS [Key Date Narrative]
 	, NULL AS task_amended_deleted_flag
 	, CASE WHEN tskComplete=1 THEN 'a' ELSE 'p' END  task_status
 	, CASE WHEN CONVERT(DATE,tskDue,103) &gt;= GETDATE() THEN 'Future'
-			WHEN CONVERT(DATE,tskDue,103) &lt; GETDATE() THEN 'Expired/Deleted'
+			WHEN CONVERT(DATE,tskDue,103) &lt; GETDATE() OR tskActive=0 THEN 'Expired/Deleted'
 			
 	  END AS [Filter]
-	, CASE WHEN CONVERT(DATE,tskDue,103) &gt;= GETDATE() AND tskComplete=0 THEN 'Live'
-		WHEN tskComplete=1 THEN 'Deleted/Completed'
+	, CASE WHEN CONVERT(DATE,tskDue,103) &gt;= GETDATE() AND tskComplete=0  AND tskActive=1 THEN 'Live'
+		ELSE  'Deleted/Completed'
 		
 		END AS [Tab Filter]
-	, CASE WHEN  tskComplete=0 THEN 'Completed'
-		WHEN CONVERT(DATE,tskDue,103) &lt; GETDATE()  THEN 'Expired/Deleted'
+	, CASE WHEN  tskComplete=1 AND tskActive=1 THEN 'Completed'
+		WHEN CONVERT(DATE,tskDue,103) &lt; GETDATE() AND tskActive=1   THEN 'Expired'
+		WHEN tskActive=0 AND tskComplete=0   THEN 'Deleted'
+		WHEN tskActive=0 AND tskComplete=1  THEN 'Completed/Deleted'
 		ELSE NULL
 		END AS [Flag]
 	, NULL AS dim_task_due_date_key
@@ -2698,11 +2700,11 @@ ORDER BY [Key Date] DESC </CommandText>
         </Field>
         <Field Name="Key_Date">
           <DataField>Key Date</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="Deleted_Key_Date">
           <DataField>Deleted Key Date</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="Key_Date_Narrative">
           <DataField>Key Date Narrative</DataField>
@@ -2726,7 +2728,7 @@ ORDER BY [Key Date] DESC </CommandText>
         </Field>
         <Field Name="dim_task_due_date_key">
           <DataField>dim_task_due_date_key</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="ID1st_Nature_of_Work">
           <DataField>1st Nature of Work</DataField>
@@ -10122,6 +10124,7 @@ AND hierarchylevel3hist='Motor'</CommandText>
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
