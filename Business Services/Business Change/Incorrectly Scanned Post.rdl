@@ -2451,6 +2451,9 @@ WHERE  name ='Completed_MI.png'</CommandText>
       <Query>
         <DataSourceName>Reporting2012</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@Email">
+            <Value>=Parameters!Email.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@StartDate">
             <Value>=Parameters!StartDate.Value</Value>
           </QueryParameter>
@@ -2458,7 +2461,13 @@ WHERE  name ='Completed_MI.png'</CommandText>
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT dbUser1.usrFullName AS [Admin Assistant]
+        <CommandText>IF @Email='All' 
+
+BEGIN
+
+
+
+SELECT dbUser1.usrFullName AS [Admin Assistant]
 ,docDesc
 ,clNo AS Client
 ,fileNo AS Matter
@@ -2466,6 +2475,7 @@ WHERE  name ='Completed_MI.png'</CommandText>
 ,dbUser2.usrFullName AS [Matter Owner]
 ,tskDesc AS [Task Description]
 ,dbDocument.Created
+,dbUser2.usrEmail As [Email]
 FROM MS_Prod.config.dbDocument
 INNER JOIN MS_Prod.config.dbFile
   ON dbDocument.fileID=dbFile.fileID
@@ -2473,6 +2483,7 @@ INNER JOIN MS_Prod.config.dbClient
  ON dbFile.clID=dbClient.clID
 INNER JOIN MS_Prod.dbo.dbUser AS dbUser1
  ON dbDocument.Createdby=dbUser1.usrID
+
 LEFT OUTER JOIN
 (
 SELECT fileID,tskDesc,REPLACE(tskDesc,'REM: ','')  AS Link FROM MS_Prod.dbo.dbTasks
@@ -2485,7 +2496,47 @@ LEFT OUTER JOIN  MS_Prod.dbo.dbUser dbUser2
 WHERE CONVERT(DATE,dbDocument.Created,103) BETWEEN @StartDate AND @EndDate
 AND (DocType='EMAIL' OR docExtension='msg')
 AND ISNULL(LEFT(RTRIM(docDesc),90),'') &lt;&gt;ISNULL(LEFT(RTRIM(link),90),'')
-AND docDirection=1</CommandText>
+AND docDirection=1
+
+
+END 
+
+ELSE 
+
+BEGIN 
+SELECT dbUser1.usrFullName AS [Admin Assistant]
+,docDesc
+,clNo AS Client
+,fileNo AS Matter
+,fileDesc AS [Matter Description]
+,dbUser2.usrFullName AS [Matter Owner]
+,tskDesc AS [Task Description]
+,dbDocument.Created
+,dbUser2.usrEmail As [Email]
+FROM MS_Prod.config.dbDocument
+INNER JOIN MS_Prod.config.dbFile
+  ON dbDocument.fileID=dbFile.fileID
+INNER JOIN MS_Prod.config.dbClient 
+ ON dbFile.clID=dbClient.clID
+INNER JOIN MS_Prod.dbo.dbUser AS dbUser1
+ ON dbDocument.Createdby=dbUser1.usrID
+
+LEFT OUTER JOIN
+(
+SELECT fileID,tskDesc,REPLACE(tskDesc,'REM: ','')  AS Link FROM MS_Prod.dbo.dbTasks
+
+) AS Tasks
+ ON dbDocument.fileID=tasks.fileID
+ AND LEFT(RTRIM(docDesc),90)=LEFT(RTRIM(link),90)
+LEFT OUTER JOIN  MS_Prod.dbo.dbUser dbUser2
+ ON filePrincipleID=dbUser2.usrID
+WHERE CONVERT(DATE,dbDocument.Created,103) BETWEEN @StartDate AND @EndDate
+AND (DocType='EMAIL' OR docExtension='msg')
+AND ISNULL(LEFT(RTRIM(docDesc),90),'') &lt;&gt;ISNULL(LEFT(RTRIM(link),90),'')
+AND docDirection=1
+AND dbUser2.usrEmail=@Email
+
+END </CommandText>
       </Query>
       <Fields>
         <Field Name="Admin_Assistant">
@@ -2518,6 +2569,34 @@ AND docDirection=1</CommandText>
         </Field>
         <Field Name="Created">
           <DataField>Created</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="Email">
+          <DataField>Email</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="DateRange">
+      <Query>
+        <DataSourceName>Reporting2012</DataSourceName>
+        <CommandText>DECLARE @StartDate AS DATE
+DECLARE @EndDate AS DATE
+
+SET @StartDate=CONVERT(DATE,GETDATE(),103)
+SET @EndDate=CONVERT(DATE,GETDATE(),103)
+
+
+SELECT  @StartDate  AS StartDate
+,@EndDate AS EndDate</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="StartDate">
+          <DataField>StartDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="EndDate">
+          <DataField>EndDate</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
@@ -3458,17 +3537,38 @@ AND docDirection=1</CommandText>
     </ReportParameter>
     <ReportParameter Name="StartDate">
       <DataType>DateTime</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>DateRange</DataSetName>
+          <ValueField>StartDate</ValueField>
+        </DataSetReference>
+      </DefaultValue>
       <Prompt>Start Date</Prompt>
     </ReportParameter>
     <ReportParameter Name="EndDate">
       <DataType>DateTime</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>DateRange</DataSetName>
+          <ValueField>EndDate</ValueField>
+        </DataSetReference>
+      </DefaultValue>
       <Prompt>End Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="Email">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>All</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Email</Prompt>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -3484,6 +3584,11 @@ AND docDirection=1</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>EndDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>Email</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
