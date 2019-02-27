@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
   <Description>3405 -</Description>
   <AutoRefresh>0</AutoRefresh>
@@ -2618,13 +2618,11 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
 
 */
 
-   -- DECLARE @current_fin_from INT = '201801'
---	DECLARE @current_fin_to INT = '201811'
-	
--- used for current profit costs
-	DECLARE @DateFrom DATE 
+ --   DECLARE @current_fin_from INT = '201801'
+	--DECLARE @current_fin_to INT = '201811'
+DECLARE @DateFrom DATE 
 	SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
-	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-1,@DateFrom)
+	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
 	
 
 
@@ -2633,14 +2631,16 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
 	SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	SELECT  DISTINCT 
 				
-		udClientGroup.[description] [group_name]
-		,CASE WHEN udClientGroup.description IS NULL THEN dbClient.clName END [client_name]
+		NULLIF(udClientGroup.[description],'') [group_name]
+		,CASE WHEN udClientGroup.description IS NULL OR udClientGroup.description = '' THEN dbClient.clName END [client_name]
+		
 		,[cboGenClientStatus]
-		,ISNULL(udClientGroup.[description],dbClient.clName) group_client_name
+		,ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  group_client_name
 		,CASE WHEN [cboGenClientStatus] = '0001' THEN 'Patron'
 			  WHEN [cboGenClientStatus] = '0002' THEN 'Star'
 			  WHEN [cboGenClientStatus] = '0003' THEN 'Rising Star'
-		 END + ' : ' + ISNULL(udClientGroup.[description],dbClient.clName) display_name
+			  WHEN [cboGenClientStatus] = '0005' THEN 'Pipeline'
+		 END + ' : ' + ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) display_name 
 			
 			
 	FROM [MS_Prod].[dbo].[udExtClient] udExtClient
@@ -2656,14 +2656,14 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
 	AND [cboGenClientStatus] &lt;&gt; '0004'
 	-- exclusions to deal with data issues
 	AND clno &lt;&gt; '69873' -- Collegiate Management Ltd issue (file switched client)
-	
+--	AND ISNULL(udClientGroup.[description],dbClient.clName) = @generator_client
 	ORDER BY [cboGenClientStatus]
 			,CASE	WHEN [cboGenClientStatus] = '0001' THEN 'Patron'
 					WHEN [cboGenClientStatus] = '0002' THEN 'Star'
 					WHEN [cboGenClientStatus] = '0003' THEN 'Rising Star'
-			END + ' : ' + ISNULL(udClientGroup.[description],dbClient.clName) 
-		
-</CommandText>
+					WHEN [cboGenClientStatus] = '0005' THEN 'Pipeline'
+			END + ' : ' + ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) 
+		</CommandText>
       </Query>
       <Fields>
         <Field Name="group_name">
@@ -2692,6 +2692,9 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@current_fin_from">
+            <Value>=Parameters!current_fin_from.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@generator_client">
             <Value>=Parameters!generator_client.Value</Value>
           </QueryParameter>
@@ -2702,29 +2705,27 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
 
 */
 
-    DECLARE @current_fin_from INT = '201801'
-	DECLARE @current_fin_to INT = '201811'
 	
 -- used for current profit costs
 	DECLARE @DateFrom DATE 
 	SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
-	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-1,@DateFrom)
+	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
 	
-
 
 
 		
 	SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 	SELECT  DISTINCT 
 				
-		udClientGroup.[description] [group_name]
-		,CASE WHEN udClientGroup.description IS NULL THEN dbClient.clName END [client_name]
+		NULLIF(udClientGroup.[description],'') [group_name]
+		,CASE WHEN udClientGroup.description IS NULL OR udClientGroup.description = '' THEN dbClient.clName END [client_name]
 		,[cboGenClientStatus]
-		,ISNULL(udClientGroup.[description],dbClient.clName) group_client_name
+		,ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  group_client_name
 		,CASE WHEN [cboGenClientStatus] = '0001' THEN 'Patron'
 			  WHEN [cboGenClientStatus] = '0002' THEN 'Star'
 			  WHEN [cboGenClientStatus] = '0003' THEN 'Rising Star'
-		 END + ' : ' + ISNULL(udClientGroup.[description],dbClient.clName) display_name
+			  WHEN [cboGenClientStatus] = '0005' THEN 'Pipeline'
+		 END + ' : ' + ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  display_name
 			
 			
 	FROM [MS_Prod].[dbo].[udExtClient] udExtClient
@@ -2740,12 +2741,13 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
 	AND [cboGenClientStatus] &lt;&gt; '0004'
 	-- exclusions to deal with data issues
 	AND clno &lt;&gt; '69873' -- Collegiate Management Ltd issue (file switched client)
-	AND ISNULL(udClientGroup.[description],dbClient.clName) = @generator_client
+	AND ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  = @generator_client
 	ORDER BY [cboGenClientStatus]
 			,CASE	WHEN [cboGenClientStatus] = '0001' THEN 'Patron'
 					WHEN [cboGenClientStatus] = '0002' THEN 'Star'
 					WHEN [cboGenClientStatus] = '0003' THEN 'Rising Star'
-			END + ' : ' + ISNULL(udClientGroup.[description],dbClient.clName) 
+					WHEN [cboGenClientStatus] = '0005' THEN 'Pipeline'
+			END + ' : ' + ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) 
 		</CommandText>
       </Query>
       <Fields>
