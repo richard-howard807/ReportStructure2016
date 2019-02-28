@@ -2456,43 +2456,52 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <CommandText>SELECT DISTINCT
-RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Weightmans Reference],
+       RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Weightmans Reference],
 
-       --dim_detail_incident.[year_of_account] ],
-	   red_dw.dbo.dim_detail_core_details.year_of_account [Year Of Account],
+       --dim_detail_incident.[year_of_account] [test YOF ],
+       ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],
+	   
+--dim_detail_litigation.[year_of_account],
        CAST(dim_open_case_management_date.open_case_management_fin_year - 1 AS VARCHAR) + '/'
        + CAST(dim_open_case_management_date.open_case_management_fin_year AS VARCHAR) AS [Financial Year],
-        
---dim_detail_critical_mi.[policy_section_group]AS 
+	   dim_detail_claim.[stw_status_on_instruction],
 
-dim_detail_critical_mi.[policy_type][VE00363  Policy Section Group ],
+       --dim_detail_critical_mi.[policy_section_group]AS 
+
+       dim_detail_critical_mi.[policy_type] [VE00363  Policy Section Group ],
        RTRIM(dim_claimant_thirdparty_involvement.matter_number) [Converge Ref],
        dim_detail_core_details.[incident_date] [Loss Date ],
        dim_matter_header_current.date_opened_case_management [Entered Date],
        dim_detail_critical_mi.[date_closed] [Date Closed ],
        dim_detail_critical_mi.[claim_status] [Claim Status ],
-     --  dim_claimant_thirdparty_involvement.[claimant_name] AS,
-	   	  -- associates.contname  [Claimant Name], 
-		 tit.client_name[Claimant Name],
-		
+       --  dim_claimant_thirdparty_involvement.[claimant_name] AS,
+        --associates.contname  [Claimant Name test], 
+       Tit.client_name [Claimant Name],
+       LTRIM(RIGHT(RTRIM(dim_detail_client.[subsidiary]), (LEN(dim_detail_client.[subsidiary])
+                                                           - CHARINDEX('-', dim_detail_client.[subsidiary])
+                                                          ))
+            ) [Subsidary],
 
-LTRIM(RIGHT(RTRIM(       dim_detail_client.[subsidiary]),(LEN(       dim_detail_client.[subsidiary]) - CHARINDEX('-',       dim_detail_client.[subsidiary]) ))) [Subsidary],
- 
 
        --dim_detail_client.[subsidiary] [Subsidary],
        --dim_detail_client.[cause_description] [Cause Description],
-	   CASE WHEN policy_type = 'Employers Liability' THEN 'Disease ' 
-	   WHEN policy_type=  'Motor' THEN 'Accident ' END AS [Cause Description],
-	   
+       CASE
+           WHEN policy_type = 'Employers Liability' THEN
+               'Disease '
+           WHEN policy_type = 'Motor' THEN
+               'Accident '
+       END AS [Cause Description],
        dim_detail_client.[cause_description_additional] [Cause Description Additional ],
        dim_detail_client.[effect_description] [Effect Description],
        dim_detail_client.[effect_description_additional] [Effect Description Additional],
        --dim_detail_incident.[sap_code] [Insurer EL Reference / SAP Code],
-	   CASE WHEN  dim_detail_incident.[sap_code]  IS NULL THEN '- ' ELSE  dim_detail_incident.[sap_code]  END AS [Insurer EL Reference / SAP Code],
+       CASE
+           WHEN dim_detail_incident.[sap_code] IS NULL THEN
+               '- '
+           ELSE
+               dim_detail_incident.[sap_code]
+       END AS [Insurer EL Reference / SAP Code],
        dim_detail_client.[working_deductible] [Working Deductible ],
-
-
-
        ISNULL(fact_detail_reserve_detail.[el_stw_damages_reserve], 0)
        + ISNULL(fact_detail_reserve_detail.[el_stw_tp_costs_reserve], 0)
        + ISNULL(fact_detail_reserve_detail.[el_stw_own_costs_reserve], 0)
@@ -2507,108 +2516,112 @@ LTRIM(RIGHT(RTRIM(       dim_detail_client.[subsidiary]),(LEN(       dim_detail_
        + ISNULL(fact_detail_reserve_detail.[mo_insurer_own_costs_reserve], 0) AS [Outstanding Reserve Lyra],
        fact_detail_client.[payment_amount_gross] AS [Paid ST],
        ISNULL(fact_detail_client.[recovery_amout], 0) [Total Expected Net Recoveries],
-	  -- associates.contname [Claimant Name ], 
-       CASE WHEN  payment is  NULL AND ISNULL(fedLookup.txtLookupDesc , MSLookup.txtLookupDesc) IN
-
-(
-N'EL: Own damage incurred locally - insurer paid',
-N'EL: TP Injury - insurer paid',
-N'EL: TP Own damage incurred locally - insurer paid',
-N'EL: TP Property Damage - insurer paid',
-N'EL: TP Special Damages Insurer Paid',
-N'EL: TP Legal Costs - insurer paid',
-N'EL: Expert Fees - insurer paid',
-N'EL: Own Legal Costs - insurer paid',
-N'Loss Adjuster Fees - Insurer Paid',
-N'Motor: Own Damage - insurer paid',
-N'Motor: Own Damage Incurred Locally - insurer paid',
-N'Motor: Own Hire - insurer paid',
-N'Motor: TP Damage Incurred Locally - insurer paid',
-N'Motor: TP Hire Charges - insurer paid',
-N'Motor: TP Injury - insurer paid',
-N'Motor: TP Property Damage - insurer paid',
-N'Motor: TP Special Damages Insurer Paid',
-N'Motor: TP Expert Fees - insurer paid',
-N'Motor: TP Legal Costs - insurer paid',
-N'Motor: Own Expert Fees - insurer paid',
-N'Motor: Own Legal Costs - insurer paid')
-
-THEN fact_child_detail.[PAYMENT AMOUNT GROSS] ELSE 0 END AS  [Pending Payments Lyra ],
-
+       -- associates.contname [Claimant Name ], 
+       CASE
+           WHEN payment IS NULL
+                AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
+                                                                                 N'EL: TP Injury - insurer paid',
+                                                                                 N'EL: TP Own damage incurred locally - insurer paid',
+                                                                                 N'EL: TP Property Damage - insurer paid',
+                                                                                 N'EL: TP Special Damages Insurer Paid',
+                                                                                 N'EL: TP Legal Costs - insurer paid',
+                                                                                 N'EL: Expert Fees - insurer paid',
+                                                                                 N'EL: Own Legal Costs - insurer paid',
+                                                                                 N'Loss Adjuster Fees - Insurer Paid',
+                                                                                 N'Motor: Own Damage - insurer paid',
+                                                                                 N'Motor: Own Damage Incurred Locally - insurer paid',
+                                                                                 N'Motor: Own Hire - insurer paid',
+                                                                                 N'Motor: TP Damage Incurred Locally - insurer paid',
+                                                                                 N'Motor: TP Hire Charges - insurer paid',
+                                                                                 N'Motor: TP Injury - insurer paid',
+                                                                                 N'Motor: TP Property Damage - insurer paid',
+                                                                                 N'Motor: TP Special Damages Insurer Paid',
+                                                                                 N'Motor: TP Expert Fees - insurer paid',
+                                                                                 N'Motor: TP Legal Costs - insurer paid',
+                                                                                 N'Motor: Own Expert Fees - insurer paid',
+                                                                                 N'Motor: Own Legal Costs - insurer paid'
+                                                                               ) THEN
+               fact_child_detail.[PAYMENT AMOUNT GROSS]
+           ELSE
+               0
+       END AS [Pending Payments Lyra ],
        dim_detail_claim.[stw_work_type] [STW Work Type ],
        dim_fed_hierarchy_history.name [Weightmans Case Handler],
-       dim_matter_header_current.date_closed_case_management [Date Closed FED/MS], 
-1 as count, 
---ISNULL(fedLookup.txtLookupDesc , MSLookup.txtLookupDesc) [Payment], 
+       dim_matter_header_current.date_closed_case_management [Date Closed FED/MS],
+       1 AS count,
+       --ISNULL(fedLookup.txtLookupDesc , MSLookup.txtLookupDesc) [Payment], 
 
 
 
 
 
 
-CASE WHEN  payment is NOT NULL AND ISNULL(fedLookup.txtLookupDesc , MSLookup.txtLookupDesc) IN
-(
-N'DWP',
-N'DWP - Insurer Paid',
-N'EL: Own damage incurred locally',
-N'EL: TP Injury',
-N'EL: TP own damage incurred locally',
-N'EL: TP Special Damages', 
-N'EL: TP Legal Costs',
-N'EL: Expert Fees',
-N'EL: Own Legal Costs',
-N'Loss Adjuster Fees',
-N'Motor: Own Damage',
-N'Motor: Own Damage Incurred Locally',
-N'Motor: Own Hire',
-N'Motor: TP Damage Incurred Locally',
-N'Motor: TP Hire Charges',
-N'Motor: TP Injury',
-N'Motor: TP Property Damage',
-N'Motor: TP Special Damages',
-N'Motor: TP Expert Fees',
-N'Motor: TP Legal Costs',
-N'Motor: Own Expert Fees',
-N'Motor: Own Legal Costs') THEN 
-fact_child_detail.[PAYMENT AMOUNT GROSS] ELSE 0 END AS [PAID ST], 
-
-
-
-
-CASE WHEN  payment is NOT NULL AND ISNULL(fedLookup.txtLookupDesc , MSLookup.txtLookupDesc) IN
-
-
-
-(
-N'EL: Own damage incurred locally - insurer paid',
-N'EL: TP Injury - insurer paid',
-N'EL: TP Property Damage - insurer paid',
-N'PL: TP Own Damage Incurred Locally - Insurer Paid',
-N'EL: TP Special Damages Insurer Paid',
-N'EL: TP Legal Costs - insurer paid',
-N'EL: Expert Fees - insurer paid',
-N'EL: Own Legal Costs - insurer paid',
-N'Loss Adjuster Fees - Insurer Paid',
-N'Motor: Own Damage - insurer paid',
-N'Motor: Own Damage Incurred Locally - insurer paid',
-N'Motor: Own Hire - insurer paid',
-N'Motor: TP Damage Incurred Locally - insurer paid',
-N'Motor: TP Hire Charges - insurer paid',
-N'Motor: TP Injury - insurer paid',
-N'Motor: TP Property Damage - insurer paid',
-N'Motor: TP Special Damages Insurer Paid',
-N'Motor: TP Expert Fees - insurer paid',
-N'Motor: TP Legal Costs - insurer paid',
-N'Motor: Own Expert Fees - insurer paid',
-N'Motor: Own Legal Costs - insurer paid')
-
-THEN 
-fact_child_detail.[PAYMENT AMOUNT GROSS] ELSE 0 END AS [PREVIOUS PAID LYRA], 
-
+       CASE
+           WHEN payment IS NOT NULL
+                AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'DWP', N'DWP - Insurer Paid',
+                                                                                 N'EL: Own damage incurred locally',
+                                                                                 N'EL: TP Injury',
+                                                                                 N'EL: TP own damage incurred locally',
+                                                                                 N'EL: TP Special Damages',
+                                                                                 N'EL: TP Legal Costs',
+                                                                                 N'EL: Expert Fees',
+                                                                                 N'EL: Own Legal Costs',
+                                                                                 N'Loss Adjuster Fees',
+                                                                                 N'Motor: Own Damage',
+                                                                                 N'Motor: Own Damage Incurred Locally',
+                                                                                 N'Motor: Own Hire',
+                                                                                 N'Motor: TP Damage Incurred Locally',
+                                                                                 N'Motor: TP Hire Charges',
+                                                                                 N'Motor: TP Injury',
+                                                                                 N'Motor: TP Property Damage',
+                                                                                 N'Motor: TP Special Damages',
+                                                                                 N'Motor: TP Expert Fees',
+                                                                                 N'Motor: TP Legal Costs',
+                                                                                 N'Motor: Own Expert Fees',
+                                                                                 N'Motor: Own Legal Costs'
+                                                                               ) THEN
+               fact_child_detail.[PAYMENT AMOUNT GROSS]
+           ELSE
+               0
+       END AS [PAID ST],
+       CASE
+           WHEN payment IS NOT NULL
+                AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
+                                                                                 N'EL: TP Injury - insurer paid',
+                                                                                 N'EL: TP Property Damage - insurer paid',
+                                                                                 N'PL: TP Own Damage Incurred Locally - Insurer Paid',
+                                                                                 N'EL: TP Special Damages Insurer Paid',
+                                                                                 N'EL: TP Legal Costs - insurer paid',
+                                                                                 N'EL: Expert Fees - insurer paid',
+                                                                                 N'EL: Own Legal Costs - insurer paid',
+                                                                                 N'Loss Adjuster Fees - Insurer Paid',
+                                                                                 N'Motor: Own Damage - insurer paid',
+                                                                                 N'Motor: Own Damage Incurred Locally - insurer paid',
+                                                                                 N'Motor: Own Hire - insurer paid',
+                                                                                 N'Motor: TP Damage Incurred Locally - insurer paid',
+                                                                                 N'Motor: TP Hire Charges - insurer paid',
+                                                                                 N'Motor: TP Injury - insurer paid',
+                                                                                 N'Motor: TP Property Damage - insurer paid',
+                                                                                 N'Motor: TP Special Damages Insurer Paid',
+                                                                                 N'Motor: TP Expert Fees - insurer paid',
+                                                                                 N'Motor: TP Legal Costs - insurer paid',
+                                                                                 N'Motor: Own Expert Fees - insurer paid',
+                                                                                 N'Motor: Own Legal Costs - insurer paid'
+                                                                               ) THEN
+               fact_child_detail.[PAYMENT AMOUNT GROSS]
+           ELSE
+               0
+       END AS [PREVIOUS PAID LYRA],
        dim_detail_client.[cause_description] [Cause Description chart],
-CASE WHEN red_dw.dbo.dim_matter_header_current.date_closed_case_management IS NULL THEN 1 ELSE 0 END AS [Live count ], 
-ISNULL(fact_detail_reserve_detail.[el_fees_recovery_reserve],0) + ISNULL(fact_detail_reserve_detail.[el_stw_tp_costs_reserve],0) [Received Recoveries ST], 
-fact_detail_reserve_detail.[el_insurer_tp_costs_reserve] [Received Recoveries Lyra]
+       CASE
+           WHEN red_dw.dbo.dim_matter_header_current.date_closed_case_management IS NULL THEN
+               1
+           ELSE
+               0
+       END AS [Live count ],
+       ISNULL(fact_detail_reserve_detail.[el_fees_recovery_reserve], 0)
+       + ISNULL(fact_detail_reserve_detail.[el_stw_tp_costs_reserve], 0) [Received Recoveries ST],
+       ISNULL(fact_detail_reserve_detail.[el_insurer_tp_costs_reserve], 0) [Received Recoveries Lyra]
 
 
 
@@ -2646,63 +2659,74 @@ FROM red_dw.dbo.fact_dimension_main
         ON fact_detail_client.master_fact_key = fact_dimension_main.master_fact_key
     LEFT OUTER JOIN red_dw.dbo.fact_detail_reserve_detail
         ON fact_detail_reserve_detail.master_fact_key = fact_dimension_main.master_fact_key
-		LEFT OUTER JOIN 
-		
-		( SELECT dim_involvement_full .client_code,dim_involvement_full.matter_number,entity_code FROM red_dw.dbo.dim_involvement_full 
-		INNER JOIN red_dw.dbo.dim_claimant_thirdparty_involvement
-      ON dim_involvement_full_key = claimant_1_key 
-		WHERE capacity_code = 'CLAIMANT') dim_involvement_full
-		
-		ON dim_involvement_full.client_code = fact_dimension_main.client_code AND dim_involvement_full.matter_number = fact_dimension_main.matter_number 
-		
-		
-		LEFT OUTER JOIN red_dw.dbo.dim_client AS Tit ON tit.client_code = dim_involvement_full.entity_code 
+
+    LEFT OUTER JOIN
+    (
+        SELECT dim_involvement_full.client_code,
+               dim_involvement_full.matter_number,
+               entity_code
+        FROM red_dw.dbo.dim_involvement_full
+            INNER JOIN red_dw.dbo.dim_claimant_thirdparty_involvement
+                ON dim_involvement_full_key = claimant_1_key
+        WHERE capacity_code = 'CLAIMANT'
+    ) dim_involvement_full
+        ON dim_involvement_full.client_code = fact_dimension_main.client_code
+           AND dim_involvement_full.matter_number = fact_dimension_main.matter_number
+    LEFT OUTER JOIN red_dw.dbo.dim_client AS Tit
+        ON Tit.client_code = dim_involvement_full.entity_code
+    LEFT OUTER JOIN red_dw.dbo.dim_parent_detail
+        ON dim_parent_detail.client_code = fact_dimension_main.client_code
+           AND dim_parent_detail.matter_number = fact_dimension_main.matter_number
+    LEFT OUTER JOIN red_dw.dbo.dim_child_detail
+        ON red_dw.dbo.dim_child_detail.dim_parent_key = red_dw.dbo.dim_parent_detail.dim_parent_key
+    LEFT OUTER JOIN
+    (
+        SELECT client_code,
+               matter_number,
+               SUM(payment_amount_gross) [PAYMENT AMOUNT GROSS]
+        FROM red_dw.dbo.fact_child_detail
+        WHERE payment_amount_gross IS NOT NULL
+        GROUP BY client_code,
+                 matter_number
+    ) fact_child_detail
+        ON fact_child_detail.client_code = fact_dimension_main.client_code
+           AND fact_child_detail.matter_number = fact_dimension_main.matter_number
+    LEFT OUTER JOIN
+    (
+        SELECT txtMSLookupCode,
+               txtFEDLookupCode,
+               txtLookupDesc
+        FROM MS_Prod.dbo.udMapCodeLookup
+        WHERE txtMSLookupType = 'PAYMENT'
+    ) fedLookup
+        ON fedLookup.txtFEDLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT
+    LEFT OUTER JOIN
+    (
+        SELECT txtMSLookupCode,
+               txtFEDLookupCode,
+               txtLookupDesc
+        FROM MS_Prod.dbo.udMapCodeLookup
+        WHERE txtMSLookupType = 'PAYMENT'
+    ) MSLookup
+        ON MSLookup.txtMSLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT
+--LEFT OUTER JOIN (
+
+--SELECT DISTINCT
 
 
-LEFT OUTER JOIN red_dw.dbo.dim_parent_detail ON dim_parent_detail.client_code = fact_dimension_main.client_code AND dim_parent_detail.matter_number = fact_dimension_main.matter_number
-		LEFT OUTER JOIN red_dw.dbo.dim_child_detail ON red_dw.dbo.dim_child_detail.dim_parent_key = red_dw.dbo.dim_parent_detail.dim_parent_key
-		LEFT OUTER JOIN 
-		(
-		
-		SELECT client_code, matter_number ,SUM(payment_amount_gross) [PAYMENT AMOUNT GROSS]  FROM 
-red_dw.dbo.fact_child_detail
+--contname, fileid , assoctype,
+-- contgroup FROM red_dw.dbo.ds_sh_ms_dbassociates 
+--INNER JOIN red_dw.dbo.ds_sh_ms_dbcontact ON red_dw.dbo.ds_sh_ms_dbcontact .contid = red_dw.dbo.ds_sh_ms_dbassociates .contid
 
-WHERE payment_amount_gross IS NOT NULL
-GROUP BY		client_code,
-                matter_number
+--WHERE assoctype = 'CLAIMANT'
 
 
-		
-		
-		) fact_child_detail ON fact_child_detail.client_code = fact_dimension_main.client_code AND fact_child_detail.matter_number = fact_dimension_main.matter_number
-		LEFT OUTER JOIN (
-		SELECT txtMSLookupCode,txtFEDLookupCode,txtLookupDesc FROM MS_Prod.dbo.udMapCodeLookup 
-WHERE txtMSLookupType = 'PAYMENT' 
-		) fedLookup 
-		ON  fedLookup.txtFEDLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE database_default
 
-				LEFT OUTER JOIN (
-		SELECT txtMSLookupCode,txtFEDLookupCode,txtLookupDesc FROM MS_Prod.dbo.udMapCodeLookup
-WHERE txtMSLookupType = 'PAYMENT' 
-		) MSLookup 
-		ON MSLookup.txtMSLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE database_default
-		--LEFT OUTER JOIN (
-		
-		--SELECT DISTINCT
-		
-		
-		--contname, fileid , assoctype,
-		-- contgroup FROM red_dw.dbo.ds_sh_ms_dbassociates 
-		--INNER JOIN red_dw.dbo.ds_sh_ms_dbcontact ON red_dw.dbo.ds_sh_ms_dbcontact .contid = red_dw.dbo.ds_sh_ms_dbassociates .contid
-		
-		--WHERE assoctype = 'CLAIMANT'
-		
-		
-		
-		--) associates 
-		--ON associates.fileid = ms_fileid
+--) associates 
+--ON associates.fileid = ms_fileid
 
-WHERE (
+WHERE 
+(
           (
               dim_client.client_group_code = '00000068'
               AND dim_client.client_code = '00513126'
@@ -2716,11 +2740,11 @@ WHERE (
           )
       )
       AND reporting_exclusions = 0
-	  AND fact_detail_client.matter_number &lt;&gt; 'ML '
---AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate
---AND dim_detail_critical_mi.claim_status LIKE '%Open%'
-AND policy_type IN ('Employers Liability', 'Motor')
-
+      AND fact_detail_client.matter_number &lt;&gt; 'ML '
+	  --AND red_dw.dbo.fact_dimension_main.matter_number = '00006088'
+      --AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate
+      --AND dim_detail_critical_mi.claim_status LIKE '%Open%'
+      AND policy_type IN ( 'Employers Liability', 'Motor' )
 ORDER BY 1;
 
 
@@ -2743,6 +2767,10 @@ ORDER BY 1;
         </Field>
         <Field Name="Financial_Year">
           <DataField>Financial Year</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="stw_status_on_instruction">
+          <DataField>stw_status_on_instruction</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="VE00363__Policy_Section_Group_">
@@ -2928,7 +2956,10 @@ ORDER BY 1;
                       <Width>1.00833in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>1.00833in</Width>
+                      <Width>1in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.00833in</Width>
@@ -4161,6 +4192,140 @@ ORDER BY 1;
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
+                            <Textbox Name="Textbox4">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Previous Paid Lyra</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox4</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Pending Payments Lyra </Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox2</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
                             <Textbox Name="Textbox37">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -4322,73 +4487,6 @@ ORDER BY 1;
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox41</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox43">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Pending Payments Lyra </Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox43</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5848,6 +5946,142 @@ ORDER BY 1;
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
+                            <Textbox Name="PREVIOUS_PAID_LYRA">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!PREVIOUS_PAID_LYRA.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>C</Format>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>PREVIOUS_PAID_LYRA</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "Transparent",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Pending_Payments_Lyra_1">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Pending_Payments_Lyra_.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>C</Format>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Pending_Payments_Lyra_1</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "Transparent",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
                             <Textbox Name="Received_Recoveries_ST">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -6012,74 +6246,6 @@ ORDER BY 1;
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Total_Expected_Net_Recoveries</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "Transparent",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Pending_Payments_Lyra_">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!Pending_Payments_Lyra_.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <Format>C</Format>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Pending_Payments_Lyra_</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -6351,6 +6517,7 @@ ORDER BY 1;
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
+                    <TablixMember />
                   </TablixMembers>
                 </TablixColumnHierarchy>
                 <TablixRowHierarchy>
@@ -6370,7 +6537,7 @@ ORDER BY 1;
                   <BreakLocation>End</BreakLocation>
                 </PageBreak>
                 <Height>0.70625in</Height>
-                <Width>33.05209in</Width>
+                <Width>34.04368in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6385,7 +6552,7 @@ ORDER BY 1;
             </ReportItems>
             <Top>0.10584cm</Top>
             <Height>0.70625in</Height>
-            <Width>33.05209in</Width>
+            <Width>34.05201in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -6429,7 +6596,7 @@ ORDER BY 1;
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>33.93751in</Width>
+      <Width>34.05201in</Width>
       <Page>
         <PageHeader>
           <Height>0.95388in</Height>
