@@ -2482,14 +2482,40 @@ fact_dimension_main
 , dim_detail_previous_details[prev_status_rm]
 , dim_detail_property[property_contact]
 , dim_fed_hierarchy_history_matter_owner[matter_owner_name]
-,  dim_detail_property[status_history]
+, dim_detail_property[date_lease_agreed]
+, dim_detail_property[status_history]
 , "Fascia", IF(dim_client[client_code]="00787558", "Superdrug",
 			IF(dim_client[client_code]="00787559", "The Perfume Shop",
 			IF(dim_client[client_code]="00787560", "Three Mobile",
 			IF(dim_client[client_code]="00787561", "Savers"))))
-,"Average Days to Documents Agreed",IF(NOT ISBLANK(dim_detail_property[date_elements_agreed]),1*(dim_detail_property[date_elements_agreed]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
-,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]),1*(dim_detail_property[exchange_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
-,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]),1*(dim_detail_property[completion_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+, "Test 2", IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+			IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed]))
+
+, "Test 3", IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+			IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+			IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],
+			dim_detail_property[exchange_date])))
+
+,"Average Days to Documents Agreed",IF(IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],dim_detail_property[date_lease_agreed]),1*(IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],dim_detail_property[date_lease_agreed])-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+--,"Average Days to Documents Agreed",IF(NOT ISBLANK(dim_detail_property[date_elements_agreed]),1*(dim_detail_property[date_elements_agreed]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; 
+								 IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+								 IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed])) 
+								 ,1*(dim_detail_property[exchange_date]-IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+								 										IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed])))
+								 ,blank())
+--,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]),1*(dim_detail_property[exchange_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]) &amp;&amp; IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+																						IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+																						IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],
+																						dim_detail_property[exchange_date])))
+								,1*(dim_detail_property[completion_date]-IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+																		IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+																		IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],dim_detail_property[exchange_date]))))
+							,blank())
+
+--,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]),1*(dim_detail_property[completion_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+
 ,"Has the case been on hold or abortive?", IF(dim_detail_previous_details[prev_status_rm]="On hold" || SEARCH("*Abortive*",dim_detail_previous_details[prev_status_rm],1,0)&gt;0 || dim_detail_property[status_rm]="On hold" || SEARCH("*Abortive*",dim_detail_property[status_rm],1,0)&gt;0,"Yes", "No"))
 ,PATHCONTAINS("00787558|00787559|00787560|00787561",dim_client[client_code])
 ,dim_matter_header_current[matter_number] &lt;&gt;"ML"
@@ -2597,6 +2623,12 @@ fact_dimension_main
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
+                      <ColumnName>dim_detail_property[date_lease_agreed]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_detail_property[date_lease_agreed]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
                       <ColumnName>dim_detail_property[status_history]</ColumnName>
                     </ID>
                     <ItemCaption>dim_detail_property[status_history]</ItemCaption>
@@ -2606,6 +2638,18 @@ fact_dimension_main
                       <ColumnName>[Fascia]</ColumnName>
                     </ID>
                     <ItemCaption>[Fascia]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[Test 2]</ColumnName>
+                    </ID>
+                    <ItemCaption>[Test 2]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[Test 3]</ColumnName>
+                    </ID>
+                    <ItemCaption>[Test 3]</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
@@ -2633,6 +2677,7 @@ fact_dimension_main
                   </Item>
                 </Items>
               </Select>
+              <AutoExecute>false</AutoExecute>
               <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
   &lt;SelectTablesControlState&gt;
@@ -2659,14 +2704,40 @@ fact_dimension_main
 , dim_detail_previous_details[prev_status_rm]
 , dim_detail_property[property_contact]
 , dim_fed_hierarchy_history_matter_owner[matter_owner_name]
-,  dim_detail_property[status_history]
+, dim_detail_property[date_lease_agreed]
+, dim_detail_property[status_history]
 , "Fascia", IF(dim_client[client_code]="00787558", "Superdrug",
 			IF(dim_client[client_code]="00787559", "The Perfume Shop",
 			IF(dim_client[client_code]="00787560", "Three Mobile",
 			IF(dim_client[client_code]="00787561", "Savers"))))
-,"Average Days to Documents Agreed",IF(NOT ISBLANK(dim_detail_property[date_elements_agreed]),1*(dim_detail_property[date_elements_agreed]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
-,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]),1*(dim_detail_property[exchange_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
-,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]),1*(dim_detail_property[completion_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+, "Test 2", IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+			IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed]))
+
+, "Test 3", IF(ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+			IF(ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+			IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],
+			dim_detail_property[exchange_date])))
+
+,"Average Days to Documents Agreed",IF(IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],dim_detail_property[date_lease_agreed]),1*(IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],dim_detail_property[date_lease_agreed])-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+--,"Average Days to Documents Agreed",IF(NOT ISBLANK(dim_detail_property[date_elements_agreed]),1*(dim_detail_property[date_elements_agreed]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; 
+								 IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+								 IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed])) 
+								 ,1*(dim_detail_property[exchange_date]-IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+								 										IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed])))
+								 ,blank())
+--,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]),1*(dim_detail_property[exchange_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]) &amp;amp;&amp;amp; IF(ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+																						IF(ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+																						IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],
+																						dim_detail_property[exchange_date])))
+								,1*(dim_detail_property[completion_date]-IF(ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+																		IF(ISBLANK(dim_detail_property[exchange_date]) &amp;amp;&amp;amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+																		IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],dim_detail_property[exchange_date]))))
+							,blank())
+
+--,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]),1*(dim_detail_property[completion_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+
 ,"Has the case been on hold or abortive?", IF(dim_detail_previous_details[prev_status_rm]="On hold" || SEARCH("*Abortive*",dim_detail_previous_details[prev_status_rm],1,0)&amp;gt;0 || dim_detail_property[status_rm]="On hold" || SEARCH("*Abortive*",dim_detail_property[status_rm],1,0)&amp;gt;0,"Yes", "No"))
 ,PATHCONTAINS("00787558|00787559|00787560|00787561",dim_client[client_code])
 ,dim_matter_header_current[matter_number] &amp;lt;&amp;gt;"ML"
@@ -2702,14 +2773,40 @@ fact_dimension_main
 , dim_detail_previous_details[prev_status_rm]
 , dim_detail_property[property_contact]
 , dim_fed_hierarchy_history_matter_owner[matter_owner_name]
-,  dim_detail_property[status_history]
+, dim_detail_property[date_lease_agreed]
+, dim_detail_property[status_history]
 , "Fascia", IF(dim_client[client_code]="00787558", "Superdrug",
 			IF(dim_client[client_code]="00787559", "The Perfume Shop",
 			IF(dim_client[client_code]="00787560", "Three Mobile",
 			IF(dim_client[client_code]="00787561", "Savers"))))
-,"Average Days to Documents Agreed",IF(NOT ISBLANK(dim_detail_property[date_elements_agreed]),1*(dim_detail_property[date_elements_agreed]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
-,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]),1*(dim_detail_property[exchange_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
-,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]),1*(dim_detail_property[completion_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+, "Test 2", IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+			IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed]))
+
+, "Test 3", IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+			IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+			IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],
+			dim_detail_property[exchange_date])))
+
+,"Average Days to Documents Agreed",IF(IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],dim_detail_property[date_lease_agreed]),1*(IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],dim_detail_property[date_lease_agreed])-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+--,"Average Days to Documents Agreed",IF(NOT ISBLANK(dim_detail_property[date_elements_agreed]),1*(dim_detail_property[date_elements_agreed]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; 
+								 IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+								 IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed])) 
+								 ,1*(dim_detail_property[exchange_date]-IF(ISBLANK(dim_detail_property[date_lease_agreed]),dim_detail_property[date_elements_agreed],
+								 										IF(ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),dim_detail_property[date_lease_agreed])))
+								 ,blank())
+--,"Average Days to Exchange",IF(NOT ISBLANK(dim_detail_property[exchange_date]),1*(dim_detail_property[exchange_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]) &amp;&amp; IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+																						IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+																						IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],
+																						dim_detail_property[exchange_date])))
+								,1*(dim_detail_property[completion_date]-IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]) &amp;&amp; ISBLANK(dim_detail_property[date_elements_agreed]), blank(),
+																		IF(ISBLANK(dim_detail_property[exchange_date]) &amp;&amp; ISBLANK(dim_detail_property[date_lease_agreed]), dim_detail_property[date_elements_agreed],
+																		IF(ISBLANK(dim_detail_property[exchange_date]),dim_detail_property[date_lease_agreed],dim_detail_property[exchange_date]))))
+							,blank())
+
+--,"Average Days to Complete",IF(NOT ISBLANK(dim_detail_property[completion_date]),1*(dim_detail_property[completion_date]-dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]),blank())
+
 ,"Has the case been on hold or abortive?", IF(dim_detail_previous_details[prev_status_rm]="On hold" || SEARCH("*Abortive*",dim_detail_previous_details[prev_status_rm],1,0)&gt;0 || dim_detail_property[status_rm]="On hold" || SEARCH("*Abortive*",dim_detail_property[status_rm],1,0)&gt;0,"Yes", "No"))
 ,PATHCONTAINS("00787558|00787559|00787560|00787561",dim_client[client_code])
 ,dim_matter_header_current[matter_number] &lt;&gt;"ML"
@@ -2813,6 +2910,10 @@ fact_dimension_main
           <DataField>[Average Days to Documents Agreed]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="dim_detail_property_date_lease_agreed_">
+          <DataField>dim_detail_property[date_lease_agreed]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="dim_detail_property_status_history_">
           <DataField>dim_detail_property[status_history]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -2821,8 +2922,16 @@ fact_dimension_main
           <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_name]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="ID_Test_2_">
+          <DataField>[Test 2]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Total">
           <Value>1</Value>
+        </Field>
+        <Field Name="ID_Test_3_">
+          <DataField>[Test 3]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="ID_Average_Days_to_Exchange_">
           <DataField>[Average Days to Exchange]</DataField>
@@ -2853,7 +2962,7 @@ matter_number,
 SUM(date_documents_received_time) date_documents_received_time,
 SUM(exchange_date_time) exchange_date_time,
 SUM(completion_date_time) completion_date_time,
-SUM(date_lease_agreed_time) date_lease_agreed_time,
+--SUM(date_lease_agreed_time) date_lease_agreed_time,
 SUM(total_time) total_time
 from
 (
@@ -2861,15 +2970,21 @@ SELECT
 fact_dimension_main.client_code,
 fact_dimension_main.matter_number,
 CASE WHEN   chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END total_time,
-CASE WHEN   calendar_date &lt; ISNULL(date_documents_received_assignor_solicitors,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END date_documents_received_time,
-CASE WHEN   calendar_date &lt; ISNULL(exchange_date,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END exchange_date_time,
-CASE WHEN   calendar_date &lt; ISNULL(completion_date,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END completion_date_time,
-CASE WHEN   calendar_date &lt; ISNULL(date_lease_agreed,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END date_lease_agreed_time
+--CASE WHEN   calendar_date &lt; ISNULL(date_documents_received_assignor_solicitors,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END date_documents_received_time,
+--CASE WHEN   calendar_date &lt; ISNULL(exchange_date,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END exchange_date_time,
+--CASE WHEN   calendar_date &lt; ISNULL(completion_date,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END completion_date_time,
+--CASE WHEN   calendar_date &lt; ISNULL(date_lease_agreed,GETDATE()) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END date_lease_agreed_time,
+
+CASE WHEN   calendar_date BETWEEN date_opened_case_management AND COALESCE(date_lease_agreed, date_elements_agreed) AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END date_documents_received_time,
+CASE WHEN   calendar_date BETWEEN COALESCE(date_lease_agreed, date_elements_agreed) AND exchange_date AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END exchange_date_time,
+CASE WHEN   calendar_date BETWEEN COALESCE(exchange_date, date_lease_agreed, date_elements_agreed) AND completion_date AND chargeable_nonc_nonb = 'C' THEN minutes_recorded ELSE 0 END completion_date_time
+
 FROM 
 red_dw.dbo.fact_dimension_main
 LEFT JOIN red_dw.dbo.fact_all_time_activity ON fact_all_time_activity.master_fact_key = fact_dimension_main.master_fact_key
 LEFT JOIN red_Dw.dbo.dim_detail_property ON dim_detail_property.dim_detail_property_key = fact_dimension_main.dim_detail_property_key
 LEFT JOIN red_Dw.dbo.dim_date ON dim_date_key = dim_transaction_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_all_time_activity.dim_matter_header_curr_key
 WHERE fact_dimension_main.client_code IN ('00787558','00787559','00787560','00787561')
  AND minutes_recorded &lt;&gt; 0) details
  GROUP BY client_code,
@@ -2894,10 +3009,6 @@ matter_number</CommandText>
         </Field>
         <Field Name="completion_date_time">
           <DataField>completion_date_time</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="date_lease_agreed_time">
-          <DataField>date_lease_agreed_time</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="lookup">
@@ -4407,9 +4518,6 @@ matter_number</CommandText>
                     <TablixColumn>
                       <Width>1in</Width>
                     </TablixColumn>
-                    <TablixColumn>
-                      <Width>1in</Width>
-                    </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
                     <TablixRow>
@@ -5094,71 +5202,6 @@ matter_number</CommandText>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox89</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <TopBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox117">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Total Chargeable Minutes to Lease Agreed</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox38</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Style>Solid</Style>
@@ -5895,51 +5938,6 @@ matter_number</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox135">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Lookup(Fields!lookup.Value, Fields!lookup.Value, Fields!date_lease_agreed_time.Value, "sqldataset")</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>Normal</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Center</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox37</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>=IIF(ROWNUMBER(NOTHING) MOD 2, "White", "LightGrey")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox40">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -6079,7 +6077,6 @@ matter_number</CommandText>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
-                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -6409,7 +6406,7 @@ matter_number</CommandText>
                 </SortExpressions>
                 <Top>3.78178cm</Top>
                 <Height>0.85in</Height>
-                <Width>23.86684in</Width>
+                <Width>22.86684in</Width>
                 <ZIndex>1</ZIndex>
                 <Style>
                   <Border>
@@ -6453,9 +6450,6 @@ matter_number</CommandText>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.33333in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.39583in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.40625in</Width>
@@ -7085,71 +7079,6 @@ matter_number</CommandText>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox89</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <TopBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox121">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Total Chargeable Minutes to Lease Agreed</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox38</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Style>Solid</Style>
@@ -7840,51 +7769,6 @@ matter_number</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox136">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Lookup(Fields!lookup.Value, Fields!lookup.Value, Fields!date_lease_agreed_time.Value, "sqldataset")</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>Normal</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Center</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox37</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>=IIF(ROWNUMBER(NOTHING) MOD 2, "White", "LightGrey")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox137">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -8024,7 +7908,6 @@ matter_number</CommandText>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
-                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -8353,7 +8236,7 @@ matter_number</CommandText>
                 </SortExpressions>
                 <Top>6.36714cm</Top>
                 <Height>0.85in</Height>
-                <Width>23.86684in</Width>
+                <Width>22.471in</Width>
                 <ZIndex>2</ZIndex>
                 <Style>
                   <Border>
@@ -8397,9 +8280,6 @@ matter_number</CommandText>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.33333in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.39583in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.40625in</Width>
@@ -9029,71 +8909,6 @@ matter_number</CommandText>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox89</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <TopBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox131">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Total Chargeable Minutes to Lease Agreed</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox38</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Style>Solid</Style>
@@ -9784,51 +9599,6 @@ matter_number</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox143">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Lookup(Fields!lookup.Value, Fields!lookup.Value, Fields!date_lease_agreed_time.Value, "sqldataset")</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>Normal</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Center</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox37</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>=IIF(ROWNUMBER(NOTHING) MOD 2, "White", "LightGrey")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox145">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -9968,7 +9738,6 @@ matter_number</CommandText>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
-                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -10297,7 +10066,7 @@ matter_number</CommandText>
                 </SortExpressions>
                 <Top>8.89392cm</Top>
                 <Height>0.85in</Height>
-                <Width>23.86684in</Width>
+                <Width>22.471in</Width>
                 <ZIndex>3</ZIndex>
                 <Style>
                   <Border>
@@ -10341,9 +10110,6 @@ matter_number</CommandText>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.33333in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.39583in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.40625in</Width>
@@ -10973,71 +10739,6 @@ matter_number</CommandText>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox89</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <TopBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox118">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Total Chargeable Minutes to Lease Agreed</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox38</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Style>Solid</Style>
@@ -11728,51 +11429,6 @@ matter_number</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox147">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Lookup(Fields!lookup.Value, Fields!lookup.Value, Fields!date_lease_agreed_time.Value, "sqldataset")</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>Normal</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Center</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox37</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>=IIF(ROWNUMBER(NOTHING) MOD 2, "White", "LightGrey")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox150">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -11912,7 +11568,6 @@ matter_number</CommandText>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
-                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -12241,7 +11896,7 @@ matter_number</CommandText>
                 </SortExpressions>
                 <Top>14.58246cm</Top>
                 <Height>0.85in</Height>
-                <Width>23.86684in</Width>
+                <Width>22.471in</Width>
                 <ZIndex>4</ZIndex>
                 <Style>
                   <Border>
@@ -12285,9 +11940,6 @@ matter_number</CommandText>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.33333in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.39583in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.40625in</Width>
@@ -12917,72 +12569,6 @@ matter_number</CommandText>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox89</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <TopBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                            <rd:Selected>true</rd:Selected>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox119">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Total Chargeable Minutes to Lease Agreed</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox38</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Style>Solid</Style>
@@ -13673,51 +13259,6 @@ matter_number</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox141">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Lookup(Fields!lookup.Value, Fields!lookup.Value, Fields!date_lease_agreed_time.Value, "sqldataset")</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>Normal</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Center</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox37</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>=IIF(ROWNUMBER(NOTHING) MOD 2, "White", "LightGrey")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox125">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -13857,7 +13398,6 @@ matter_number</CommandText>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
-                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -14186,7 +13726,7 @@ matter_number</CommandText>
                 </SortExpressions>
                 <Top>17.22829cm</Top>
                 <Height>0.85in</Height>
-                <Width>23.86684in</Width>
+                <Width>22.471in</Width>
                 <ZIndex>5</ZIndex>
                 <Style>
                   <Border>
@@ -14230,9 +13770,6 @@ matter_number</CommandText>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.33333in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.39583in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.40625in</Width>
@@ -14862,71 +14399,6 @@ matter_number</CommandText>
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox89</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <TopBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>Black</Color>
-                                  <Style>Solid</Style>
-                                  <Width>1pt</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox133">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Total Chargeable Minutes to Lease Agreed</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox38</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Style>Solid</Style>
@@ -15617,51 +15089,6 @@ matter_number</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox152">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Lookup(Fields!lookup.Value, Fields!lookup.Value, Fields!date_lease_agreed_time.Value, "sqldataset")</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>Normal</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Center</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox37</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>=IIF(ROWNUMBER(NOTHING) MOD 2, "White", "LightGrey")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox153">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -15801,7 +15228,6 @@ matter_number</CommandText>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
-                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -16130,7 +15556,7 @@ matter_number</CommandText>
                 </SortExpressions>
                 <Top>11.6103cm</Top>
                 <Height>0.85in</Height>
-                <Width>23.86684in</Width>
+                <Width>22.471in</Width>
                 <ZIndex>6</ZIndex>
                 <Style>
                   <Border>
@@ -16144,7 +15570,7 @@ matter_number</CommandText>
               </Tablix>
             </ReportItems>
             <Height>7.8253in</Height>
-            <Width>23.86684in</Width>
+            <Width>22.86684in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -16188,7 +15614,7 @@ matter_number</CommandText>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>23.86684in</Width>
+      <Width>22.86684in</Width>
       <Page>
         <PageHeader>
           <Height>1in</Height>
