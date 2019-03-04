@@ -2470,7 +2470,8 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
 
        dim_detail_critical_mi.[policy_type] [VE00363  Policy Section Group ],
        RTRIM(dim_claimant_thirdparty_involvement.matter_number) [Converge Ref],
-       dim_detail_core_details.[incident_date] [Loss Date ],
+       ISNULL(dim_detail_core_details.[incident_date] ,date_of_accident) [Loss Date ],
+	   date_of_accident, 
        dim_matter_header_current.date_opened_case_management [Entered Date],
        dim_detail_critical_mi.[date_closed] [Date Closed ],
        dim_detail_critical_mi.[claim_status] [Claim Status ],
@@ -2492,8 +2493,9 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
                'Accident '
        END AS [Cause Description],
        dim_detail_client.[cause_description_additional] [Cause Description Additional ],
-       dim_detail_client.[effect_description] [Effect Description],
-       dim_detail_client.[effect_description_additional] [Effect Description Additional],
+       ISNULL(dim_detail_client.[effect_description] 
+	   ,dim_detail_client.[effect_description_additional])       [Effect Description],
+       --dim_detail_client.[effect_description_additional] [Effect Description Additional],
        --dim_detail_incident.[sap_code] [Insurer EL Reference / SAP Code],
        CASE
            WHEN dim_detail_incident.[sap_code] IS NULL THEN
@@ -2502,6 +2504,7 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
                dim_detail_incident.[sap_code]
        END AS [Insurer EL Reference / SAP Code],
        dim_detail_client.[working_deductible] [Working Deductible ],
+
        ISNULL(fact_detail_reserve_detail.[el_stw_damages_reserve], 0)
        + ISNULL(fact_detail_reserve_detail.[el_stw_tp_costs_reserve], 0)
        + ISNULL(fact_detail_reserve_detail.[el_stw_own_costs_reserve], 0)
@@ -2515,11 +2518,41 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
        + ISNULL(fact_detail_reserve_detail.[mo_insurer_tp_costs_reserve], 0)
        + ISNULL(fact_detail_reserve_detail.[mo_insurer_own_costs_reserve], 0) AS [Outstanding Reserve Lyra],
        fact_detail_client.[payment_amount_gross] AS [Paid ST],
-       ISNULL(fact_detail_client.[recovery_amout], 0) [Total Expected Net Recoveries],
+
+
+	   
+ISNULL(fact_detail_reserve_detail.[mo_stw_damages_reserve], 0) +
+ISNULL(fact_detail_reserve_detail.[mo_recovery_reserve], 0) +
+ISNULL(fact_detail_reserve_detail.[mo_insurer_damages_reserve], 0)+
+ISNULL(fact_detail_reserve_detail.[mo_own_costs_recovery_reserve], 0)+
+ISNULL(fact_detail_reserve_detail.[mo_insurer_own_costs_reserve], 0)+ 
+ ISNULL(fact_detail_reserve_detail.[el_stw_damages_reserve], 0) +
+ISNULL(fact_detail_reserve_detail.[el_recovery_reserve], 0)  + 
+ISNULL(fact_detail_reserve_detail.[el_insurer_damages_reserve], 0) +
+ ISNULL(fact_detail_reserve_detail.[el_stw_own_costs_reserve], 0) +
+ ISNULL(fact_detail_reserve_detail.[el_own_costs_recovery_reserve], 0) + 
+
+-- + curPLDamRes
+--curPLRecRes
+--curPLInserDRes
+--curPLOwnCostRes
+--curPLOwnCoReRes
+--curPLInrOwCoRes
+
+ ISNULL(fact_detail_reserve_detail.[el_insurer_own_costs_reserve],0)  [Total Expected Net Recoveries],
+
+
+
+
+    --   ISNULL(fact_detail_client.[recovery_amout], 0)
        -- associates.contname [Claimant Name ], 
-       CASE
-           WHEN payment IS NULL
-                AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
+
+	   	   		  --SELECT payment_status  FROM dbo.dim_child_detail
+
+	   CASE WHEN 
+
+             --   AND
+				 ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
                                                                                  N'EL: TP Injury - insurer paid',
                                                                                  N'EL: TP Own damage incurred locally - insurer paid',
                                                                                  N'EL: TP Property Damage - insurer paid',
@@ -2540,7 +2573,15 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
                                                                                  N'Motor: TP Legal Costs - insurer paid',
                                                                                  N'Motor: Own Expert Fees - insurer paid',
                                                                                  N'Motor: Own Legal Costs - insurer paid'
-                                                                               ) THEN
+                                                                               ) and 
+																			   dim_child_detail.payment_status IN ('Payment Pending                                             ', 'Pending 2nd Authorisation                                   ','Pending Authorisation                                       '
+
+
+
+	   )
+
+
+THEN
                fact_child_detail.[PAYMENT AMOUNT GROSS]
            ELSE
                0
@@ -2556,8 +2597,7 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
 
 
 
-       CASE
-           WHEN payment IS NOT NULL
+	   CASE WHEN dim_child_detail.payment_status = 'Paid'
                 AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN 
 																				( N'DWP', N'DWP - Insurer Paid',
                                                                                  N'EL: Own damage incurred locally',
@@ -2585,8 +2625,8 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
            ELSE
                0
        END AS [PAID ST],
-       CASE
-           WHEN payment IS NOT NULL
+       CASE WHEN 
+      dim_child_detail.payment_status = 'Paid'
                 AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
                                                                                  N'EL: TP Injury - insurer paid',
                                                                                  N'EL: TP Property Damage - insurer paid',
@@ -2622,7 +2662,11 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
        END AS [Live count ],
        ISNULL(fact_detail_reserve_detail.[el_fees_recovery_reserve], 0)
        + ISNULL(fact_detail_reserve_detail.[el_stw_tp_costs_reserve], 0) [Received Recoveries ST],
-       ISNULL(fact_detail_reserve_detail.[el_insurer_tp_costs_reserve],0) [Received Recoveries Lyra]
+
+
+       ISNULL(fact_detail_reserve_detail.[el_insurer_tp_costs_reserve],0) + isnull (fact_detail_reserve_detail.[mo_insurer_tp_costs_reserve], 0)
+	   --+ curPLInserTPRes
+	    [Received Recoveries Lyra]
 
 
 
@@ -2677,7 +2721,10 @@ FROM red_dw.dbo.fact_dimension_main
         ON Tit.client_code = dim_involvement_full.entity_code
     LEFT OUTER JOIN red_dw.dbo.dim_parent_detail
         ON dim_parent_detail.client_code = fact_dimension_main.client_code
-           AND dim_parent_detail.matter_number = fact_dimension_main.matter_number AND payment IS NOT null
+           AND dim_parent_detail.matter_number = fact_dimension_main.matter_number 
+		   
+		   
+		   AND payment IS NOT null
     LEFT OUTER JOIN red_dw.dbo.dim_child_detail
         ON red_dw.dbo.dim_child_detail.dim_parent_key = red_dw.dbo.dim_parent_detail.dim_parent_key
     LEFT OUTER JOIN
@@ -2746,7 +2793,12 @@ WHERE
       --AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate
       --AND dim_detail_critical_mi.claim_status LIKE '%Open%'
       AND policy_type IN ( 'Employers Liability', 'Motor' )
+	  --AND dim_child_detail.client_code = '00513126'
+	  --AND dim_child_detail.matter_number = '00004697'
+	  AND dim_detail_client.matter_number = '00006959'
+	  
 ORDER BY 1;
+
 
 
 
@@ -2784,6 +2836,10 @@ ORDER BY 1;
           <DataField>Loss Date </DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
+        <Field Name="date_of_accident">
+          <DataField>date_of_accident</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
         <Field Name="Entered_Date">
           <DataField>Entered Date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
@@ -2814,10 +2870,6 @@ ORDER BY 1;
         </Field>
         <Field Name="Effect_Description">
           <DataField>Effect Description</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Effect_Description_Additional">
-          <DataField>Effect Description Additional</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Insurer_EL_Reference___SAP_Code">
