@@ -2455,12 +2455,197 @@ WHERE  name ='MIB_DA_LifeCycle.png'</CommandText>
     <DataSet Name="MainDataset">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT
+        <CommandText>
+--DROP TABLE #PT
+SELECT dim_parent_detail.client_code, dim_parent_detail.matter_number,descr, payment_status, payment_amount_gross,
+CASE WHEN payment_status IN 
+(
+'Paid'
+) 
+AND payment_code.descr IN 
+(
+'DWP', 
+'DWP - Insurer Paid',
+'EL: Own damage incurred locally',
+'EL: TP Injury',
+'EL: TP own damage incurred locally',
+'EL: TP Special Damages',
+'EL: TP Legal Costs',
+'EL: Expert Fees',
+'EL: Own Legal Costs',
+'EL: Loss Adjuster Fees',
+'Motor: Own Damage',
+'Motor: Own Damage Incurred Locally',
+'Motor: Own Hire',
+'Motor: TP Damage Incurred Locally',
+'Motor: TP Hire Charges',
+'Motor: TP Injury',
+'Motor: TP Property Damage',
+'Motor: TP Special Damages',
+'Motor: TP Expert Fees',
+'Motor: TP Legal Costs',
+'Motor: Own Expert Fees',
+'Motor: Own Legal Costs'
+
+) THEN 'PAID ST' 
+WHEN payment_status IN 
+
+('Payment Pending', 'Pending 2nd Authorisation','Pending Authorisation')
+
+AND payment_code.descr IN 
+(
+'DWP', 
+'DWP - Insurer Paid',
+'EL: Own damage incurred locally',
+'EL: TP Injury',
+'EL: TP own damage incurred locally',
+'EL: TP Special Damages',
+'EL: TP Legal Costs',
+'EL: Expert Fees',
+'EL: Own Legal Costs',
+'EL: Loss Adjuster Fees',
+'Motor: Own Damage',
+'Motor: Own Damage Incurred Locally',
+'Motor: Own Hire',
+'Motor: TP Damage Incurred Locally',
+'Motor: TP Hire Charges',
+'Motor: TP Injury',
+'Motor: TP Property Damage',
+'Motor: TP Special Damages',
+'Motor: TP Expert Fees',
+'Motor: TP Legal Costs',
+'Motor: Own Expert Fees',
+'Motor: Own Legal Costs'
+
+) THEN 'PENDING ST' 
+WHEN payment_status IN ('Payment Pending', 'Pending 2nd Authorisation','Pending Authorisation')
+                AND payment_code.descr IN ( 'EL: Own damage incurred locally - insurer paid',
+                                                                                'EL: TP Injury - insurer paid',
+                                                                                 'EL: TP Own damage incurred locally - insurer paid',
+                                                                                 'EL: TP Property Damage - insurer paid',
+                                                                                 'EL: TP Special Damages Insurer Paid',
+                                                                                 'EL: TP Legal Costs - insurer paid',
+                                                                                 'EL: Expert Fees - insurer paid',
+                                                                                 'EL: Own Legal Costs - insurer paid',
+                                                                                 'EL: Loss Adjuster Fees - Insurer Paid',
+                                                                                 'Motor: Own Damage - insurer paid',
+                                                                                 'Motor: Own Damage Incurred Locally - insurer paid',
+                                                                                 'Motor: Own Hire - insurer paid',
+                                                                                 'Motor: TP Damage Incurred Locally - insurer paid',
+                                                                                 'Motor: TP Hire Charges - insurer paid',
+                                                                                 'Motor: TP Injury - insurer paid',
+                                                                                 'Motor: TP Property Damage - insurer paid',
+                                                                                 'Motor: TP Special Damages Insurer Paid',
+                                                                                 'Motor: TP Expert Fees - insurer paid',
+                                                                                 'Motor: TP Legal Costs - insurer paid',
+                                                                                 'Motor: Own Expert Fees - insurer paid',
+                                                                                 'Motor: Own Legal Costs - insurer paid'
+                                                                               ) THEN
+               'lyra pending'
+
+WHEN payment_status IN 
+(
+'Paid'
+) 
+
+AND payment_code.descr IN 
+( 'EL: Own damage incurred locally - insurer paid',
+                                                                                 'EL: TP Injury - insurer paid',
+                                                                                 'EL: TP Property Damage - insurer paid',
+                                                                                 'EL: TP Own Damage Incurred Locally - Insurer Paid',
+                                                                                 'EL: TP Special Damages Insurer Paid',
+                                                                                 'EL: TP Legal Costs - insurer paid',
+                                                                                 'EL: Expert Fees - insurer paid',
+                                                                                 'EL: Own Legal Costs - insurer paid',
+                                                                                 'EL: Loss Adjuster Fees - Insurer Paid',
+                                                                                 'Motor: Own Damage - insurer paid',
+                                                                                 'Motor: Own Damage Incurred Locally - insurer paid',
+                                                                                 'Motor: Own Hire - insurer paid',
+                                                                                 'Motor: TP Damage Incurred Locally - insurer paid',
+                                                                                 'Motor: TP Hire Charges - insurer paid',
+                                                                                 'Motor: TP Injury - insurer paid',
+                                                                                 'Motor: TP Property Damage - insurer paid',
+                                                                                 'Motor: TP Special Damages Insurer Paid',
+                                                                                 'Motor: TP Expert Fees - insurer paid',
+                                                                                 'Motor: TP Legal Costs - insurer paid',
+                                                                                 'Motor: Own Expert Fees - insurer paid',
+                                                                                 'Motor: Own Legal Costs - insurer paid'
+                                                                               ) 
+THEN 'paid lyra'
+
+
+END  AS paytype 
+
+INTO #PT
+
+FROM red_dw.dbo.dim_parent_detail
+INNER join
+
+       (SELECT txtMSLookupCode code, 
+               txtLookupDesc descr
+        FROM MS_Prod.dbo.udMapCodeLookup
+        WHERE txtMSLookupType = 'PAYMENT'
+    union
+        SELECT txtFEDLookupCode code,
+               txtLookupDesc desct
+        FROM MS_Prod.dbo.udMapCodeLookup
+        WHERE txtMSLookupType = 'PAYMENT') payment_code 
+   
+        ON payment_code.code = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT 
+INNER JOIN red_dw.dbo.dim_child_detail ON dim_child_detail.dim_parent_key = dim_parent_detail.dim_parent_key
+INNER JOIN red_dw.dbo.fact_child_detail ON fact_child_detail.dim_parent_key = dim_parent_detail.dim_parent_key
+
+           WHERE payment IS NOT NULL
+           order by client_code, matter_number
+
+           --DROP TABLE #PTALL
+           SELECT DISTINCT #PT.client_code, #PT.matter_number,[paid ST],[pending ST],[paid lyra],[pending lyra] INTO #PTALL FROM #PT
+           LEFT JOIN 
+           (SELECT client_code, matter_number, SUM(payment_amount_gross) AS [paid ST]  FROM #PT
+           WHERE paytype = 'PAID ST'
+           GROUP BY client_code, matter_number,paytype) paidst
+           ON paidst.client_code = #PT.client_code AND paidst.matter_number = #PT.matter_number
+           LEFT JOIN 
+           (SELECT client_code, matter_number, SUM(payment_amount_gross) AS [pending ST]  FROM #PT
+           WHERE paytype = 'PENDING ST'
+           GROUP BY client_code, matter_number,paytype) pendingst
+           ON pendingst.client_code = #PT.client_code AND pendingst.matter_number = #PT.matter_number 
+           LEFT JOIN 
+           (SELECT client_code, matter_number, SUM(payment_amount_gross) AS [paid lyra]  FROM #PT
+           WHERE paytype = 'paid lyra'
+           GROUP BY client_code, matter_number,paytype) paidlyra
+           ON paidlyra.client_code = #PT.client_code AND paidlyra.matter_number = #PT.matter_number
+           LEFT JOIN       
+           (SELECT client_code, matter_number, SUM(payment_amount_gross) AS [pending lyra]  FROM #PT
+           WHERE paytype = 'lyra pending'
+           GROUP BY client_code, matter_number,paytype) pendinglyra
+           ON pendinglyra.client_code = #PT.client_code AND pendinglyra.matter_number = #PT.matter_number
+
+           --SELECT * FROM #PTALL
+
+		   
+
+
+
+
+
+SELECT DISTINCT
        RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Weightmans Reference],
 
        --dim_detail_incident.[year_of_account] [test YOF ],
-       ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],
+
+
+ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],
 	   
+	   --(
+	   CASE WHEN MONTH(dim_detail_incident.[incident_date])&gt;4 THEN CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)  + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) + 1 AS VARCHAR)
+	   ELSE CAST(YEAR(dim_detail_incident.[incident_date]) - 1 AS VARCHAR) + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR) 	END  AS [Year Of Account ISNULL],
+
+	   --		 ISNULL(AccountPeriods.YearOfAccount,
+				--(CASE WHEN MONTH(ISNULL(VE00038.case_date,DOA.case_date)) &gt;= 4 THEN CAST(YEAR(ISNULL(VE00038.case_date,DOA.case_date)) AS VARCHAR) + '/' + CAST(YEAR(ISNULL(VE00038.case_date,DOA.case_date)) + 1 AS VARCHAR)
+				-- ELSE CAST(YEAR(ISNULL(VE00038.case_date,DOA.case_date)) - 1 AS VARCHAR) + '/' + CAST(YEAR(ISNULL(VE00038.case_date,DOA.case_date)) AS VARCHAR)
+				-- END)) AS [Year of Account] ,
+
 --dim_detail_litigation.[year_of_account],
        CAST(dim_open_case_management_date.open_case_management_fin_year - 1 AS VARCHAR) + '/'
        + CAST(dim_open_case_management_date.open_case_management_fin_year AS VARCHAR) AS [Financial Year],
@@ -2549,43 +2734,44 @@ ISNULL(fact_detail_reserve_detail.[el_insurer_damages_reserve], 0) +
 
 	   	   		  --SELECT payment_status  FROM dbo.dim_child_detail
 
-	   CASE WHEN 
+--	   CASE WHEN 
 
-             --   AND
-				 ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
-                                                                                 N'EL: TP Injury - insurer paid',
-                                                                                 N'EL: TP Own damage incurred locally - insurer paid',
-                                                                                 N'EL: TP Property Damage - insurer paid',
-                                                                                 N'EL: TP Special Damages Insurer Paid',
-                                                                                 N'EL: TP Legal Costs - insurer paid',
-                                                                                 N'EL: Expert Fees - insurer paid',
-                                                                                 N'EL: Own Legal Costs - insurer paid',
-                                                                                 N'EL: Loss Adjuster Fees - Insurer Paid',
-                                                                                 N'Motor: Own Damage - insurer paid',
-                                                                                 N'Motor: Own Damage Incurred Locally - insurer paid',
-                                                                                 N'Motor: Own Hire - insurer paid',
-                                                                                 N'Motor: TP Damage Incurred Locally - insurer paid',
-                                                                                 N'Motor: TP Hire Charges - insurer paid',
-                                                                                 N'Motor: TP Injury - insurer paid',
-                                                                                 N'Motor: TP Property Damage - insurer paid',
-                                                                                 N'Motor: TP Special Damages Insurer Paid',
-                                                                                 N'Motor: TP Expert Fees - insurer paid',
-                                                                                 N'Motor: TP Legal Costs - insurer paid',
-                                                                                 N'Motor: Own Expert Fees - insurer paid',
-                                                                                 N'Motor: Own Legal Costs - insurer paid'
-                                                                               ) and 
-																			   dim_child_detail.payment_status IN ('Payment Pending                                             ', 'Pending 2nd Authorisation                                   ','Pending Authorisation                                       '
-
-
-
-	   )
+--             --   AND
+--				 ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
+--                                                                                 N'EL: TP Injury - insurer paid',
+--                                                                                 N'EL: TP Own damage incurred locally - insurer paid',
+--                                                                                 N'EL: TP Property Damage - insurer paid',
+--                                                                                 N'EL: TP Special Damages Insurer Paid',
+--                                                                                 N'EL: TP Legal Costs - insurer paid',
+--                                                                                 N'EL: Expert Fees - insurer paid',
+--                                                                                 N'EL: Own Legal Costs - insurer paid',
+--                                                                                 N'EL: Loss Adjuster Fees - Insurer Paid',
+--                                                                                 N'Motor: Own Damage - insurer paid',
+--                                                                                 N'Motor: Own Damage Incurred Locally - insurer paid',
+--                                                                                 N'Motor: Own Hire - insurer paid',
+--                                                                                 N'Motor: TP Damage Incurred Locally - insurer paid',
+--                                                                                 N'Motor: TP Hire Charges - insurer paid',
+--                                                                                 N'Motor: TP Injury - insurer paid',
+--                                                                                 N'Motor: TP Property Damage - insurer paid',
+--                                                                                 N'Motor: TP Special Damages Insurer Paid',
+--                                                                                 N'Motor: TP Expert Fees - insurer paid',
+--                                                                                 N'Motor: TP Legal Costs - insurer paid',
+--                                                                                 N'Motor: Own Expert Fees - insurer paid',
+--                                                                                 N'Motor: Own Legal Costs - insurer paid'
+--                                                                               ) and 
+--																			   dim_child_detail.payment_status IN ('Payment Pending                                             ', 'Pending 2nd Authorisation                                   ','Pending Authorisation                                       '
 
 
-THEN
-               fact_child_detail.[PAYMENT AMOUNT GROSS]
-           ELSE
-               0
-       END AS [Pending Payments Lyra ],
+
+--	   )
+
+
+--THEN
+--               fact_child_detail.[PAYMENT AMOUNT GROSS]
+--           ELSE
+--               0
+--       END 
+#PTALL.[pending lyra] AS [Pending Payments Lyra ],
        dim_detail_claim.[stw_work_type] [STW Work Type ],
        dim_fed_hierarchy_history.name [Weightmans Case Handler],
        dim_matter_header_current.date_closed_case_management [Date Closed FED/MS],
@@ -2597,62 +2783,67 @@ THEN
 
 
 
-	   CASE WHEN dim_child_detail.payment_status = 'Paid'
-                AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN 
-																				( N'DWP', N'DWP - Insurer Paid',
-                                                                                 N'EL: Own damage incurred locally',
-                                                                                 N'EL: TP Injury',
-                                                                                 N'EL: TP own damage incurred locally',
-                                                                                 N'EL: TP Special Damages',
-                                                                                 N'EL: TP Legal Costs',
-                                                                                 N'EL: Expert Fees',
-                                                                                 N'EL: Own Legal Costs',
-                                                                                 N'EL: Loss Adjuster Fees',
-                                                                                 N'Motor: Own Damage',
-                                                                                 N'Motor: Own Damage Incurred Locally',
-                                                                                 N'Motor: Own Hire',
-                                                                                 N'Motor: TP Damage Incurred Locally',
-                                                                                 N'Motor: TP Hire Charges',
-                                                                                 N'Motor: TP Injury',
-                                                                                 N'Motor: TP Property Damage',
-                                                                                 N'Motor: TP Special Damages',
-                                                                                 N'Motor: TP Expert Fees',
-                                                                                 N'Motor: TP Legal Costs',
-                                                                                 N'Motor: Own Expert Fees',
-                                                                                 N'Motor: Own Legal Costs'
-                                                                               ) THEN
-               fact_child_detail.[PAYMENT AMOUNT GROSS]
-           ELSE
-               0
-       END AS [PAID ST],
-       CASE WHEN 
-      dim_child_detail.payment_status = 'Paid'
-                AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
-                                                                                 N'EL: TP Injury - insurer paid',
-                                                                                 N'EL: TP Property Damage - insurer paid',
-                                                                                 N'EL: TP Own Damage Incurred Locally - Insurer Paid',
-                                                                                 N'EL: TP Special Damages Insurer Paid',
-                                                                                 N'EL: TP Legal Costs - insurer paid',
-                                                                                 N'EL: Expert Fees - insurer paid',
-                                                                                 N'EL: Own Legal Costs - insurer paid',
-                                                                                 N'EL: Loss Adjuster Fees - Insurer Paid',
-                                                                                 N'Motor: Own Damage - insurer paid',
-                                                                                 N'Motor: Own Damage Incurred Locally - insurer paid',
-                                                                                 N'Motor: Own Hire - insurer paid',
-                                                                                 N'Motor: TP Damage Incurred Locally - insurer paid',
-                                                                                 N'Motor: TP Hire Charges - insurer paid',
-                                                                                 N'Motor: TP Injury - insurer paid',
-                                                                                 N'Motor: TP Property Damage - insurer paid',
-                                                                                 N'Motor: TP Special Damages Insurer Paid',
-                                                                                 N'Motor: TP Expert Fees - insurer paid',
-                                                                                 N'Motor: TP Legal Costs - insurer paid',
-                                                                                 N'Motor: Own Expert Fees - insurer paid',
-                                                                                 N'Motor: Own Legal Costs - insurer paid'
-                                                                               ) THEN
-               fact_child_detail.[PAYMENT AMOUNT GROSS]
-           ELSE
-               0
-       END AS [PREVIOUS PAID LYRA],
+	   --CASE WHEN dim_child_detail.payment_status = 'Paid'
+    --            AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN 
+				--																( N'DWP', N'DWP - Insurer Paid',
+    --                                                                             N'EL: Own damage incurred locally',
+    --                                                                             N'EL: TP Injury',
+    --                                                                             N'EL: TP own damage incurred locally',
+    --                                                                             N'EL: TP Special Damages',
+    --                                                                             N'EL: TP Legal Costs',
+    --                                                                             N'EL: Expert Fees',
+    --                                                                             N'EL: Own Legal Costs',
+    --                                                                             N'EL: Loss Adjuster Fees',
+    --                                                                             N'Motor: Own Damage',
+    --                                                                             N'Motor: Own Damage Incurred Locally',
+    --                                                                             N'Motor: Own Hire',
+    --                                                                             N'Motor: TP Damage Incurred Locally',
+    --                                                                             N'Motor: TP Hire Charges',
+    --                                                                             N'Motor: TP Injury',
+    --                                                                             N'Motor: TP Property Damage',
+    --                                                                             N'Motor: TP Special Damages',
+    --                                                                             N'Motor: TP Expert Fees',
+    --                                                                             N'Motor: TP Legal Costs',
+    --                                                                             N'Motor: Own Expert Fees',
+    --                                                                             N'Motor: Own Legal Costs'
+    --                                                                           ) THEN
+    --           fact_child_detail.[PAYMENT AMOUNT GROSS]
+    --       ELSE
+    --           0
+      -- END 
+	 #PTALL.[paid ST]  AS [PAID ST],
+      -- CASE WHEN 
+      --dim_child_detail.payment_status = 'Paid'
+      --          AND ISNULL(fedLookup.txtLookupDesc, MSLookup.txtLookupDesc) IN ( N'EL: Own damage incurred locally - insurer paid',
+      --                                                                           N'EL: TP Injury - insurer paid',
+      --                                                                           N'EL: TP Property Damage - insurer paid',
+      --                                                                           N'EL: TP Own Damage Incurred Locally - Insurer Paid',
+      --                                                                           N'EL: TP Special Damages Insurer Paid',
+      --                                                                           N'EL: TP Legal Costs - insurer paid',
+      --                                                                           N'EL: Expert Fees - insurer paid',
+      --                                                                           N'EL: Own Legal Costs - insurer paid',
+      --                                                                           N'EL: Loss Adjuster Fees - Insurer Paid',
+      --                                                                           N'Motor: Own Damage - insurer paid',
+      --                                                                           N'Motor: Own Damage Incurred Locally - insurer paid',
+      --                                                                           N'Motor: Own Hire - insurer paid',
+      --                                                                           N'Motor: TP Damage Incurred Locally - insurer paid',
+      --                                                                           N'Motor: TP Hire Charges - insurer paid',
+      --                                                                           N'Motor: TP Injury - insurer paid',
+      --                                                                           N'Motor: TP Property Damage - insurer paid',
+      --                                                                           N'Motor: TP Special Damages Insurer Paid',
+      --                                                                           N'Motor: TP Expert Fees - insurer paid',
+      --                                                                           N'Motor: TP Legal Costs - insurer paid',
+      --                                                                           N'Motor: Own Expert Fees - insurer paid',
+      --                                                                           N'Motor: Own Legal Costs - insurer paid'
+      --                                                                         ) THEN
+      --         fact_child_detail.[PAYMENT AMOUNT GROSS]
+      --     ELSE
+      --         0
+      -- END 
+	  
+	  
+	  #PTALL.[paid lyra] AS [PREVIOUS PAID LYRA],
+	  #PTALL.[pending ST] AS [PENDING ST], 
        dim_detail_client.[cause_description] [Cause Description chart],
        CASE
            WHEN red_dw.dbo.dim_matter_header_current.date_closed_case_management IS NULL THEN
@@ -2719,44 +2910,47 @@ FROM red_dw.dbo.fact_dimension_main
            AND dim_involvement_full.matter_number = fact_dimension_main.matter_number
     LEFT OUTER JOIN red_dw.dbo.dim_client AS Tit
         ON Tit.client_code = dim_involvement_full.entity_code
-    LEFT OUTER JOIN red_dw.dbo.dim_parent_detail
-        ON dim_parent_detail.client_code = fact_dimension_main.client_code
-           AND dim_parent_detail.matter_number = fact_dimension_main.matter_number 
+    --LEFT OUTER JOIN red_dw.dbo.dim_parent_detail
+    --    ON dim_parent_detail.client_code = fact_dimension_main.client_code
+    --       AND dim_parent_detail.matter_number = fact_dimension_main.matter_number 
 		   
 		   
-		   AND payment IS NOT null
-    LEFT OUTER JOIN red_dw.dbo.dim_child_detail
-        ON red_dw.dbo.dim_child_detail.dim_parent_key = red_dw.dbo.dim_parent_detail.dim_parent_key
-    LEFT OUTER JOIN
-    (
-        SELECT client_code,
-               matter_number,
-               SUM(payment_amount_gross) [PAYMENT AMOUNT GROSS]
-        FROM red_dw.dbo.fact_child_detail
-        WHERE payment_amount_gross IS NOT NULL
-        GROUP BY client_code,
-                 matter_number
-    ) fact_child_detail
-        ON fact_child_detail.client_code = fact_dimension_main.client_code
-           AND fact_child_detail.matter_number = fact_dimension_main.matter_number
-    LEFT OUTER JOIN
-    (
-        SELECT txtMSLookupCode,
-               txtFEDLookupCode,
-               txtLookupDesc
-        FROM MS_Prod.dbo.udMapCodeLookup
-        WHERE txtMSLookupType = 'PAYMENT'
-    ) fedLookup
-        ON fedLookup.txtFEDLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT
-    LEFT OUTER JOIN
-    (
-        SELECT txtMSLookupCode,
-               txtFEDLookupCode,
-               txtLookupDesc
-        FROM MS_Prod.dbo.udMapCodeLookup
-        WHERE txtMSLookupType = 'PAYMENT'
-    ) MSLookup
-        ON MSLookup.txtMSLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT
+		  -- AND payment IS NOT null
+    --LEFT OUTER JOIN red_dw.dbo.dim_child_detail
+    --    ON red_dw.dbo.dim_child_detail.dim_parent_key = red_dw.dbo.dim_parent_detail.dim_parent_key
+    --LEFT OUTER JOIN
+    --(
+    --    SELECT client_code,
+    --           matter_number,
+    --           SUM(payment_amount_gross) [PAYMENT AMOUNT GROSS]
+    --    FROM red_dw.dbo.fact_child_detail
+    --    WHERE payment_amount_gross IS NOT NULL
+    --    GROUP BY client_code,
+    --             matter_number
+    --) fact_child_detail
+    --    ON fact_child_detail.client_code = fact_dimension_main.client_code
+    --       AND fact_child_detail.matter_number = fact_dimension_main.matter_number
+    --LEFT OUTER JOIN
+    --(
+    --    SELECT txtMSLookupCode,
+    --           txtFEDLookupCode,
+    --           txtLookupDesc
+    --    FROM MS_Prod.dbo.udMapCodeLookup
+    --    WHERE txtMSLookupType = 'PAYMENT'
+    --) fedLookup
+    --    ON fedLookup.txtFEDLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT
+    --LEFT OUTER JOIN
+    --(
+    --    SELECT txtMSLookupCode,
+    --           txtFEDLookupCode,
+    --           txtLookupDesc
+    --    FROM MS_Prod.dbo.udMapCodeLookup
+    --    WHERE txtMSLookupType = 'PAYMENT'
+    --) MSLookup
+    --    ON MSLookup.txtMSLookupCode = red_dw.dbo.dim_parent_detail.payment COLLATE DATABASE_DEFAULT
+
+		LEFT JOIN #PTALL ON red_dw.dbo.fact_dimension_main.client_code = #PTALL.client_code
+		AND red_dw.dbo.fact_dimension_main.matter_number = #PTALL.matter_number
 --LEFT OUTER JOIN (
 
 --SELECT DISTINCT
@@ -2795,7 +2989,7 @@ WHERE
       AND policy_type IN ( 'Employers Liability', 'Motor' )
 	  --AND dim_child_detail.client_code = '00513126'
 	  --AND dim_child_detail.matter_number = '00004697'
-	  AND dim_detail_client.matter_number = '00006959'
+	  --AND dim_detail_client.matter_number = '00006959'
 	  
 ORDER BY 1;
 
@@ -2814,6 +3008,10 @@ ORDER BY 1;
         </Field>
         <Field Name="Year_Of_Account">
           <DataField>Year Of Account</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Year_Of_Account_ISNULL">
+          <DataField>Year Of Account ISNULL</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Financial_Year">
@@ -2924,6 +3122,10 @@ ORDER BY 1;
           <DataField>PREVIOUS PAID LYRA</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="PENDING_ST">
+          <DataField>PENDING ST</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
         <Field Name="Cause_Description_chart">
           <DataField>Cause Description chart</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -3005,6 +3207,9 @@ ORDER BY 1;
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.00833in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1in</Width>
@@ -4243,6 +4448,73 @@ ORDER BY 1;
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
+                            <Textbox Name="Textbox6">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Pending ST</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox6</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
                             <Textbox Name="Textbox4">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -4791,7 +5063,7 @@ ORDER BY 1;
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Year_Of_Account.Value</Value>
+                                      <Value>=iif(Fields!Year_Of_Account.Value = nothing, fields!Year_Of_Account_ISNULL.Value , Fields!Year_Of_Account.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5997,6 +6269,74 @@ ORDER BY 1;
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
+                            <Textbox Name="PENDING_ST">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!PENDING_ST.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>C</Format>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>PENDING_ST</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "Transparent",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
                             <Textbox Name="PREVIOUS_PAID_LYRA">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -6569,6 +6909,7 @@ ORDER BY 1;
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
+                    <TablixMember />
                   </TablixMembers>
                 </TablixColumnHierarchy>
                 <TablixRowHierarchy>
@@ -6588,7 +6929,7 @@ ORDER BY 1;
                   <BreakLocation>End</BreakLocation>
                 </PageBreak>
                 <Height>0.70625in</Height>
-                <Width>34.04368in</Width>
+                <Width>35.04368in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6603,7 +6944,7 @@ ORDER BY 1;
             </ReportItems>
             <Top>0.10584cm</Top>
             <Height>0.70625in</Height>
-            <Width>34.05201in</Width>
+            <Width>35.04368in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -6647,7 +6988,7 @@ ORDER BY 1;
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>34.05201in</Width>
+      <Width>35.04368in</Width>
       <Page>
         <PageHeader>
           <Height>0.95388in</Height>
