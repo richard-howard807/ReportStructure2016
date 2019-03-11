@@ -2,20 +2,10 @@
 <Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
-    <DataSource Name="SSAS_SVR_LIV_DWH_02_WIP">
-      <DataSourceReference>SSAS-SVR-LIV-DWH-02-WIP</DataSourceReference>
-      <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>503b8f81-26cc-4999-bc86-f0f3d1fef5c9</rd:DataSourceID>
-    </DataSource>
-    <DataSource Name="SQL12">
-      <DataSourceReference>Data Warehouse Server SQL2012</DataSourceReference>
-      <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>109babe7-a6d2-4462-93c0-f70e7a6428e5</rd:DataSourceID>
-    </DataSource>
     <DataSource Name="ReportingOnSQL2012">
       <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>5be4c4cf-bcde-4baf-8203-1c1cca160981</rd:DataSourceID>
+      <rd:DataSourceID>2314965f-aede-4fc2-8672-a27f09dd5b1a</rd:DataSourceID>
     </DataSource>
   </DataSources>
   <DataSets>
@@ -23,8 +13,8 @@
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@Date">
-            <Value>=Parameters!Date.Value</Value>
+          <QueryParameter Name="@finMonth">
+            <Value>=Parameters!finMonth.Value</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
@@ -45,10 +35,6 @@
         </Field>
         <Field Name="Practice_Area">
           <DataField>Practice Area</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="fed_code">
-          <DataField>fed_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="SoftCost">
@@ -72,12 +58,18 @@
     <DataSet Name="DataSet2">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT CONVERT(DATE,GETDATE(),103) AS EndDate</CommandText>
+        <CommandText>SELECT DISTINCT transaction_fin_month,transaction_fin_period FROM red_dw.dbo.dim_transaction_date
+WHERE transaction_fin_month &gt;201001
+ORDER BY transaction_fin_month</CommandText>
       </Query>
       <Fields>
-        <Field Name="EndDate">
-          <DataField>EndDate</DataField>
-          <rd:TypeName>System.DateTime</rd:TypeName>
+        <Field Name="transaction_fin_month">
+          <DataField>transaction_fin_month</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="transaction_fin_period">
+          <DataField>transaction_fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -1052,7 +1044,6 @@
                             <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                       <DataElementOutput>Output</DataElementOutput>
                     </TablixCell>
@@ -2040,7 +2031,6 @@
             </TablixRowHierarchy>
             <RepeatColumnHeaders>true</RepeatColumnHeaders>
             <RepeatRowHeaders>true</RepeatRowHeaders>
-            <NoRowsMessage>=iif(Parameters!Day.Value &lt; "22/08/2016", "Historical WIP only exists after 22nd Aug 2016 - please run report for a later date", nothing)</NoRowsMessage>
             <DataSetName>DataSet1</DataSetName>
             <Height>1.92in</Height>
             <Width>7.42709in</Width>
@@ -2066,26 +2056,6 @@
     </ReportSection>
   </ReportSections>
   <ReportParameters>
-    <ReportParameter Name="Date">
-      <DataType>DateTime</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>DataSet2</DataSetName>
-          <ValueField>EndDate</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Disbs as at:-</Prompt>
-    </ReportParameter>
-    <ReportParameter Name="Day">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>=Parameters!Date.Value</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>ReportParameter1</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
     <ReportParameter Name="Level">
       <DataType>String</DataType>
       <DefaultValue>
@@ -2096,26 +2066,32 @@
       <Prompt>Level</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="finMonth">
+      <DataType>String</DataType>
+      <Prompt>fin Month</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>DataSet2</DataSetName>
+          <ValueField>transaction_fin_month</ValueField>
+          <LabelField>transaction_fin_period</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfRows>5</NumberOfRows>
       <CellDefinitions>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>Date</ParameterName>
-        </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>3</RowIndex>
-          <ParameterName>Day</ParameterName>
+          <ParameterName>Level</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>Level</ParameterName>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>4</RowIndex>
+          <ParameterName>finMonth</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
