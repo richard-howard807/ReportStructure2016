@@ -27,13 +27,13 @@ SELECT fact_dimension_main.client_code, fact_dimension_main.matter_number,
  
 -- OR 
  
-(dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND fact_finance_summary.[fixed_fee_amount] IS NULL )
+(dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1) )
 
 OR (DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28  AND dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate'   AND(fact_finance_summary.[commercial_costs_estimate] IS NULL OR  fact_finance_summary.[commercial_costs_estimate] &lt; 1  ) ) THEN 1 ELSE 0 END  AS [Noexceptions], 
 
 
 CASE WHEN dim_detail_finance.[output_wip_fee_arrangement]  IS NULL THEN 1 ELSE 0 END AS [Exfeearrangement], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND fact_finance_summary.[fixed_fee_amount] IS NULL THEN 1 ELSE 0 END AS [ExFixedfeeamountexception], 
+CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1) THEN 1 ELSE 0 END AS [ExFixedfeeamountexception], 
 CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate' AND   DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28 AND (fact_finance_summary.[commercial_costs_estimate] IS NULL OR fact_finance_summary.[commercial_costs_estimate] &lt; 1  )THEN 1 ELSE 0 END AS [ExCommencialCosts]
 
 FROM  red_Dw.dbo. fact_dimension_main 
@@ -73,7 +73,7 @@ fact_finance_summary.[fixed_fee_amount] [Fixed Fee Amount ],
 dim_detail_finance.[output_wip_fee_arrangement] [Fee Arrangement ],
 fact_finance_summary.[commercial_costs_estimate][Current Costs Estimate], 
 CASE WHEN dim_detail_finance.[output_wip_fee_arrangement]  IS NULL THEN 1 ELSE 0 END AS [Exfeearrangement], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND fact_finance_summary.[fixed_fee_amount] IS NULL THEN 1 ELSE 0 END AS [ExFixedfeeamountexception], 
+CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1)THEN 1 ELSE 0 END AS [ExFixedfeeamountexception], 
 CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate' AND  DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28 AND( fact_finance_summary.[commercial_costs_estimate] IS NULL  OR fact_finance_summary.[commercial_costs_estimate] &lt; 1 ) THEN 1 ELSE 0 END AS [ExCommencialCosts]
  FROM red_dw.dbo.fact_dimension_main 
  inner JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
@@ -101,7 +101,7 @@ GROUP BY	ISNULL(nofocases.Exfeearrangement, 0) + ISNULL(nofocases.ExFixedfeeamou
             END,
             CASE
             WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Fixed Fee/Fee Quote/Capped Fee'
-            AND fact_finance_summary.[fixed_fee_amount] IS NULL THEN
+            AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1)THEN
             1
             ELSE
             0
@@ -368,9 +368,6 @@ hierarchylevel2hist,
                 <TablixBody>
                   <TablixColumns>
                     <TablixColumn>
-                      <Width>4.06104cm</Width>
-                    </TablixColumn>
-                    <TablixColumn>
                       <Width>4.2136cm</Width>
                     </TablixColumn>
                     <TablixColumn>
@@ -384,41 +381,6 @@ hierarchylevel2hist,
                     <TablixRow>
                       <Height>0.6cm</Height>
                       <TablixCells>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Number_of_Cases_with_Exceptions_">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Sum(Fields!Number_of_Cases_with_Exceptions_.Value)</Value>
-                                      <Style>
-                                        <FontFamily>Lucida Sans Unicode</FontFamily>
-                                        <FontWeight>Normal</FontWeight>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Right</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Number_of_Cases_with_Exceptions_</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>LightGrey</Color>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <PaddingLeft>2pt</PaddingLeft>
-                                <PaddingRight>2pt</PaddingRight>
-                                <PaddingTop>2pt</PaddingTop>
-                                <PaddingBottom>2pt</PaddingBottom>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
                         <TablixCell>
                           <CellContents>
                             <Textbox Name="Count_">
@@ -548,42 +510,6 @@ hierarchylevel2hist,
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox92">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Sum(Fields!Number_of_Cases_with_Exceptions_.Value)</Value>
-                                      <Style>
-                                        <FontFamily>Lucida Sans Unicode</FontFamily>
-                                        <FontWeight>Normal</FontWeight>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Right</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox92</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>LightGrey</Color>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>LightGrey</BackgroundColor>
-                                <PaddingLeft>2pt</PaddingLeft>
-                                <PaddingRight>2pt</PaddingRight>
-                                <PaddingTop>2pt</PaddingTop>
-                                <PaddingBottom>2pt</PaddingBottom>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox93">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -698,42 +624,6 @@ hierarchylevel2hist,
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox114">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Sum(Fields!Number_of_Cases_with_Exceptions_.Value)</Value>
-                                      <Style>
-                                        <FontFamily>Lucida Sans Unicode</FontFamily>
-                                        <FontWeight>Normal</FontWeight>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Right</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox114</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>LightGrey</Color>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>Silver</BackgroundColor>
-                                <PaddingLeft>2pt</PaddingLeft>
-                                <PaddingRight>2pt</PaddingRight>
-                                <PaddingTop>2pt</PaddingTop>
-                                <PaddingBottom>2pt</PaddingBottom>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
                             <Textbox Name="Textbox115">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -846,43 +736,6 @@ hierarchylevel2hist,
                     <TablixRow>
                       <Height>0.6cm</Height>
                       <TablixCells>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox125">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Sum(Fields!Number_of_Cases_with_Exceptions_.Value)</Value>
-                                      <Style>
-                                        <FontFamily>Lucida Sans Unicode</FontFamily>
-                                        <FontWeight>Bold</FontWeight>
-                                        <Color>White</Color>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>Right</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox125</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>LightGrey</Color>
-                                  <Style>Solid</Style>
-                                </Border>
-                                <BackgroundColor>#004f59</BackgroundColor>
-                                <PaddingLeft>2pt</PaddingLeft>
-                                <PaddingRight>2pt</PaddingRight>
-                                <PaddingTop>2pt</PaddingTop>
-                                <PaddingBottom>2pt</PaddingBottom>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
                         <TablixCell>
                           <CellContents>
                             <Textbox Name="Textbox126">
@@ -1005,46 +858,6 @@ hierarchylevel2hist,
                       <TablixHeader>
                         <Size>0.6cm</Size>
                         <CellContents>
-                          <Textbox Name="Textbox6">
-                            <CanGrow>true</CanGrow>
-                            <KeepTogether>true</KeepTogether>
-                            <Paragraphs>
-                              <Paragraph>
-                                <TextRuns>
-                                  <TextRun>
-                                    <Value>Current Number Of Exception Cases as of Today </Value>
-                                    <Style>
-                                      <FontFamily>Lucida Sans Unicode</FontFamily>
-                                      <FontWeight>Bold</FontWeight>
-                                      <Color>White</Color>
-                                    </Style>
-                                  </TextRun>
-                                </TextRuns>
-                                <Style>
-                                  <TextAlign>Left</TextAlign>
-                                </Style>
-                              </Paragraph>
-                            </Paragraphs>
-                            <rd:DefaultName>Textbox6</rd:DefaultName>
-                            <Style>
-                              <Border>
-                                <Color>LightGrey</Color>
-                                <Style>Solid</Style>
-                              </Border>
-                              <BackgroundColor>#004f59</BackgroundColor>
-                              <PaddingLeft>2pt</PaddingLeft>
-                              <PaddingRight>2pt</PaddingRight>
-                              <PaddingTop>2pt</PaddingTop>
-                              <PaddingBottom>2pt</PaddingBottom>
-                            </Style>
-                          </Textbox>
-                        </CellContents>
-                      </TablixHeader>
-                    </TablixMember>
-                    <TablixMember>
-                      <TablixHeader>
-                        <Size>0.6cm</Size>
-                        <CellContents>
                           <Textbox Name="Textbox2">
                             <CanGrow>true</CanGrow>
                             <KeepTogether>true</KeepTogether>
@@ -1132,7 +945,7 @@ hierarchylevel2hist,
                               <Paragraph>
                                 <TextRuns>
                                   <TextRun>
-                                    <Value>Total Cases </Value>
+                                    <Value>Total Open Cases </Value>
                                     <Style>
                                       <FontFamily>Lucida Sans Unicode</FontFamily>
                                       <FontWeight>Bold</FontWeight>
@@ -1690,7 +1503,7 @@ hierarchylevel2hist,
                 <Top>0.14493cm</Top>
                 <Left>0.27687cm</Left>
                 <Height>3cm</Height>
-                <Width>39.05311cm</Width>
+                <Width>34.99207cm</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
