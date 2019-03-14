@@ -2462,26 +2462,62 @@ WHERE  name ='Go-Ahead_Group.png'</CommandText>
     <DataSet Name="MainDataset">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Period">
+            <Value>=Parameters!Period.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>
 
-SELECT fin_days.gl_fin_day_in_month [glfinday]
-       , [fin_days].gl_calendar_date [Calender]
+SELECT 
+
+
+--fin_days.gl_fin_day_in_month [glfinday]
+       CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN   [fin_days].gl_calendar_date -1 
+	   WHEN  fin_days.gl_cal_day_in_week = 'Sun' THEN   [fin_days].gl_calendar_date -2
+	   WHEN fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date -2 
+	   ELSE fin_days.gl_calendar_date 
+	   END 
+	   
+	    [Calender]
+		, fin_days.gl_fin_day_in_month
+		, fin_days.gl_fin_period
+	   
        , fin_days.gl_trading_days_in_mth [trading]
        , fin_days.gl_week_end_flag
        , fin_days.gl_holiday_flag
-       , [fin_days].gl_calendar_date
+    --   , [fin_days].gl_calendar_date
        , fin_days.gl_cal_month_name
-       , [fin_days].gl_cal_day_in_week 
+   --    , [fin_days].gl_cal_day_in_week 
        , hierarchylevel2hist
        , hierarchylevel3hist 
-       , SUM([Hours].[Hours Recorded]) as [Hours Recorded]
+       , ISNULL(SUM([Hours].[Hours Recorded]), 0) as [Hours Recorded]
+	   ,workdays.number_of_work_days
 
 
 FROM red_dw.dbo.dim_gl_date as [fin_month]
-INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].gl_fin_month=[fin_month].gl_fin_month 
-and [fin_days].gl_calendar_date&lt;=CAST(GETDATE()-1 as date)
+--INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].gl_fin_month=[fin_month].gl_fin_month 
+INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].dim_gl_date_key=[fin_month].dim_gl_date_key
+and [fin_days].gl_calendar_date&lt;=CAST(GETDATE()-1 as date) 
+AND fin_days.gl_calendar_date &gt;= '2018-05-01'
 
-INNER JOIN (SELECT dim_orig_posting_date_key dim_gl_date_key, hierarchylevel2hist, hierarchylevel3hist,  SUM(minutes_recorded) / 60 as [Hours Recorded]
+
+LEFT OUTER JOIN  (
+SELECT dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key first_day_key,COUNT(*) number_of_work_days 
+FROM red_dw.dbo.dim_date
+JOIN red_Dw.dbo.[dim_date] first_day_month
+ON first_day_month.fin_month = dim_date.fin_month
+and first_day_month.fin_year = dim_date.fin_year
+and first_day_month.cal_day_in_month = 1
+WHERE dim_date.holiday_flag = 'N'
+AND dim_date.fin_day_in_week NOT IN ('Sat','Sun')
+AND dim_date.calendar_date &lt;= getdate() -1
+GROUP BY dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key )
+ AS  workdays ON workdays.first_day_key = fin_days.dim_gl_date_key
+
+
+
+INNER JOIN (SELECT dim_orig_posting_date_key dim_gl_date_key, hierarchylevel2hist, hierarchylevel3hist,  ISNULL(SUM(minutes_recorded),0) / 60 as [Hours Recorded]
                      FROM red_dw.dbo.fact_billable_time_activity
                      INNER JOIN red_dw.dbo.dim_fed_hierarchy_history as [Current Hierarchy]
                      on [Current Hierarchy].dim_fed_hierarchy_history_key=fact_billable_time_activity.dim_fed_hierarchy_history_key
@@ -2489,30 +2525,47 @@ INNER JOIN (SELECT dim_orig_posting_date_key dim_gl_date_key, hierarchylevel2his
                      GROUP BY dim_orig_posting_date_key, hierarchylevel2hist, hierarchylevel3hist
                      ) [Hours] on [Hours].dim_gl_date_key=[fin_days].dim_gl_date_key
        
-where [fin_month].gl_calendar_date=CAST(GETDATE()-1 as date)
+where [fin_month].gl_calendar_date&lt;= CAST(GETDATE()-1 as date)
+AND fin_days.gl_calendar_date &gt;= '2018-05-01'
+AND fin_days.gl_fin_period = @Period
+ 
 
-GROUP BY fin_days.gl_fin_day_in_month
-       , [fin_days].gl_calendar_date
-       , fin_days.gl_trading_days_in_mth
-       , fin_days.gl_week_end_flag
-       , fin_days.gl_holiday_flag
-       , [fin_days].gl_calendar_date
-       , fin_days.gl_cal_month_name
-       , [fin_days].gl_cal_day_in_week 
-       , hierarchylevel2hist 
-       , hierarchylevel3hist 
 
-        ORDER BY fin_days.gl_calendar_date
-</CommandText>
+GROUP BY	CASE
+            WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN
+            [fin_days].gl_calendar_date - 1
+            WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN
+            [fin_days].gl_calendar_date - 2
+            WHEN fin_days.gl_cal_day_in_week = 'Mon'
+            AND fin_days.gl_holiday_flag = 'Y' THEN
+            [fin_days].gl_calendar_date - 2
+            ELSE
+            fin_days.gl_calendar_date
+            END,
+           -- fin_days.gl_fin_day_in_month,
+            fin_days.gl_trading_days_in_mth,
+            fin_days.gl_week_end_flag,
+            fin_days.gl_holiday_flag,
+            fin_days.gl_cal_month_name,
+            Hours.hierarchylevel2hist,
+            Hours.hierarchylevel3hist
+			, fin_days.gl_fin_day_in_month
+			,workdays.number_of_work_days
+			,fin_days.gl_fin_period
+    ORDER BY Calender</CommandText>
       </Query>
       <Fields>
-        <Field Name="glfinday">
-          <DataField>glfinday</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Calender">
           <DataField>Calender</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="gl_fin_day_in_month">
+          <DataField>gl_fin_day_in_month</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="gl_fin_period">
+          <DataField>gl_fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="trading">
           <DataField>trading</DataField>
@@ -2526,16 +2579,8 @@ GROUP BY fin_days.gl_fin_day_in_month
           <DataField>gl_holiday_flag</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="gl_calendar_date">
-          <DataField>gl_calendar_date</DataField>
-          <rd:TypeName>System.DateTime</rd:TypeName>
-        </Field>
         <Field Name="gl_cal_month_name">
           <DataField>gl_cal_month_name</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="gl_cal_day_in_week">
-          <DataField>gl_cal_day_in_week</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="hierarchylevel2hist">
@@ -2549,6 +2594,55 @@ GROUP BY fin_days.gl_fin_day_in_month
         <Field Name="Hours_Recorded">
           <DataField>Hours Recorded</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="number_of_work_days">
+          <DataField>number_of_work_days</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Period">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT gl_fin_period FROM 
+red_dw.dbo.dim_gl_date 
+
+WHERE gl_calendar_date &gt;= '2018-05-01'
+AND gl_calendar_date &lt; CAST(GETDATE()
+ AS DATE )
+ORDER BY 1
+</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="gl_fin_period">
+          <DataField>gl_fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="DefaultCurrent">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT gl_fin_period 
+
+
+
+FROM 
+red_dw.dbo.dim_gl_date 
+
+WHERE gl_current_fin_month = 'Current'
+AND gl_fin_day_in_month = 1
+
+--WHERE gl_calendar_date &gt;= '2018-05-01'
+--AND gl_calendar_date &lt; CAST(GETDATE()
+-- AS DATE )
+--ORDER BY 1
+</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="gl_fin_period">
+          <DataField>gl_fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -2663,7 +2757,7 @@ GROUP BY fin_days.gl_fin_day_in_month
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                      <Value>=iif(Sum(Fields!Hours_Recorded.Value) = nothing , 0 , Sum(Fields!Hours_Recorded.Value))</Value>
                                       <Style>
                                         <FontFamily>Lucida Sans Unicode</FontFamily>
                                         <Format>#,0;(#,0)</Format>
@@ -2884,6 +2978,126 @@ GROUP BY fin_days.gl_fin_day_in_month
                         </TablixCell>
                       </TablixCells>
                     </TablixRow>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox3">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=(sum(iif(isnothing (Fields!Hours_Recorded.Value), 0, 
+cint(Fields!Hours_Recorded.Value))))/ iif(sum(max(fields!number_of_work_days.Value = nothing )), 0 , 1)</Value>
+                                      <Style>
+                                        <FontFamily>Lucida Sans Unicode</FontFamily>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Format>#,0</Format>
+                                        <Color>White</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox3</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>Solid</Style>
+                                </Border>
+                                <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox4">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=sum(Fields!Hours_Recorded.Value)/ MAX(fields!number_of_work_days.Value )</Value>
+                                      <Style>
+                                        <FontFamily>Lucida Sans Unicode</FontFamily>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Format>#,0</Format>
+                                        <Color>White</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox4</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>Solid</Style>
+                                </Border>
+                                <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox6">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=sum(Fields!Hours_Recorded.Value)/ MAX(fields!number_of_work_days.Value )</Value>
+                                      <Style>
+                                        <FontFamily>Lucida Sans Unicode</FontFamily>
+                                        <FontWeight>Bold</FontWeight>
+                                        <Format>#,0</Format>
+                                        <Color>White</Color>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox6</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>Solid</Style>
+                                </Border>
+                                <BackgroundColor>#004f59</BackgroundColor>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
                   </TablixRows>
                 </TablixBody>
                 <TablixColumnHierarchy>
@@ -2978,6 +3192,9 @@ GROUP BY fin_days.gl_fin_day_in_month
                                       </Paragraph>
                                     </Paragraphs>
                                     <rd:DefaultName>hierarchylevel3</rd:DefaultName>
+                                    <Visibility>
+                                      <Hidden>=iif (fields!Hours_Recorded.value = 0  , true, false)</Hidden>
+                                    </Visibility>
                                     <Style>
                                       <Border>
                                         <Color>LightGrey</Color>
@@ -2994,9 +3211,6 @@ GROUP BY fin_days.gl_fin_day_in_month
                               </TablixHeader>
                             </TablixMember>
                           </TablixMembers>
-                          <Visibility>
-                            <Hidden>=iif (fields!Hours_Recorded.value = 0  , true, false)</Hidden>
-                          </Visibility>
                         </TablixMember>
                         <TablixMember>
                           <TablixHeader>
@@ -3132,12 +3346,12 @@ GROUP BY fin_days.gl_fin_day_in_month
                     <TablixMember>
                       <Group Name="fin_day_in_month">
                         <GroupExpressions>
-                          <GroupExpression>=Fields!glfinday.Value</GroupExpression>
+                          <GroupExpression>=Fields!Calender.Value</GroupExpression>
                         </GroupExpressions>
                       </Group>
                       <SortExpressions>
                         <SortExpression>
-                          <Value>=Fields!glfinday.Value</Value>
+                          <Value>=Fields!Calender.Value</Value>
                         </SortExpression>
                       </SortExpressions>
                       <TablixHeader>
@@ -3222,11 +3436,51 @@ fields!gl_holiday_flag.value = "Y", "Gray",
                       </TablixHeader>
                       <KeepWithGroup>Before</KeepWithGroup>
                     </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>1.37501in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox2">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>AVG Hours MTD</Value>
+                                    <Style>
+                                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style>
+                                  <TextAlign>Left</TextAlign>
+                                </Style>
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox2</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                      <KeepWithGroup>Before</KeepWithGroup>
+                    </TablixMember>
                   </TablixMembers>
                 </TablixRowHierarchy>
                 <DataSetName>MainDataset</DataSetName>
                 <PageName>Summary</PageName>
-                <Height>0.96875in</Height>
+                <Left>0.00003cm</Left>
+                <Height>1.21875in</Height>
                 <Width>4.35418in</Width>
                 <Style>
                   <Border>
@@ -3252,7 +3506,7 @@ fields!gl_holiday_flag.value = "Y", "Gray",
                   </Paragraph>
                 </Paragraphs>
                 <rd:DefaultName>Textbox1</rd:DefaultName>
-                <Top>1.03819in</Top>
+                <Top>1.90625in</Top>
                 <Height>0.3125in</Height>
                 <Width>8.4375in</Width>
                 <ZIndex>1</ZIndex>
@@ -3269,9 +3523,8 @@ fields!gl_holiday_flag.value = "Y", "Gray",
             </ReportItems>
             <KeepTogether>true</KeepTogether>
             <Top>0.02778in</Top>
-            <Left>0.00001in</Left>
-            <Height>1.53125in</Height>
-            <Width>8.68751in</Width>
+            <Height>2.21875in</Height>
+            <Width>8.68752in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -3279,7 +3532,7 @@ fields!gl_holiday_flag.value = "Y", "Gray",
             </Style>
           </Rectangle>
         </ReportItems>
-        <Height>1.6736in</Height>
+        <Height>2.43402in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3445,16 +3698,38 @@ fields!gl_holiday_flag.value = "Y", "Gray",
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Period">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>DefaultCurrent</DataSetName>
+          <ValueField>gl_fin_period</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Period</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Period</DataSetName>
+          <ValueField>gl_fin_period</ValueField>
+          <LabelField>gl_fin_period</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Period</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
