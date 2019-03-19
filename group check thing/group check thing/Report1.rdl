@@ -1,0 +1,1114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report MustUnderstand="df" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
+  <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
+  <AutoRefresh>0</AutoRefresh>
+  <DataSources>
+    <DataSource Name="DataSource1">
+      <DataSourceReference>DataSource1</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>ce235772-a921-49f9-8022-db76684c67da</rd:DataSourceID>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="DataSet1">
+      <Query>
+        <DataSourceName>DataSource1</DataSourceName>
+        <CommandText>SELECT  mainquery.*, ISNULL(workdaysall.number_of_work_days,0) number_of_work_days  
+FROM 
+(SELECT 
+
+
+--fin_days.gl_fin_day_in_month [glfinday]
+       CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN   [fin_days].gl_calendar_date -1 
+          WHEN  fin_days.gl_cal_day_in_week = 'Sun' THEN   [fin_days].gl_calendar_date -2
+          WHEN fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date -2 
+          ELSE fin_days.gl_calendar_date 
+          END 
+          
+           [Calender]
+              , fin_days.gl_fin_day_in_month
+              , fin_days.gl_fin_period
+          
+       , fin_days.gl_trading_days_in_mth [trading]
+       , fin_days.gl_week_end_flag
+       , fin_days.gl_holiday_flag
+    --   , [fin_days].gl_calendar_date
+       , fin_days.gl_cal_month_name
+   --    , [fin_days].gl_cal_day_in_week 
+       , hierarchylevel2hist
+       , hierarchylevel3hist 
+       , ISNULL(SUM([Hours].[Hours Recorded]), 0) as [Hours Recorded]
+    --      ,ISNULL(workdays.number_of_work_days,0) number_of_work_days
+
+
+FROM red_dw.dbo.dim_gl_date as [fin_month]
+--INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].gl_fin_month=[fin_month].gl_fin_month 
+INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].dim_gl_date_key=[fin_month].dim_gl_date_key
+and [fin_days].gl_calendar_date&lt;=CAST(GETDATE()-1 as date) 
+AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+
+
+LEFT OUTER JOIN  (
+SELECT dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key first_day_key,COUNT(*) number_of_work_days 
+FROM red_dw.dbo.dim_date
+JOIN red_Dw.dbo.[dim_date] first_day_month
+ON first_day_month.fin_month = dim_date.fin_month
+and first_day_month.fin_year = dim_date.fin_year
+and first_day_month.cal_day_in_month = 1
+WHERE dim_date.holiday_flag = 'N'
+AND dim_date.fin_day_in_week NOT IN ('Sat','Sun')
+AND dim_date.calendar_date &lt;= getdate() -1
+GROUP BY dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key )
+AS  workdays ON workdays.first_day_key = fin_days.dim_gl_date_key
+
+
+
+INNER JOIN (SELECT dim_orig_posting_date_key dim_gl_date_key, hierarchylevel2hist, hierarchylevel3hist,  ISNULL(SUM(minutes_recorded),0) / 60 as [Hours Recorded]
+                     FROM red_dw.dbo.fact_billable_time_activity
+                     INNER JOIN red_dw.dbo.dim_fed_hierarchy_history as [Current Hierarchy]
+                     on [Current Hierarchy].dim_fed_hierarchy_history_key=fact_billable_time_activity.dim_fed_hierarchy_history_key
+                     and hierarchylevel2hist in ('Legal Ops - Claims','Legal Ops - LTA')
+                     GROUP BY dim_orig_posting_date_key, hierarchylevel2hist, hierarchylevel3hist
+                     ) [Hours] on [Hours].dim_gl_date_key=[fin_days].dim_gl_date_key
+       
+where [fin_month].gl_calendar_date&lt;= CAST(GETDATE()-1 as date)
+AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+--AND fin_days.gl_fin_period = @Period
+
+
+
+GROUP BY      CASE
+            WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN
+            [fin_days].gl_calendar_date - 1
+            WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN
+            [fin_days].gl_calendar_date - 2
+            WHEN fin_days.gl_cal_day_in_week = 'Mon'
+            AND fin_days.gl_holiday_flag = 'Y' THEN
+            [fin_days].gl_calendar_date - 2
+            ELSE
+            fin_days.gl_calendar_date
+            END,
+           -- fin_days.gl_fin_day_in_month,
+            fin_days.gl_trading_days_in_mth,
+            fin_days.gl_week_end_flag,
+            fin_days.gl_holiday_flag,
+            fin_days.gl_cal_month_name,
+            Hours.hierarchylevel2hist,
+            Hours.hierarchylevel3hist
+                     , fin_days.gl_fin_day_in_month
+                     ,workdays.number_of_work_days
+                     ,fin_days.gl_fin_period
+UNION
+
+/*------------------------------------------------------------------------------------*/
+
+SELECT DISTINCT  
+
+       
+           [Calender],
+
+gl_fin_day_in_month,gl_fin_period,trading
+,gl_week_end_flag,gl_holiday_flag,gl_cal_month_name
+,dummy3.hierarchylevel2hist
+       , dummy3.hierarchylevel3hist 
+	   , 0 [Hours Recorded]
+       
+	--	  ,	0	  number_of_work_days
+     
+FROM 
+(SELECT 
+
+
+--fin_days.gl_fin_day_in_month [glfinday]
+       CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN   [fin_days].gl_calendar_date -1 
+          WHEN  fin_days.gl_cal_day_in_week = 'Sun' THEN   [fin_days].gl_calendar_date -2
+          WHEN fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date -2 
+          ELSE fin_days.gl_calendar_date 
+          END 
+          
+           [Calender]
+              , fin_days.gl_fin_day_in_month
+              , fin_days.gl_fin_period
+          
+       , fin_days.gl_trading_days_in_mth [trading]
+       , fin_days.gl_week_end_flag
+       , fin_days.gl_holiday_flag
+    --   , [fin_days].gl_calendar_date
+       , fin_days.gl_cal_month_name
+   --    , [fin_days].gl_cal_day_in_week 
+       , hierarchylevel2hist
+       , hierarchylevel3hist 
+       , 0 [Hours Recorded]
+          ,workdays.number_of_work_days
+
+
+FROM red_dw.dbo.dim_gl_date as [fin_month]
+--INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].gl_fin_month=[fin_month].gl_fin_month 
+INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].dim_gl_date_key=[fin_month].dim_gl_date_key
+and [fin_days].gl_calendar_date&lt;=CAST(GETDATE()-1 as date) 
+AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+
+
+LEFT OUTER JOIN  (
+SELECT dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key first_day_key,COUNT(*) number_of_work_days 
+FROM red_dw.dbo.dim_date
+JOIN red_Dw.dbo.[dim_date] first_day_month
+ON first_day_month.fin_month = dim_date.fin_month
+and first_day_month.fin_year = dim_date.fin_year
+and first_day_month.cal_day_in_month = 1
+WHERE dim_date.holiday_flag = 'N'
+AND dim_date.fin_day_in_week NOT IN ('Sat','Sun')
+AND dim_date.calendar_date &lt;= getdate() -1
+GROUP BY dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key )
+AS  workdays ON workdays.first_day_key = fin_days.dim_gl_date_key
+
+
+
+INNER JOIN (SELECT dim_orig_posting_date_key dim_gl_date_key, hierarchylevel2hist, hierarchylevel3hist,  ISNULL(SUM(minutes_recorded),0) / 60 as [Hours Recorded]
+                     FROM red_dw.dbo.fact_billable_time_activity
+                     INNER JOIN red_dw.dbo.dim_fed_hierarchy_history as [Current Hierarchy]
+                     on [Current Hierarchy].dim_fed_hierarchy_history_key=fact_billable_time_activity.dim_fed_hierarchy_history_key
+                     and hierarchylevel2hist in ('Legal Ops - Claims','Legal Ops - LTA')
+                     GROUP BY dim_orig_posting_date_key, hierarchylevel2hist, hierarchylevel3hist
+                     ) [Hours] on [Hours].dim_gl_date_key=[fin_days].dim_gl_date_key
+       
+where [fin_month].gl_calendar_date&lt;= CAST(GETDATE()-1 as date)
+AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+--AND fin_days.gl_fin_period = @Period
+
+
+
+GROUP BY      CASE
+            WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN
+            [fin_days].gl_calendar_date - 1
+            WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN
+            [fin_days].gl_calendar_date - 2
+            WHEN fin_days.gl_cal_day_in_week = 'Mon'
+            AND fin_days.gl_holiday_flag = 'Y' THEN
+            [fin_days].gl_calendar_date - 2
+            ELSE
+            fin_days.gl_calendar_date
+            END,
+           -- fin_days.gl_fin_day_in_month,
+            fin_days.gl_trading_days_in_mth,
+            fin_days.gl_week_end_flag,
+            fin_days.gl_holiday_flag,
+            fin_days.gl_cal_month_name,
+            Hours.hierarchylevel2hist,
+            Hours.hierarchylevel3hist
+                     , fin_days.gl_fin_day_in_month
+                     ,workdays.number_of_work_days
+                     ,fin_days.gl_fin_period
+					 ) dummy
+
+INNER JOIN 
+
+(SELECT distinct hierarchylevel2hist
+       , hierarchylevel3hist 
+       ,ISNULL(number_of_work_days,0) number_of_work_days
+	   FROM 
+(SELECT 
+
+
+--fin_days.gl_fin_day_in_month [glfinday]
+       CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN   [fin_days].gl_calendar_date -1 
+          WHEN  fin_days.gl_cal_day_in_week = 'Sun' THEN   [fin_days].gl_calendar_date -2
+          WHEN fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date -2 
+          ELSE fin_days.gl_calendar_date 
+          END 
+          
+           [Calender]
+              , fin_days.gl_fin_day_in_month
+              , fin_days.gl_fin_period
+          
+       , fin_days.gl_trading_days_in_mth [trading]
+       , fin_days.gl_week_end_flag
+       , fin_days.gl_holiday_flag
+    --   , [fin_days].gl_calendar_date
+       , fin_days.gl_cal_month_name
+   --    , [fin_days].gl_cal_day_in_week 
+       , hierarchylevel2hist
+       , hierarchylevel3hist 
+       , 0 [Hours Recorded]
+          ,workdays.number_of_work_days
+
+
+FROM red_dw.dbo.dim_gl_date as [fin_month]
+--INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].gl_fin_month=[fin_month].gl_fin_month 
+INNER JOIN red_dw.dbo.dim_gl_date as [fin_days] on [fin_days].dim_gl_date_key=[fin_month].dim_gl_date_key
+and [fin_days].gl_calendar_date&lt;=CAST(GETDATE()-1 as date) 
+AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+
+
+LEFT OUTER JOIN  (
+SELECT dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key first_day_key,COUNT(*) number_of_work_days 
+FROM red_dw.dbo.dim_date
+JOIN red_Dw.dbo.[dim_date] first_day_month
+ON first_day_month.fin_month = dim_date.fin_month
+and first_day_month.fin_year = dim_date.fin_year
+and first_day_month.cal_day_in_month = 1
+WHERE dim_date.holiday_flag = 'N'
+AND dim_date.fin_day_in_week NOT IN ('Sat','Sun')
+AND dim_date.calendar_date &lt;= getdate() -1
+GROUP BY dim_date.fin_month_no,dim_date.fin_year,first_day_month.dim_date_key )
+AS  workdays ON workdays.first_day_key = fin_days.dim_gl_date_key
+
+
+
+INNER JOIN (SELECT dim_orig_posting_date_key dim_gl_date_key, hierarchylevel2hist, hierarchylevel3hist,  ISNULL(SUM(minutes_recorded),0) / 60 as [Hours Recorded]
+                     FROM red_dw.dbo.fact_billable_time_activity
+                     INNER JOIN red_dw.dbo.dim_fed_hierarchy_history as [Current Hierarchy]
+                     on [Current Hierarchy].dim_fed_hierarchy_history_key=fact_billable_time_activity.dim_fed_hierarchy_history_key
+                     and hierarchylevel2hist in ('Legal Ops - Claims','Legal Ops - LTA')
+                     GROUP BY dim_orig_posting_date_key, hierarchylevel2hist, hierarchylevel3hist
+                     ) [Hours] on [Hours].dim_gl_date_key=[fin_days].dim_gl_date_key
+       
+where [fin_month].gl_calendar_date&lt;= CAST(GETDATE()-1 as date)
+AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+--AND fin_days.gl_fin_period = @Period
+
+
+
+GROUP BY      CASE
+            WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN
+            [fin_days].gl_calendar_date - 1
+            WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN
+            [fin_days].gl_calendar_date - 2
+            WHEN fin_days.gl_cal_day_in_week = 'Mon'
+            AND fin_days.gl_holiday_flag = 'Y' THEN
+            [fin_days].gl_calendar_date - 2
+            ELSE
+            fin_days.gl_calendar_date
+            END,
+           -- fin_days.gl_fin_day_in_month,
+            fin_days.gl_trading_days_in_mth,
+            fin_days.gl_week_end_flag,
+            fin_days.gl_holiday_flag,
+            fin_days.gl_cal_month_name,
+            Hours.hierarchylevel2hist,
+            Hours.hierarchylevel3hist
+                     , fin_days.gl_fin_day_in_month
+                     ,workdays.number_of_work_days
+                     ,fin_days.gl_fin_period
+					 ) dummy2
+					 ) dummy3 
+
+					 ON 1=1 
+	
+	) mainquery
+
+	
+
+	LEFT OUTER JOIN  (
+SELECT dim_date.fin_month_no,dim_date.fin_year,first_day_month.calendar_date first_day,COUNT(*) number_of_work_days 
+FROM red_dw.dbo.dim_date
+JOIN red_Dw.dbo.[dim_date] first_day_month
+ON first_day_month.fin_month = dim_date.fin_month
+and first_day_month.fin_year = dim_date.fin_year
+and first_day_month.cal_day_in_month = 1
+WHERE dim_date.holiday_flag = 'N'
+AND dim_date.fin_day_in_week NOT IN ('Sat','Sun')
+AND dim_date.calendar_date &lt;= getdate() -1
+GROUP BY dim_date.fin_month_no,dim_date.fin_year,first_day_month.calendar_date )
+AS  workdaysall ON workdaysall.first_day = mainquery.Calender
+
+    ORDER BY Calender</CommandText>
+        <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
+      </Query>
+      <Fields>
+        <Field Name="Calender">
+          <DataField>Calender</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="gl_fin_day_in_month">
+          <DataField>gl_fin_day_in_month</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="gl_fin_period">
+          <DataField>gl_fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="trading">
+          <DataField>trading</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="gl_week_end_flag">
+          <DataField>gl_week_end_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="gl_holiday_flag">
+          <DataField>gl_holiday_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="gl_cal_month_name">
+          <DataField>gl_cal_month_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel2hist">
+          <DataField>hierarchylevel2hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel3hist">
+          <DataField>hierarchylevel3hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Hours_Recorded">
+          <DataField>Hours Recorded</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="number_of_work_days">
+          <DataField>number_of_work_days</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems>
+          <Tablix Name="Tablix3">
+            <TablixCorner>
+              <TablixCornerRows>
+                <TablixCornerRow>
+                  <TablixCornerCell>
+                    <CellContents>
+                      <Textbox Name="Textbox16">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value />
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox16</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixCornerCell>
+                </TablixCornerRow>
+                <TablixCornerRow>
+                  <TablixCornerCell>
+                    <CellContents>
+                      <Textbox Name="Textbox17">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>gl fin day in month</Value>
+                                <Style>
+                                  <FontFamily>Arial</FontFamily>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox17</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixCornerCell>
+                </TablixCornerRow>
+              </TablixCornerRows>
+            </TablixCorner>
+            <TablixBody>
+              <TablixColumns>
+                <TablixColumn>
+                  <Width>2.5cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.5cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.5cm</Width>
+                </TablixColumn>
+              </TablixColumns>
+              <TablixRows>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Hours_Recorded">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Hours_Recorded</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox18">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox18</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Orange</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox23">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox23</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>LightBlue</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox2">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox2</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox19">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox19</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Orange</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox24">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>LightBlue</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox6">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value,"teamgroup")/max(Fields!number_of_work_days.Value,"teamgroup")</Value>
+                                  <Style>
+                                    <Format>0.00;(0.00)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox6</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox20">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value,"businessline")/max(Fields!number_of_work_days.Value,"businessline")</Value>
+                                  <Style>
+                                    <Format>0.00;(0.00)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox20</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>SlateBlue</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox25">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)/max(Fields!number_of_work_days.Value)</Value>
+                                  <Style>
+                                    <Format>0.00;(0.00)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox25</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Aqua</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+              </TablixRows>
+            </TablixBody>
+            <TablixColumnHierarchy>
+              <TablixMembers>
+                <TablixMember>
+                  <Group Name="businessline">
+                    <GroupExpressions>
+                      <GroupExpression>=Fields!hierarchylevel2hist.Value</GroupExpression>
+                    </GroupExpressions>
+                  </Group>
+                  <SortExpressions>
+                    <SortExpression>
+                      <Value>=Fields!hierarchylevel2hist.Value</Value>
+                    </SortExpression>
+                  </SortExpressions>
+                  <TablixHeader>
+                    <Size>0.6cm</Size>
+                    <CellContents>
+                      <Textbox Name="hierarchylevel2hist">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!hierarchylevel2hist.Value</Value>
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>hierarchylevel2hist</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <TablixMembers>
+                    <TablixMember>
+                      <Group Name="teamgroup">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!hierarchylevel3hist.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!hierarchylevel3hist.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                      <TablixHeader>
+                        <Size>0.6cm</Size>
+                        <CellContents>
+                          <Textbox Name="hierarchylevel3hist">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>=Fields!hierarchylevel3hist.Value</Value>
+                                    <Style>
+                                      <FontFamily>Arial</FontFamily>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>hierarchylevel3hist</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.6cm</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox15">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Total</Value>
+                                    <Style>
+                                      <FontFamily>Arial</FontFamily>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox15</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>0.6cm</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox21">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total</Value>
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox21</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <TablixMembers>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.6cm</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox22">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Total</Value>
+                                    <Style>
+                                      <FontFamily>Arial</FontFamily>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox22</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixMember>
+              </TablixMembers>
+            </TablixColumnHierarchy>
+            <TablixRowHierarchy>
+              <TablixMembers>
+                <TablixMember>
+                  <Group Name="gl_fin_day_in_month">
+                    <GroupExpressions>
+                      <GroupExpression>=Fields!Calender.Value</GroupExpression>
+                    </GroupExpressions>
+                  </Group>
+                  <SortExpressions>
+                    <SortExpression>
+                      <Value>=Fields!gl_fin_day_in_month.Value</Value>
+                    </SortExpression>
+                  </SortExpressions>
+                  <TablixHeader>
+                    <Size>3.66417cm</Size>
+                    <CellContents>
+                      <Textbox Name="Calender">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!Calender.Value</Value>
+                                <Style>
+                                  <Format>D</Format>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Calender</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>3.66417cm</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox1">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total</Value>
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox1</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>3.66417cm</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox5">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Average Per Day Right</Value>
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value />
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox5</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+              </TablixMembers>
+            </TablixRowHierarchy>
+            <DataSetName>DataSet1</DataSetName>
+            <Top>1.50495cm</Top>
+            <Left>2.00766cm</Left>
+            <Height>3cm</Height>
+            <Width>11.16417cm</Width>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Tablix>
+        </ReportItems>
+        <Height>2in</Height>
+        <Style />
+      </Body>
+      <Width>6.5in</Width>
+      <Page>
+        <PageHeight>29.7cm</PageHeight>
+        <PageWidth>21cm</PageWidth>
+        <LeftMargin>2cm</LeftMargin>
+        <RightMargin>2cm</RightMargin>
+        <TopMargin>2cm</TopMargin>
+        <BottomMargin>2cm</BottomMargin>
+        <ColumnSpacing>0.13cm</ColumnSpacing>
+        <Style />
+      </Page>
+    </ReportSection>
+  </ReportSections>
+  <ReportParametersLayout>
+    <GridLayoutDefinition>
+      <NumberOfColumns>4</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
+    </GridLayoutDefinition>
+  </ReportParametersLayout>
+  <rd:ReportUnitType>Cm</rd:ReportUnitType>
+  <rd:ReportID>e81f2c20-cadb-4846-91f7-ed07d6a3fb79</rd:ReportID>
+</Report>
