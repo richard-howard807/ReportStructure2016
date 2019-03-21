@@ -3145,6 +3145,90 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="CounselFees">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT fact_bill_detail.client_code_bill_item
+,fact_bill_detail.matter_number_bill_item
+,SUM(bill_total_excl_vat) AS CounselExpert 
+FROM red_dw.dbo.fact_bill_detail WITH(NOLOCK)
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)
+ ON fact_bill_detail.client_code_bill_item=dim_matter_header_current.client_code
+ AND fact_bill_detail.matter_number_bill_item=dim_matter_header_current.matter_number
+INNER JOIN red_dw.dbo.dim_bill_date WITH(NOLOCK) 
+ ON fact_bill_detail.dim_bill_date_key=dim_bill_date.dim_bill_date_key
+INNER JOIN red_dw.dbo.dim_bill_cost_type WITH(NOLOCK) 
+  ON fact_bill_detail.dim_bill_cost_type_key=dim_bill_cost_type.dim_bill_cost_type_key
+WHERE charge_type='disbursements' 
+AND cost_type_description IN ('Counsel','Counsel Fees','COUNSEL','COUNSEL FEES')
+GROUP BY fact_bill_detail.client_code_bill_item
+,fact_bill_detail.matter_number_bill_item</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_code_bill_item">
+          <DataField>client_code_bill_item</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_number_bill_item">
+          <DataField>matter_number_bill_item</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="CounselExpert">
+          <DataField>CounselExpert</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="MarkelTax">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>
+SELECT dim_matter_header_current.client_code 
+,dim_matter_header_current.matter_number
+,SUM([MarkelTax]) AS [Total VAT Billed to Markel In Period]
+FROM
+(SELECT 
+coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),Client.altnumber,CASE WHEN ISNUMERIC(Client.number) = 1 THEN RIGHT(CAST(CAST(Client.number AS int)  + 100000000 AS varchar(9)),8) ELSE Client.number END)  AS client_code
+,isnull(right(Matter.loadnumber, len(Matter.loadnumber) - charindex('-',Matter.loadnumber))
+,right(Matter.altnumber, len(Matter.altnumber) - charindex('-',Matter.altnumber)))  AS matter_number
+,CASE WHEN Payor.DisplayName LIKE '%Markel%' THEN  ARDetail.ARTAx ELSE 0 END AS [MarkelTax]
+FROM TE_3E_Prod.dbo.ARDetail WITH (NOLOCK)
+INNER JOIN TE_3E_Prod.dbo.InvMaster WITH (NOLOCK)
+ ON ARDetail.InvMaster=InvMaster.InvIndex
+INNER JOIN TE_3E_Prod.dbo.Matter WITH (NOLOCK) 
+ ON ARDetail.Matter=Matter.MattIndex
+INNER JOIN TE_3E_Prod.dbo.Client WITH (NOLOCK)
+ ON Matter.Client=Client.ClientIndex
+LEFT OUTER JOIN TE_3E_Prod.dbo.Payor WITH (NOLOCK) 
+ ON ARDetail.Payor=Payor.PayorIndex
+WHERE ARList IN ('Bill','BillRev')
+AND InvNumber &lt;&gt;'PURGE'
+) AS AllData
+INNER JOIN red_dw.dbo.dim_matter_header_current
+ ON AllData.client_code=dim_matter_header_current.client_code collate database_default
+ AND AllData.matter_number=dim_matter_header_current.matter_number  collate database_default 
+ AND client_group_name='Markel'
+
+WHERE client_group_name='Markel' 
+GROUP BY dim_matter_header_current.client_code
+,dim_matter_header_current.matter_number
+</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_code">
+          <DataField>client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_number">
+          <DataField>matter_number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Total_VAT_Billed_to_Markel_In_Period">
+          <DataField>Total VAT Billed to Markel In Period</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -5219,6 +5303,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -8890,6 +8975,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -8957,6 +9043,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -9024,6 +9111,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14063,7 +14151,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                    <Format>0.00</Format>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14131,6 +14219,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14198,6 +14287,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14265,6 +14355,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14467,6 +14558,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14602,6 +14694,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14663,12 +14756,15 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!fact_finance_summary_disbursements_billed_.Value</Value>
+                                  <Value>=(Fields!fact_finance_summary_disbursements_billed_.Value) - (LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
+,TRIM(Fields!client_code_bill_item.Value)&amp;TRIM(Fields!matter_number_bill_item.Value)
+,Fields!CounselExpert.Value, "CounselFees"))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14723,19 +14819,24 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox208">
+                        <Textbox Name="Textbox282">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>=IIF(ISNOTHING(LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
+,TRIM(Fields!client_code_bill_item.Value)&amp;TRIM(Fields!matter_number_bill_item.Value)
+,Fields!CounselExpert.Value, "CounselFees")),0,LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
+,TRIM(Fields!client_code_bill_item.Value)&amp;TRIM(Fields!matter_number_bill_item.Value)
+,Fields!CounselExpert.Value, "CounselFees"))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14749,7 +14850,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox208</rd:DefaultName>
+                          <rd:DefaultName>Textbox282</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -14790,19 +14891,24 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox211">
+                        <Textbox Name="Textbox283">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>=IIF(ISNOTHING(LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
+,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
+,Fields!Total_VAT_Billed_to_Markel_In_Period.Value, "MarkelTax")),0,LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
+,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
+,Fields!Total_VAT_Billed_to_Markel_In_Period.Value, "MarkelTax"))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14816,7 +14922,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox211</rd:DefaultName>
+                          <rd:DefaultName>Textbox283</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -14857,19 +14963,23 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox214">
+                        <Textbox Name="Textbox284">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>=Fields!fact_finance_summary_defence_costs_billed_.Value + Fields!fact_finance_summary_disbursements_billed_.Value +
+(LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
+,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
+,Fields!Total_VAT_Billed_to_Markel_In_Period.Value, "MarkelTax"))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -14883,7 +14993,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox214</rd:DefaultName>
+                          <rd:DefaultName>Textbox284</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -14937,6 +15047,7 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0.00</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
