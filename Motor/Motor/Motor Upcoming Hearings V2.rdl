@@ -2925,13 +2925,38 @@ ORDER BY CONVERT(DATE,[Key Date],103) DESC </CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT DISTINCT hierarchylevel4hist AS [Team]
-FROM red_dw.dbo.dim_matter_header_current AS a
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+FROM 
+(
+SELECT a.client_code
+	, a.matter_number
+	, CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) AS [Key Date]
+	, RTRIM(tskDesc) AS [Key Date Narrative]
+	, NULL AS task_amended_deleted_flag
+	, CASE WHEN tskComplete=1 THEN 'a' ELSE 'p' END  task_status
+	, CASE WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &gt;= GETDATE() THEN 'Future'
+			WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &lt; GETDATE() OR tskActive=0 THEN 'Expired/Deleted'
+			
+	  END AS [Filter]
+	, CASE WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &gt;= GETDATE() AND tskComplete=0  AND tskActive=1 THEN 'Live'
+		ELSE  'Deleted/Completed'
+		
+		END AS [Tab Filter]
+	, CASE WHEN  tskComplete=1 AND tskActive=1 THEN 'Completed'
+		WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &lt; GETDATE() AND tskActive=1   THEN 'Expired'
+		WHEN tskActive=0 AND tskComplete=0   THEN 'Deleted'
+		WHEN tskActive=0 AND tskComplete=1  THEN 'Completed/Deleted'
+		ELSE NULL
+		END AS [Flag]
+	, NULL AS dim_task_due_date_key
+	
+FROM red_dw.dbo.dim_matter_header_current AS a WITH (NOLOCK)
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) 
  ON fed_code=fee_earner_code collate database_default
  AND dss_current_flag='Y'
-INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
-AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+INNER JOIN MS_Prod.dbo.dbTasks WITH (NOLOCK) ON a.ms_fileid=dbTasks.fileID
+WHERE  CONVERT(DATE,tskDue,103) &gt;=@StartDate
 AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND hierarchylevel3hist='Motor'
 AND RTRIM(tskDesc) IN 
 (
 'REM: Appeal hearing today [CASE MAN]'
@@ -2968,6 +2993,22 @@ AND RTRIM(tskDesc) IN
 ,'Stage 3 oral hearing - today'
 ,'Trial date - today'
 )
+) AS TaskData
+INNER JOIN red_dw.dbo.fact_dimension_main
+ ON TaskData.client_code=fact_dimension_main.client_code
+ AND TaskData.matter_number=fact_dimension_main.matter_number
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH (NOLOCK) 
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_client WITH (NOLOCK) ON dim_client.client_code = fact_dimension_main.client_code
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_finance WITH (NOLOCK)  ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details WITH (NOLOCK) ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome WITH (NOLOCK) ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_court_involvement WITH (NOLOCK) ON dim_court_involvement.dim_court_involvement_key = fact_dimension_main.dim_court_involvement_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court WITH (NOLOCK) ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.fact_detail_court WITH (NOLOCK) ON fact_detail_court.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
 AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
@@ -2989,13 +3030,38 @@ AND hierarchylevel3hist='Motor'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT DISTINCT name AS [Matter Owner]
-FROM red_dw.dbo.dim_matter_header_current AS a
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+FROM 
+(
+SELECT a.client_code
+	, a.matter_number
+	, CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) AS [Key Date]
+	, RTRIM(tskDesc) AS [Key Date Narrative]
+	, NULL AS task_amended_deleted_flag
+	, CASE WHEN tskComplete=1 THEN 'a' ELSE 'p' END  task_status
+	, CASE WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &gt;= GETDATE() THEN 'Future'
+			WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &lt; GETDATE() OR tskActive=0 THEN 'Expired/Deleted'
+			
+	  END AS [Filter]
+	, CASE WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &gt;= GETDATE() AND tskComplete=0  AND tskActive=1 THEN 'Live'
+		ELSE  'Deleted/Completed'
+		
+		END AS [Tab Filter]
+	, CASE WHEN  tskComplete=1 AND tskActive=1 THEN 'Completed'
+		WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &lt; GETDATE() AND tskActive=1   THEN 'Expired'
+		WHEN tskActive=0 AND tskComplete=0   THEN 'Deleted'
+		WHEN tskActive=0 AND tskComplete=1  THEN 'Completed/Deleted'
+		ELSE NULL
+		END AS [Flag]
+	, NULL AS dim_task_due_date_key
+	
+FROM red_dw.dbo.dim_matter_header_current AS a WITH (NOLOCK)
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) 
  ON fed_code=fee_earner_code collate database_default
  AND dss_current_flag='Y'
-INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
-AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+INNER JOIN MS_Prod.dbo.dbTasks WITH (NOLOCK) ON a.ms_fileid=dbTasks.fileID
+WHERE  CONVERT(DATE,tskDue,103) &gt;=@StartDate
 AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND hierarchylevel3hist='Motor'
 AND RTRIM(tskDesc) IN 
 (
 'REM: Appeal hearing today [CASE MAN]'
@@ -3032,6 +3098,22 @@ AND RTRIM(tskDesc) IN
 ,'Stage 3 oral hearing - today'
 ,'Trial date - today'
 )
+) AS TaskData
+INNER JOIN red_dw.dbo.fact_dimension_main
+ ON TaskData.client_code=fact_dimension_main.client_code
+ AND TaskData.matter_number=fact_dimension_main.matter_number
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH (NOLOCK) 
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_client WITH (NOLOCK) ON dim_client.client_code = fact_dimension_main.client_code
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_finance WITH (NOLOCK)  ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details WITH (NOLOCK) ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome WITH (NOLOCK) ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_court_involvement WITH (NOLOCK) ON dim_court_involvement.dim_court_involvement_key = fact_dimension_main.dim_court_involvement_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court WITH (NOLOCK) ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.fact_detail_court WITH (NOLOCK) ON fact_detail_court.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
 AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
@@ -3118,14 +3200,41 @@ AND hierarchylevel3hist='Motor'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>
-SELECT DISTINCT a.client_code AS [Client Code]
-FROM red_dw.dbo.dim_matter_header_current AS a
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+
+
+SELECT DISTINCT red_dw.dbo.dim_matter_header_current.client_code AS [Client Code]
+FROM 
+(
+SELECT a.client_code
+	, a.matter_number
+	, CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) AS [Key Date]
+	, RTRIM(tskDesc) AS [Key Date Narrative]
+	, NULL AS task_amended_deleted_flag
+	, CASE WHEN tskComplete=1 THEN 'a' ELSE 'p' END  task_status
+	, CASE WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &gt;= GETDATE() THEN 'Future'
+			WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &lt; GETDATE() OR tskActive=0 THEN 'Expired/Deleted'
+			
+	  END AS [Filter]
+	, CASE WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &gt;= GETDATE() AND tskComplete=0  AND tskActive=1 THEN 'Live'
+		ELSE  'Deleted/Completed'
+		
+		END AS [Tab Filter]
+	, CASE WHEN  tskComplete=1 AND tskActive=1 THEN 'Completed'
+		WHEN CONVERT(DATE,[red_dw].[dbo].[datetimelocal](tskDue),103) &lt; GETDATE() AND tskActive=1   THEN 'Expired'
+		WHEN tskActive=0 AND tskComplete=0   THEN 'Deleted'
+		WHEN tskActive=0 AND tskComplete=1  THEN 'Completed/Deleted'
+		ELSE NULL
+		END AS [Flag]
+	, NULL AS dim_task_due_date_key
+	
+FROM red_dw.dbo.dim_matter_header_current AS a WITH (NOLOCK)
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) 
  ON fed_code=fee_earner_code collate database_default
  AND dss_current_flag='Y'
-INNER JOIN MS_Prod.dbo.dbTasks ON a.ms_fileid=dbTasks.fileID
-AND CONVERT(DATE,tskDue,103) &gt;=@StartDate
+INNER JOIN MS_Prod.dbo.dbTasks WITH (NOLOCK) ON a.ms_fileid=dbTasks.fileID
+WHERE  CONVERT(DATE,tskDue,103) &gt;=@StartDate
 AND CONVERT(DATE,tskDue,103)&lt;=@EndDate 
+AND hierarchylevel3hist='Motor'
 AND RTRIM(tskDesc) IN 
 (
 'REM: Appeal hearing today [CASE MAN]'
@@ -3162,6 +3271,22 @@ AND RTRIM(tskDesc) IN
 ,'Stage 3 oral hearing - today'
 ,'Trial date - today'
 )
+) AS TaskData
+INNER JOIN red_dw.dbo.fact_dimension_main
+ ON TaskData.client_code=fact_dimension_main.client_code
+ AND TaskData.matter_number=fact_dimension_main.matter_number
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH (NOLOCK) 
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_client WITH (NOLOCK) ON dim_client.client_code = fact_dimension_main.client_code
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH (NOLOCK) ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_finance WITH (NOLOCK)  ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details WITH (NOLOCK) ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome WITH (NOLOCK) ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_court_involvement WITH (NOLOCK) ON dim_court_involvement.dim_court_involvement_key = fact_dimension_main.dim_court_involvement_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court WITH (NOLOCK) ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.fact_detail_court WITH (NOLOCK) ON fact_detail_court.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
 AND hierarchylevel3hist='Motor'</CommandText>
       </Query>
       <Fields>
@@ -4888,6 +5013,7 @@ AND hierarchylevel3hist='Motor'</CommandText>
                                 <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
