@@ -3015,30 +3015,39 @@ dim_matter_header_current[master_client_code] = "N1001"
     <DataSet Name="SQl_FedCodes">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
         <CommandText>SELECT 
 	distinct
- fed.fed_code,
- fed.name
+ fed_code,
+ name
+ FROM MS_Prod.dbo.dbTasks WITH(NOLOCK) 
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK) 
+ ON dbtasks.fileID=ms_fileid 
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK) on fed_code=fee_earner_code collate database_default
+AND dss_current_flag='Y'
 
-FROM red_Dw.dbo.ds_sh_axxia_casact casact WITH (NOLOCK)
-LEFT JOIN red_Dw.dbo.ds_sh_axxia_cashdr cashdr WITH (NOLOCK) ON cashdr.case_id = casact.case_id AND cashdr.current_flag = 'Y'
-LEFT JOIN red_Dw.dbo.ds_sh_axxia_camatgrp camatgrp  WITH (NOLOCK) ON camatgrp.current_flag = 'Y' AND camatgrp.mg_client = cashdr.client AND camatgrp.mg_matter = cashdr.matter
-LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history fed ON fed.fed_code = camatgrp.mg_feearn AND fed.dss_current_flag = 'Y'
 
-WHERE 
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_detail_core_details.client_code
+ AND dim_matter_header_current.matter_number=dim_detail_core_details.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_health WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_detail_health.client_code
+ AND dim_matter_header_current.matter_number=dim_detail_health.matter_number
+LEFT OUTER JOIN MS_Prod.dbo.udClaimsA WITH(NOLOCK)
+ ON ms_fileid=udClaimsA.fileID
+LEFT OUTER JOIN red_dw.dbo.dim_client_involvement WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_client_involvement.client_code
+ AND dim_matter_header_current.matter_number=dim_client_involvement.matter_number 
+ 
+ 
 
-casact.current_flag = 'Y' and casact.activity_code = 'NHSA0850' AND casact.tran_done IS NULL
-AND casact.p_a_marker = 'a' AND 
---casact.activity_desc = 'ADM: Commence NHSR stage 1/final bill request' 
-casact.activity_desc LIKE 'ADM: Commence NHSR stage 1%' 
-AND cashdr.client NOT IN ('00030645','95000C','00453737') 
-AND fed.hierarchylevel4hist IN (@Team)
-ORDER BY fed.name</CommandText>
+ 
+
+WHERE tskType='MILESTONE' 
+
+
+AND tskDesc='NHSR Stage 1/Final Bill Request'
+AND tskComplete=1
+AND dim_matter_header_current.client_code NOT IN ('00030645','95000C','00453737')</CommandText>
       </Query>
       <Fields>
         <Field Name="fed_code">
@@ -3055,23 +3064,36 @@ ORDER BY fed.name</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <CommandText>SELECT 
-	distinct
- fed.hierarchylevel4hist team
+	distinct hierarchylevel4hist AS team
+ FROM MS_Prod.dbo.dbTasks WITH(NOLOCK) 
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK) 
+ ON dbtasks.fileID=ms_fileid 
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK) on fed_code=fee_earner_code collate database_default
+AND dss_current_flag='Y'
 
-FROM red_Dw.dbo.ds_sh_axxia_casact casact WITH (NOLOCK)
-LEFT JOIN red_Dw.dbo.ds_sh_axxia_cashdr cashdr WITH (NOLOCK) ON cashdr.case_id = casact.case_id AND cashdr.current_flag = 'Y'
-LEFT JOIN red_Dw.dbo.ds_sh_axxia_camatgrp camatgrp  WITH (NOLOCK) ON camatgrp.current_flag = 'Y' AND camatgrp.mg_client = cashdr.client AND camatgrp.mg_matter = cashdr.matter
-LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history fed ON fed.fed_code = camatgrp.mg_feearn AND fed.dss_current_flag = 'Y'
 
-WHERE 
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_detail_core_details.client_code
+ AND dim_matter_header_current.matter_number=dim_detail_core_details.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_health WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_detail_health.client_code
+ AND dim_matter_header_current.matter_number=dim_detail_health.matter_number
+LEFT OUTER JOIN MS_Prod.dbo.udClaimsA WITH(NOLOCK)
+ ON ms_fileid=udClaimsA.fileID
+LEFT OUTER JOIN red_dw.dbo.dim_client_involvement WITH(NOLOCK)
+ ON dim_matter_header_current.client_code=dim_client_involvement.client_code
+ AND dim_matter_header_current.matter_number=dim_client_involvement.matter_number 
+ 
+ 
 
-casact.current_flag = 'Y' and casact.activity_code = 'NHSA0850' AND casact.tran_done IS NULL
-AND casact.p_a_marker = 'a' AND
- --casact.activity_desc = 'ADM: Commence NHSR stage 1/final bill request' 
-casact.activity_desc LIKE 'ADM: Commence NHSR stage 1%' 
-AND cashdr.client NOT IN ('00030645','95000C','00453737') 
+ 
 
-ORDER BY hierarchylevel4hist</CommandText>
+WHERE tskType='MILESTONE' 
+
+
+AND tskDesc='NHSR Stage 1/Final Bill Request'
+AND tskComplete=1
+AND dim_matter_header_current.client_code NOT IN ('00030645','95000C','00453737') </CommandText>
       </Query>
       <Fields>
         <Field Name="team">
