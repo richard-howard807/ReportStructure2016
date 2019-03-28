@@ -8,180 +8,31 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>63e3626f-1a5f-4b0f-960b-72f8d91fc291</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="reporting">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>ed5692a3-a4b0-4b2c-a56b-ae0c6c8cc679</rd:DataSourceID>
+    </DataSource>
+    <DataSource Name="DataWarehouseServer_SQL2012">
+      <DataSourceReference>Data Warehouse Server SQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>fc01ae6e-5c9a-4f12-b021-ce26833fa230</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="MainDataset">
       <Query>
-        <DataSourceName>SQL2012</DataSourceName>
-        <CommandText>
------ main 
-
-
-
-WITH nofocases AS 
-
-(
-SELECT fact_dimension_main.client_code, fact_dimension_main.matter_number,
- CASE WHEN (dim_detail_finance.[output_wip_fee_arrangement]  IS NULL )
- OR 
- 
--- OR 
- 
-(dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1) )
-
-OR (DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28  AND dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate'   AND(fact_finance_summary.[commercial_costs_estimate] IS NULL OR  fact_finance_summary.[commercial_costs_estimate] &lt; 1  ) ) THEN 1 ELSE 0 END  AS [Noexceptions], 
-
-
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement]  IS NULL THEN 1 ELSE 0 END AS [Exfeearrangement], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1) THEN 1 ELSE 0 END AS [ExFixedfeeamountexception], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate' AND   DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28 AND (fact_finance_summary.[commercial_costs_estimate] IS NULL OR fact_finance_summary.[commercial_costs_estimate] &lt; 1  )THEN 1 ELSE 0 END AS [ExCommencialCosts]
-
-FROM  red_Dw.dbo. fact_dimension_main 
-INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
-LEFT OUTER JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
-LEFT OUTER JOIN red_Dw.dbo.dim_detail_finance ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
-LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
-LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
-LEFT OUTER JOIN red_dw.dbo.dim_detail_property ON dim_detail_property.dim_detail_property_key = fact_dimension_main.dim_detail_property_key
-
- 
- 
-WHERE  dim_matter_header_current.date_closed_practice_management IS NULL 
-AND hierarchylevel2  = 'Legal Ops - LTA'
-
-AND  ISNULL(exclude_from_exceptions_reports,'') &lt;&gt; 'Yes'
-AND reporting_exclusions = 0
-AND dim_matter_worktype.work_type_code NOT IN ('1114', '1143', '1101', '1077', '1106')
-AND ISNULL(dim_detail_property. [commercial_bl_status], '' )&lt;&gt; 'Pending   
-                                                  '
-
-										  AND 
-												  
- ISNULL(output_wip_fee_arrangement, '')  IN
-(
-
-
-NULL,
-'Hourly Rate                                                 ',
-
-'Hourly rate                                                 ',
-'HOURLY',
-
-
-'Fixed Fee/Fee Quote/Capped Fee                              ', ''
-)
-
-
-
-
-
-
-
-
-
-
-)
-
-
-
-SELECT 
-hierarchylevel2hist,
-hierarchylevel3hist, 
-hierarchylevel4hist,dim_detail_finance.client_code [Client Code],
-dim_detail_finance.matter_number [Matter Number ], 
-matter_description [Matter Description ], 
-dim_fed_hierarchy_history.name [Fee Earner Name ], 
-dbo.dim_matter_header_current.date_opened_case_management [Open Date], 
-date_closed_case_management [Closed Date ],
-1 AS [Count ] ,
-ISNULL(nofocases.Exfeearrangement, 0) + ISNULL(nofocases.ExFixedfeeamountexception,0) + ISNULL(nofocases.ExCommencialCosts,0) AS  [NumberOfExceptions], 
-nofocases.Noexceptions [Number of Cases with Exceptions ],
-fact_finance_summary.[fixed_fee_amount] [Fixed Fee Amount ], 
-dim_detail_finance.[output_wip_fee_arrangement] [Fee Arrangement ],
-fact_finance_summary.[commercial_costs_estimate][Current Costs Estimate], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement]  IS NULL THEN 1 ELSE 0 END AS [Exfeearrangement], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1)THEN 1 ELSE 0 END AS [ExFixedfeeamountexception], 
-CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate' AND  DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28 AND( fact_finance_summary.[commercial_costs_estimate] IS NULL  OR fact_finance_summary.[commercial_costs_estimate] &lt; 1 ) THEN 1 ELSE 0 END AS [ExCommencialCosts]
- FROM red_dw.dbo.fact_dimension_main 
- inner JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
- INNER JOIN dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key 
- INNER JOIN red_dw.dbo.dim_detail_finance ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
- LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
- LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
- LEFT OUTER JOIN nofocases ON nofocases.client_code = dim_detail_finance.client_code AND nofocases.matter_number = dim_detail_finance.matter_number
- LEFT OUTER JOIN red_dw.dbo.dim_detail_property ON dim_detail_property.dim_detail_property_key = fact_dimension_main.dim_detail_property_key
-
-
- 
-WHERE  dim_matter_header_current.date_closed_practice_management IS NULL 
-
-AND  ISNULL(exclude_from_exceptions_reports,'') &lt;&gt; 'Yes'
-AND hierarchylevel2  = 'Legal Ops - LTA'
-AND reporting_exclusions = 0
-AND dim_matter_worktype.work_type_code NOT IN ('1114', '1143', '1101', '1077', '1106')
-AND ISNULL(dim_detail_property. [commercial_bl_status], '' )&lt;&gt; 'Pending   
-                                                  '
-												  AND 
-												  
- ISNULL(output_wip_fee_arrangement, '')  IN
-(
-
-
-NULL,
-'Hourly Rate                                                 ',
-
-'Hourly rate                                                 ',
-'HOURLY',
-
-
-'Fixed Fee/Fee Quote/Capped Fee                              ', ''
-)
-
-
-
-
-
-
-
---AND (CASE WHEN dim_detail_finance.[output_wip_fee_arrangement]  IS NULL THEN 1 ELSE 0 END = 1  
---OR CASE WHEN dim_detail_finance.[output_wip_fee_arrangement] ='Fixed Fee/Fee Quote/Capped Fee' AND fact_finance_summary.[fixed_fee_amount] IS NULL THEN 1 ELSE 0 END = 1 
---OR( CASE WHEN DATEDIFF(d,dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28 AND fact_finance_summary.[commercial_costs_estimate] IS NULL THEN 1 ELSE 0 END )= 1 )
-GROUP BY	ISNULL(nofocases.Exfeearrangement, 0) + ISNULL(nofocases.ExFixedfeeamountexception, 0)
-            + ISNULL(nofocases.ExCommencialCosts, 0),
-            CASE
-            WHEN dim_detail_finance.[output_wip_fee_arrangement] IS NULL THEN
-            1
-            ELSE
-            0
-            END,
-            CASE
-            WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Fixed Fee/Fee Quote/Capped Fee'
-            AND (fact_finance_summary.[fixed_fee_amount] IS NULL OR fact_finance_summary.[fixed_fee_amount] &lt;1)THEN
-            1
-            ELSE
-            0
-            END,
-            CASE
-            WHEN dim_detail_finance.[output_wip_fee_arrangement] = 'Hourly rate'  AND DATEDIFF(d, dbo.dim_matter_header_current.date_opened_case_management, GETDATE()) &gt; 28
-            AND (fact_finance_summary.[commercial_costs_estimate] IS NULL 
-			OR fact_finance_summary.[commercial_costs_estimate] &lt; 1)  THEN
-            1
-            ELSE
-            0
-            END,
-hierarchylevel2hist,
-            hierarchylevel3hist,
-            hierarchylevel4hist,
-            dim_detail_finance.client_code,
-            dim_detail_finance.matter_number,
-            matter_description,
-            name,
-            date_opened_case_management,
-            date_closed_case_management,
-            nofocases.Noexceptions,
-            fact_finance_summary.fixed_fee_amount,
-            output_wip_fee_arrangement,
-            commercial_costs_estimate</CommandText>
+        <DataSourceName>reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@FedCode">
+            <Value>=Parameters!FedCode.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Level">
+            <Value>=Parameters!Level.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>LTAExceptions</CommandText>
       </Query>
       <Fields>
         <Field Name="hierarchylevel2hist">
@@ -257,6 +108,75 @@ hierarchylevel2hist,
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
+    </DataSet>
+    <DataSet Name="param_Level">
+      <Query>
+        <DataSourceName>DataWarehouseServer_SQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Username">
+            <Value>=Parameters!Username.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>AreaManaged_Level</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Level">
+          <DataField>Level</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="mdx">
+          <DataField>mdx</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="sql">
+          <DataField>sql</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="default">
+          <DataField>default</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_FedCode">
+      <Query>
+        <DataSourceName>DataWarehouseServer_SQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Username">
+            <Value>=Parameters!Username.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>AreaManaged_Level</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Level">
+          <DataField>Level</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="mdx">
+          <DataField>mdx</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="sql">
+          <DataField>sql</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="default">
+          <DataField>default</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+      <Filters>
+        <Filter>
+          <FilterExpression>=Fields!Level.Value</FilterExpression>
+          <Operator>Equal</Operator>
+          <FilterValues>
+            <FilterValue>=Parameters!Level.Value</FilterValue>
+          </FilterValues>
+        </Filter>
+      </Filters>
     </DataSet>
   </DataSets>
   <ReportSections>
@@ -1753,10 +1673,73 @@ hierarchylevel2hist,
       </Page>
     </ReportSection>
   </ReportSections>
+  <ReportParameters>
+    <ReportParameter Name="Username">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>=MID(User!UserID,5,LEN(User!UserID)-4)</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Username</Prompt>
+      <Hidden>true</Hidden>
+    </ReportParameter>
+    <ReportParameter Name="Level">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>Individual</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Level</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_Level</DataSetName>
+          <ValueField>Level</ValueField>
+          <LabelField>Level</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="FedCode">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_FedCode</DataSetName>
+          <ValueField>sql</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Fed Code</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_FedCode</DataSetName>
+          <ValueField>sql</ValueField>
+          <LabelField>sql</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
+  </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>4</NumberOfColumns>
       <NumberOfRows>2</NumberOfRows>
+      <CellDefinitions>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>Username</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>Level</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>3</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>FedCode</ParameterName>
+        </CellDefinition>
+      </CellDefinitions>
     </GridLayoutDefinition>
   </ReportParametersLayout>
   <EmbeddedImages>
