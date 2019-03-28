@@ -2775,18 +2775,26 @@ ORDER BY dim_client[client_code_trimmed]
           </QueryParameter>
         </QueryParameters>
         <CommandText>
-SELECT a.client_code AS [Client]
-,a.matter_number AS [Matter]
-,SUM(a.wiphrs) AS HoursPosted
-,SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate THEN a.wiphrs ELSE 0 END)
+SELECT a.client_code AS Client
+,a.matter_number AS Matter
+,SUM(CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.edithrs,a.wiphrs) END)  AS Hrs
+,SUM(CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.editamt,a.wipamt) END)  AS Revenue
+,SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate
+THEN (CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.edithrs,a.wiphrs) END) ELSE 0 END) HrsDateRange
+,SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate
+THEN (CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.editamt,a.wipamt) END) ELSE 0 END) RevenueDateRange
+
 FROM red_dw.dbo.fact_all_time_activity AS a
-INNER JOIN red_dw.dbo.dim_matter_header_current
- ON dim_matter_header_current.dim_matter_header_curr_key = a.dim_matter_header_curr_key
+INNER JOIN TE_3E_Prod.dbo.Timecard AS b
+  ON a.transaction_sequence_number=b.TimeIndex
 LEFT OUTER JOIN red_dw.dbo.dim_transaction_date 
  ON dim_transaction_date.dim_transaction_date_key = a.dim_transaction_date_key
 WHERE a.client_code IN ('W15593','00696670')
+
 GROUP BY a.client_code,a.matter_number
-HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate THEN a.wiphrs ELSE 0 END)&gt;0</CommandText>
+
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client">
@@ -2797,12 +2805,20 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
           <DataField>Matter</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="HoursPosted">
-          <DataField>HoursPosted</DataField>
+        <Field Name="Hrs">
+          <DataField>Hrs</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="ID">
-          <DataField />
+        <Field Name="Revenue">
+          <DataField>Revenue</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="HrsDateRange">
+          <DataField>HrsDateRange</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="RevenueDateRange">
+          <DataField>RevenueDateRange</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
@@ -4760,7 +4776,7 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
                                     <TextRun>
                                       <Value>=LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
 ,TRIM(Fields!Client.Value)&amp;TRIM(Fields!Matter.Value)
-,Fields!HoursPosted.Value, "HoursRecorded")</Value>
+,Fields!Hrs.Value, "HoursRecorded")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4829,7 +4845,7 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
                                   <TextRuns>
                                     <TextRun>
                                       <Value>=Lookup(TRIM(Fields!dim_client_client_code_.Value) &amp; TRIM(Fields!dim_matter_header_current_matter_number_.Value), TRIM(Fields!Client.Value) &amp; TRIM(Fields!Matter.Value)
-,Fields!ID.Value, "HoursRecorded")</Value>
+,Fields!HrsDateRange.Value, "HoursRecorded")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5944,7 +5960,7 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
                 <Filters>
                   <Filter>
                     <FilterExpression>=IIF(ISNOTHING(Lookup(TRIM(Fields!dim_client_client_code_.Value) &amp; TRIM(Fields!dim_matter_header_current_matter_number_.Value), TRIM(Fields!Client.Value) &amp; TRIM(Fields!Matter.Value)
-,Fields!ID.Value, "HoursRecorded")),1,0)</FilterExpression>
+,Fields!HrsDateRange.Value, "HoursRecorded")),1,0)</FilterExpression>
                     <Operator>Equal</Operator>
                     <FilterValues>
                       <FilterValue>=0</FilterValue>
@@ -5953,7 +5969,7 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
                 </Filters>
                 <Top>0.0441cm</Top>
                 <Height>1.01041in</Height>
-                <Width>31.60069in</Width>
+                <Width>31.6007in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -5967,7 +5983,7 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>1.02777in</Height>
-            <Width>31.60069in</Width>
+            <Width>31.6007in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -6011,7 +6027,7 @@ HAVING SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate T
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>31.60069in</Width>
+      <Width>31.6007in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
