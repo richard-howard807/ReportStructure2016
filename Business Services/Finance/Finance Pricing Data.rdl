@@ -2461,11 +2461,19 @@ WHERE  name ='Finance_Pricing_Data.png'</CommandText>
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="OpenedDate">
-            <Value>=Parameters!OpenedDate.Value</Value>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
-          <QueryParameter Name="ClosedDate">
-            <Value>=Parameters!ClosedDate.Value</Value>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
           </QueryParameter>
           <QueryParameter Name="Division">
             <Value>=JOIN(Parameters!Division.Value,"|")</Value>
@@ -2495,6 +2503,7 @@ MEASURE TimeTransactions[HoursPosted]=
 	 CALCULATE(SUM(TimeTransactions[MinutesRecorded]), NOT PATHCONTAINS("Billed",TimeTransactions[TransactionType]))
 
 EVALUATE(
+FILTER(
 CALCULATETABLE(
 SUMMARIZE(
 TimeTransactions
@@ -2521,19 +2530,21 @@ TimeTransactions
 , "Time Charge Value", SUM(TimeTransactions[timeChargeValue])
 , "Billed Time", [HoursBilled]/60
 , "Posted Time", [HoursPosted]/60
+, "Client", CONCATENATE(dimClient[ClientCode], CONCATENATE(" ",dimClient[ClientName]))
 )
 //, dimClient[ClientCode]="A1001"
 //, dimDateMatterClosed[DateMatterClosedDate]=blank()
 //, dimDateMatterOpened[DateMatterOpenedDate]&gt;=VALUE("2018-10-01")
 , TimeTransactions[ReportingExclusions]=0
-, dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenedDate)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenedDate)) 
-, dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDate)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDate))
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
 , PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine])
 , PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea])
 , PATHCONTAINS(@Team, dimMatterFEDHierarchy[MatterTeam])
 , PATHCONTAINS(@ClientGroupName, dimClient[ClientGroupName])
-, PATHCONTAINS(@Client, dimClient[ClientName])
 , PATHCONTAINS(@TimeActivityType, dimActivityTimeType[activity_description])
+)
+, PATHCONTAINS(@Client, [Client])
 )
 )
 Order by dimClient[ClientCode]
@@ -3000,17 +3011,29 @@ Order by dimClient[ClientCode]
           <DataField>[Posted Time]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="ID_Client_">
+          <DataField>[Client]</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="DAXCD">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="OpenedDate">
-            <Value>=Parameters!OpenedDate.Value</Value>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
-          <QueryParameter Name="ClosedDate">
-            <Value>=Parameters!ClosedDate.Value</Value>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
           </QueryParameter>
           <QueryParameter Name="Division">
             <Value>=JOIN(Parameters!Division.Value,"|")</Value>
@@ -3029,10 +3052,12 @@ Order by dimClient[ClientCode]
           </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
+Filter(
 CALCULATETABLE(
 SUMMARIZE(
 fact_dimension_main
 , dim_client[client_code]
+, dim_client[client_name]
 , dim_matter_header_current[matter_number]
 , dim_matter_header_current[master_client_code]
 , dim_matter_header_current[master_matter_number]
@@ -3042,16 +3067,18 @@ fact_dimension_main
 , dim_detail_client[service_category]
 , dim_detail_core_details[track]
 , fact_finance_summary[damages_reserve]
+, "Client", CONCATENATE(dim_client[client_code], CONCATENATE(" ",dim_client[client_name]))
 )
 , dim_matter_header_current[reporting_exclusions]=0
-//, dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]=blank()
-, dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]&gt;=IF(VALUE(@OpenedDate)=BLANK(), VALUE("1900-01-01"), VALUE(@OpenedDate))
-, dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]&lt;=IF(VALUE(@ClosedDate)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDate))
 , PATHCONTAINS(@Division, dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
 , PATHCONTAINS(@Department, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area])
 , PATHCONTAINS(@Team, dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 , PATHCONTAINS(@ClientGroupName, dim_client[client_group_name])
-, PATHCONTAINS(@Client, dim_client[client_name])
+
+, (dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
+)
+, PATHCONTAINS(@Client, [Client])
 )
 )</CommandText>
         <rd:DesignerState>
@@ -3321,6 +3348,14 @@ fact_dimension_main
           <DataField>fact_finance_summary[damages_reserve]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="ID_Client_">
+          <DataField>[Client}</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
+        </Field>
+        <Field Name="dim_client_client_name_">
+          <DataField>dim_client[client_name]</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="param_team">
@@ -3332,6 +3367,22 @@ fact_dimension_main
           </QueryParameter>
           <QueryParameter Name="Department">
             <Value>=JOIN(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
@@ -3345,6 +3396,9 @@ TimeTransactions
 , TimeTransactions[ReportingExclusions]=0
 , PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine])
 , PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea])
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
+
 )
 )</CommandText>
         <rd:DesignerState>
@@ -3447,6 +3501,22 @@ TimeTransactions
           <QueryParameter Name="Division">
             <Value>=JOIN(Parameters!Division.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
 CALCULATETABLE(
@@ -3457,6 +3527,9 @@ TimeTransactions
 )
 , TimeTransactions[ReportingExclusions]=0
 , PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine])
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
+
 )
 )</CommandText>
         <rd:DesignerState>
@@ -3540,11 +3613,19 @@ TimeTransactions
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="OpenedDate">
-            <Value>=Parameters!OpenedDate.Value</Value>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
-          <QueryParameter Name="ClosedDate">
-            <Value>=Parameters!ClosedDate.Value</Value>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
@@ -3554,8 +3635,8 @@ TimeTransactions
 , dimMatterFEDHierarchy[MatterBusinessLine]
 )
 , TimeTransactions[ReportingExclusions]=0
-, dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenedDate)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenedDate)) 
-, dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDate)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDate))
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
 )
 )</CommandText>
         <rd:DesignerState>
@@ -3660,6 +3741,22 @@ TimeTransactions
           <QueryParameter Name="Team">
             <Value>=JOIN(Parameters!Team.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
 CALCULATETABLE(
@@ -3671,6 +3768,9 @@ TimeTransactions
 , PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine])
 , PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea])
 , PATHCONTAINS(@Team, dimMatterFEDHierarchy[MatterTeam])
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
+
 )
 )
 ORDER BY dimClient[ClientGroupName]</CommandText>
@@ -3795,21 +3895,42 @@ ORDER BY dimClient[ClientGroupName]</Statement>
           <QueryParameter Name="ClientGroupName">
             <Value>=JOIN(Parameters!ClientGroupName.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
 CALCULATETABLE(
 SUMMARIZE(
 TimeTransactions
 , dimClient[ClientName]
+, dimClient[ClientCode]
+, "Client", CONCATENATE(dimClient[ClientCode], CONCATENATE(" ",dimClient[ClientName]))
 )
 , TimeTransactions[ReportingExclusions]=0
 , PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine])
 , PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea])
 , PATHCONTAINS(@Team, dimMatterFEDHierarchy[MatterTeam])
 , PATHCONTAINS(@ClientGroupName, dimClient[ClientGroupName])
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
+
 )
 )
-ORDER BY dimClient[ClientName]</CommandText>
+ORDER BY dimClient[ClientCode],dimClient[ClientName]</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -3927,17 +4048,33 @@ ORDER BY dimClient[ClientName]</Statement>
           <DataField>dimClient[ClientName]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="dimClient_ClientCode_">
+          <DataField>dimClient[ClientCode]</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
+        </Field>
+        <Field Name="ID_Client_">
+          <DataField>[Client]</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="param_time_act">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="OpenedDate">
-            <Value>=Parameters!OpenedDate.Value</Value>
+          <QueryParameter Name="OpenDateFrom">
+            <Value>=Parameters!OpenDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
-          <QueryParameter Name="ClosedDate">
-            <Value>=Parameters!ClosedDate.Value</Value>
+          <QueryParameter Name="OpenDateTo">
+            <Value>=Parameters!OpenDateTo.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateFrom">
+            <Value>=Parameters!ClosedDateFrom.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="ClosedDateTo">
+            <Value>=Parameters!ClosedDateTo.Value</Value>
           </QueryParameter>
           <QueryParameter Name="Division">
             <Value>=JOIN(Parameters!Division.Value,"|")</Value>
@@ -3951,9 +4088,6 @@ ORDER BY dimClient[ClientName]</Statement>
           <QueryParameter Name="ClientGroupName">
             <Value>=JOIN(Parameters!ClientGroupName.Value,"|")</Value>
           </QueryParameter>
-          <QueryParameter Name="Client">
-            <Value>=JOIN(Parameters!Client.Value,"|")</Value>
-          </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
 CALCULATETABLE(
@@ -3964,13 +4098,12 @@ TimeTransactions
 , "TimeActivityType", CONCATENATE(dimActivityTimeType[activity_code],CONCATENATE(" ", dimActivityTimeType[activity_description]))
 )
 , TimeTransactions[ReportingExclusions]=0
-, dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenedDate)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenedDate)) 
-, dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDate)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDate))
 , PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine])
 , PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea])
 , PATHCONTAINS(@Team, dimMatterFEDHierarchy[MatterTeam])
 , PATHCONTAINS(@ClientGroupName, dimClient[ClientGroupName])
-, PATHCONTAINS(@Client, dimClient[ClientName])
+, (dimDateMatterOpened[DateMatterOpenedDate]&gt;= IF(VALUE(@OpenDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@OpenDateFrom)) &amp;&amp; dimDateMatterOpened[DateMatterOpenedDate]&lt;= IF(VALUE(@OpenDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@OpenDateTo)))
+, (dimDateMatterClosed[DateMatterClosedDate]&gt;= IF(VALUE(@ClosedDateFrom)=BLANK(), VALUE("1900-01-01"),VALUE(@ClosedDateFrom)) &amp;&amp; dimDateMatterClosed[DateMatterClosedDate]&lt;= IF(VALUE(@ClosedDateTo)=BLANK(), VALUE("3000-01-01"), VALUE(@ClosedDateTo)))
 )
 )
 order by dimActivityTimeType[activity_code]</CommandText>
@@ -8035,7 +8168,6 @@ Fields!fact_finance_summary_damages_reserve_.Value, "DAXCD")</Value>
                                 <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -10589,15 +10721,25 @@ Fields!fact_finance_summary_damages_reserve_.Value, "DAXCD")</Value>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
-    <ReportParameter Name="OpenedDate">
+    <ReportParameter Name="OpenDateFrom">
       <DataType>DateTime</DataType>
       <Nullable>true</Nullable>
-      <Prompt>Opened Date</Prompt>
+      <Prompt>Open Date From</Prompt>
     </ReportParameter>
-    <ReportParameter Name="ClosedDate">
+    <ReportParameter Name="OpenDateTo">
       <DataType>DateTime</DataType>
       <Nullable>true</Nullable>
-      <Prompt>Closed Date</Prompt>
+      <Prompt>Open Date To</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ClosedDateFrom">
+      <DataType>DateTime</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Closed Date From</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ClosedDateTo">
+      <DataType>DateTime</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Closed Date To</Prompt>
     </ReportParameter>
     <ReportParameter Name="Division">
       <DataType>String</DataType>
@@ -10652,6 +10794,7 @@ Fields!fact_finance_summary_damages_reserve_.Value, "DAXCD")</Value>
           <Value>0</Value>
         </Values>
       </DefaultValue>
+      <AllowBlank>true</AllowBlank>
       <Prompt>Client Group Name</Prompt>
       <ValidValues>
         <DataSetReference>
@@ -10664,17 +10807,12 @@ Fields!fact_finance_summary_damages_reserve_.Value, "DAXCD")</Value>
     </ReportParameter>
     <ReportParameter Name="Client">
       <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>0</Value>
-        </Values>
-      </DefaultValue>
       <Prompt>Client</Prompt>
       <ValidValues>
         <DataSetReference>
           <DataSetName>param_client</DataSetName>
-          <ValueField>dimClient_ClientName_</ValueField>
-          <LabelField>dimClient_ClientName_</LabelField>
+          <ValueField>ID_Client_</ValueField>
+          <LabelField>ID_Client_</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
@@ -10695,7 +10833,7 @@ Fields!fact_finance_summary_damages_reserve_.Value, "DAXCD")</Value>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>5</NumberOfRows>
+      <NumberOfRows>7</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -10705,41 +10843,51 @@ Fields!fact_finance_summary_damages_reserve_.Value, "DAXCD")</Value>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>OpenedDate</ParameterName>
+          <ParameterName>OpenDateFrom</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>ClosedDate</ParameterName>
+          <ParameterName>OpenDateTo</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
+          <ParameterName>ClosedDateFrom</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>ClosedDateTo</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>Division</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>2</RowIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>Department</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
+          <RowIndex>4</RowIndex>
           <ParameterName>Team</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>3</RowIndex>
+          <RowIndex>4</RowIndex>
           <ParameterName>ClientGroupName</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>4</RowIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>Client</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>4</RowIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>TimeActivityType</ParameterName>
         </CellDefinition>
       </CellDefinitions>
