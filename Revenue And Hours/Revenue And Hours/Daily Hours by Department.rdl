@@ -1,0 +1,1147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report MustUnderstand="df" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:df="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition/defaultfontfamily">
+  <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
+  <AutoRefresh>0</AutoRefresh>
+  <DataSources>
+    <DataSource Name="DailyHours">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>c1f89982-e79d-4978-8f68-360e3fafa9f1</rd:DataSourceID>
+    </DataSource>
+  </DataSources>
+  <DataSets>
+    <DataSet Name="DailyHours">
+      <Query>
+        <DataSourceName>DailyHours</DataSourceName>
+        <CommandText>SELECT        mainquery.Calender, mainquery.gl_fin_day_in_month, mainquery.gl_fin_period, mainquery.trading, mainquery.gl_week_end_flag, mainquery.gl_holiday_flag, mainquery.gl_cal_month_name, 
+                         mainquery.hierarchylevel2hist, mainquery.hierarchylevel3hist, mainquery.[Hours Recorded], ISNULL(workdaysall.number_of_work_days, 0) AS number_of_work_days,
+						 dim_date.current_fin_month
+FROM            (SELECT        CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
+                                                     = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END AS Calender, fin_days.gl_fin_day_in_month, fin_days.gl_fin_period, 
+                                                    fin_days.gl_trading_days_in_mth AS trading, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours.hierarchylevel2hist, Hours.hierarchylevel3hist, 
+                                                    ISNULL(SUM(Hours.[Hours Recorded]), 0) AS [Hours Recorded]
+                          FROM            red_dw.dbo.dim_gl_date AS fin_month INNER JOIN
+                                                    red_dw.dbo.dim_gl_date AS fin_days ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date) AND 
+                                                    fin_days.gl_calendar_date &gt;= '2019-03-01' LEFT OUTER JOIN
+                                                        (SELECT        red_dw.dbo.dim_date.fin_month_no, red_dw.dbo.dim_date.fin_year, first_day_month.dim_date_key AS first_day_key, COUNT(*) AS number_of_work_days
+                                                          FROM            red_dw.dbo.dim_date INNER JOIN
+                                                                                    red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = red_dw.dbo.dim_date.fin_month AND first_day_month.fin_year = red_dw.dbo.dim_date.fin_year AND 
+                                                                                    first_day_month.cal_day_in_month = 1
+                                                          WHERE        (red_dw.dbo.dim_date.holiday_flag = 'N') AND (red_dw.dbo.dim_date.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (red_dw.dbo.dim_date.calendar_date &lt;= GETDATE() - 1)
+                                                          GROUP BY red_dw.dbo.dim_date.fin_month_no, red_dw.dbo.dim_date.fin_year, first_day_month.dim_date_key) AS workdays ON workdays.first_day_key = fin_days.dim_gl_date_key INNER JOIN
+                                                        (SELECT        red_dw.dbo.fact_billable_time_activity.dim_orig_posting_date_key AS dim_gl_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist, 
+                                                                                    ISNULL(SUM(red_dw.dbo.fact_billable_time_activity.minutes_recorded), 0) / 60 AS [Hours Recorded]
+                                                          FROM            red_dw.dbo.fact_billable_time_activity INNER JOIN
+                                                                                    red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy] ON 
+                                                                                    [Current Hierarchy].dim_fed_hierarchy_history_key = red_dw.dbo.fact_billable_time_activity.dim_fed_hierarchy_history_key AND 
+                                                                                    [Current Hierarchy].hierarchylevel2hist IN ('Legal Ops - Claims', 'Legal Ops - LTA')
+                                                          GROUP BY red_dw.dbo.fact_billable_time_activity.dim_orig_posting_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist) AS Hours ON 
+                                                    Hours.dim_gl_date_key = fin_days.dim_gl_date_key
+                          WHERE        (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date)) AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
+                          GROUP BY CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
+                                                     = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END, fin_days.gl_trading_days_in_mth, fin_days.gl_week_end_flag, 
+                                                    fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours.hierarchylevel2hist, Hours.hierarchylevel3hist, fin_days.gl_fin_day_in_month, workdays.number_of_work_days, 
+                                                    fin_days.gl_fin_period
+                          UNION
+                          SELECT DISTINCT 
+                                                   [dummy].Calender, [dummy].gl_fin_day_in_month, [dummy].gl_fin_period, [dummy].trading, [dummy].gl_week_end_flag, [dummy].gl_holiday_flag, [dummy].gl_cal_month_name, 
+                                                   dummy3.hierarchylevel2hist, dummy3.hierarchylevel3hist, 0 AS [Hours Recorded]
+                          FROM            (SELECT        CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
+                                                                               = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END AS Calender, fin_days.gl_fin_day_in_month, 
+                                                                              fin_days.gl_fin_period, fin_days.gl_trading_days_in_mth AS trading, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours_2.hierarchylevel2hist, 
+                                                                              Hours_2.hierarchylevel3hist, 0 AS [Hours Recorded], workdays_2.number_of_work_days
+                                                    FROM            red_dw.dbo.dim_gl_date AS fin_month INNER JOIN
+                                                                              red_dw.dbo.dim_gl_date AS fin_days ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date) AND 
+                                                                              fin_days.gl_calendar_date &gt;= '2019-03-01' LEFT OUTER JOIN
+                                                                                  (SELECT        dim_date_3.fin_month_no, dim_date_3.fin_year, first_day_month.dim_date_key AS first_day_key, COUNT(*) AS number_of_work_days
+                                                                                    FROM            red_dw.dbo.dim_date AS dim_date_3 INNER JOIN
+                                                                                                              red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = dim_date_3.fin_month AND first_day_month.fin_year = dim_date_3.fin_year AND 
+                                                                                                              first_day_month.cal_day_in_month = 1
+                                                                                    WHERE        (dim_date_3.holiday_flag = 'N') AND (dim_date_3.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (dim_date_3.calendar_date &lt;= GETDATE() - 1)
+                                                                                    GROUP BY dim_date_3.fin_month_no, dim_date_3.fin_year, first_day_month.dim_date_key) AS workdays_2 ON workdays_2.first_day_key = fin_days.dim_gl_date_key INNER JOIN
+                                                                                  (SELECT        fact_billable_time_activity_2.dim_orig_posting_date_key AS dim_gl_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist, 
+                                                                                                              ISNULL(SUM(fact_billable_time_activity_2.minutes_recorded), 0) / 60 AS [Hours Recorded]
+                                                                                    FROM            red_dw.dbo.fact_billable_time_activity AS fact_billable_time_activity_2 INNER JOIN
+                                                                                                              red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy] ON 
+                                                                                                              [Current Hierarchy].dim_fed_hierarchy_history_key = fact_billable_time_activity_2.dim_fed_hierarchy_history_key AND 
+                                                                                                              [Current Hierarchy].hierarchylevel2hist IN ('Legal Ops - Claims', 'Legal Ops - LTA')
+                                                                                    GROUP BY fact_billable_time_activity_2.dim_orig_posting_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist) AS Hours_2 ON 
+                                                                              Hours_2.dim_gl_date_key = fin_days.dim_gl_date_key
+                                                    WHERE        (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date)) AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
+                                                    GROUP BY CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
+                                                                               = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END, fin_days.gl_trading_days_in_mth, fin_days.gl_week_end_flag, 
+                                                                              fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours_2.hierarchylevel2hist, Hours_2.hierarchylevel3hist, fin_days.gl_fin_day_in_month, workdays_2.number_of_work_days, 
+                                                                              fin_days.gl_fin_period) AS [dummy] INNER JOIN
+                                                       (SELECT DISTINCT hierarchylevel2hist, hierarchylevel3hist, ISNULL(number_of_work_days, 0) AS number_of_work_days
+                                                         FROM            (SELECT        CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN
+                                                                                                              fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END AS Calender, 
+                                                                                                             fin_days.gl_fin_day_in_month, fin_days.gl_fin_period, fin_days.gl_trading_days_in_mth AS trading, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, 
+                                                                                                             fin_days.gl_cal_month_name, Hours_1.hierarchylevel2hist, Hours_1.hierarchylevel3hist, 0 AS [Hours Recorded], workdays_1.number_of_work_days
+                                                                                   FROM            red_dw.dbo.dim_gl_date AS fin_month INNER JOIN
+                                                                                                             red_dw.dbo.dim_gl_date AS fin_days ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date) AND 
+                                                                                                             fin_days.gl_calendar_date &gt;= '2019-03-01' LEFT OUTER JOIN
+                                                                                                                 (SELECT        dim_date_2.fin_month_no, dim_date_2.fin_year, first_day_month.dim_date_key AS first_day_key, COUNT(*) AS number_of_work_days
+                                                                                                                   FROM            red_dw.dbo.dim_date AS dim_date_2 INNER JOIN
+                                                                                                                                             red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = dim_date_2.fin_month AND first_day_month.fin_year = dim_date_2.fin_year AND 
+                                                                                                                                             first_day_month.cal_day_in_month = 1
+                                                                                                                   WHERE        (dim_date_2.holiday_flag = 'N') AND (dim_date_2.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (dim_date_2.calendar_date &lt;= GETDATE() - 1)
+                                                                                                                   GROUP BY dim_date_2.fin_month_no, dim_date_2.fin_year, first_day_month.dim_date_key) AS workdays_1 ON 
+                                                                                                             workdays_1.first_day_key = fin_days.dim_gl_date_key INNER JOIN
+                                                                                                                 (SELECT        fact_billable_time_activity_1.dim_orig_posting_date_key AS dim_gl_date_key, [Current Hierarchy].hierarchylevel2hist, 
+                                                                                                                                             [Current Hierarchy].hierarchylevel3hist, ISNULL(SUM(fact_billable_time_activity_1.minutes_recorded), 0) / 60 AS [Hours Recorded]
+                                                                                                                   FROM            red_dw.dbo.fact_billable_time_activity AS fact_billable_time_activity_1 INNER JOIN
+                                                                                                                                             red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy] ON 
+                                                                                                                                             [Current Hierarchy].dim_fed_hierarchy_history_key = fact_billable_time_activity_1.dim_fed_hierarchy_history_key AND 
+                                                                                                                                             [Current Hierarchy].hierarchylevel2hist IN ('Legal Ops - Claims', 'Legal Ops - LTA')
+                                                                                                                   GROUP BY fact_billable_time_activity_1.dim_orig_posting_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist) AS Hours_1 ON 
+                                                                                                             Hours_1.dim_gl_date_key = fin_days.dim_gl_date_key
+                                                                                   WHERE        (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date)) AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
+                                                                                   GROUP BY CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN
+                                                                                                              fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END, 
+                                                                                                             fin_days.gl_trading_days_in_mth, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours_1.hierarchylevel2hist, 
+                                                                                                             Hours_1.hierarchylevel3hist, fin_days.gl_fin_day_in_month, workdays_1.number_of_work_days, fin_days.gl_fin_period) AS dummy2) AS dummy3 ON 1 = 1) 
+                         AS mainquery LEFT OUTER JOIN
+                             (SELECT        dim_date_1.fin_month_no, dim_date_1.fin_year, first_day_month.calendar_date AS first_day, COUNT(*) AS number_of_work_days
+                               FROM            red_dw.dbo.dim_date AS dim_date_1 INNER JOIN
+                                                         red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = dim_date_1.fin_month AND first_day_month.fin_year = dim_date_1.fin_year AND 
+                                                         first_day_month.cal_day_in_month = 1
+                               WHERE        (dim_date_1.holiday_flag = 'N') AND (dim_date_1.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (dim_date_1.calendar_date &lt;= GETDATE() - 1)
+                               GROUP BY dim_date_1.fin_month_no, dim_date_1.fin_year, first_day_month.calendar_date) AS workdaysall ON workdaysall.first_day = mainquery.Calender
+							   inner join red_dw.dbo.dim_date on mainquery.Calender = calendar_date
+ORDER BY mainquery.Calender</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Calender">
+          <DataField>Calender</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="gl_fin_day_in_month">
+          <DataField>gl_fin_day_in_month</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="gl_fin_period">
+          <DataField>gl_fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="trading">
+          <DataField>trading</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="gl_week_end_flag">
+          <DataField>gl_week_end_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="gl_holiday_flag">
+          <DataField>gl_holiday_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="gl_cal_month_name">
+          <DataField>gl_cal_month_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel2hist">
+          <DataField>hierarchylevel2hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel3hist">
+          <DataField>hierarchylevel3hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Hours_Recorded">
+          <DataField>Hours Recorded</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="number_of_work_days">
+          <DataField>number_of_work_days</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="current_fin_month">
+          <DataField>current_fin_month</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+  </DataSets>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <ReportItems>
+          <Tablix Name="Tablix3">
+            <TablixCorner>
+              <TablixCornerRows>
+                <TablixCornerRow>
+                  <TablixCornerCell>
+                    <CellContents>
+                      <Textbox Name="Textbox16">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value />
+                                <Style />
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox16</rd:DefaultName>
+                        <Visibility>
+                          <Hidden>true</Hidden>
+                        </Visibility>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixCornerCell>
+                </TablixCornerRow>
+                <TablixCornerRow>
+                  <TablixCornerCell>
+                    <CellContents>
+                      <Textbox Name="Textbox17">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Calender Date</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>8pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>#004f59</Color>
+                                </Style>
+                              </TextRun>
+                              <TextRun>
+                                <Value xml:space="preserve"> </Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>8pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox17</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixCornerCell>
+                </TablixCornerRow>
+              </TablixCornerRows>
+            </TablixCorner>
+            <TablixBody>
+              <TablixColumns>
+                <TablixColumn>
+                  <Width>2.5cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.44709cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.5cm</Width>
+                </TablixColumn>
+              </TablixColumns>
+              <TablixRows>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Hours_Recorded">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>#,0;(#,0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Hours_Recorded</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox18">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox18</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims","Silver",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Silver")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox23">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox23</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Gray</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox2">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox2</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox19">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox19</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox24">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox6">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value,"teamgroup")/max(Fields!number_of_work_days.Value,"teamgroup")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox6</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox20">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value,"businessline")/max(Fields!number_of_work_days.Value,"businessline")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox20</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox25">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Hours_Recorded.Value)/max(Fields!number_of_work_days.Value)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Right</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox25</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+              </TablixRows>
+            </TablixBody>
+            <TablixColumnHierarchy>
+              <TablixMembers>
+                <TablixMember>
+                  <Group Name="businessline">
+                    <GroupExpressions>
+                      <GroupExpression>=Fields!hierarchylevel2hist.Value</GroupExpression>
+                    </GroupExpressions>
+                  </Group>
+                  <SortExpressions>
+                    <SortExpression>
+                      <Value>=Fields!hierarchylevel2hist.Value</Value>
+                    </SortExpression>
+                  </SortExpressions>
+                  <TablixHeader>
+                    <Size>0.6cm</Size>
+                    <CellContents>
+                      <Textbox Name="hierarchylevel2hist">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!hierarchylevel2hist.Value</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>9pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>White</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style>
+                              <TextAlign>Center</TextAlign>
+                            </Style>
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>hierarchylevel2hist</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <TablixMembers>
+                    <TablixMember>
+                      <Group Name="teamgroup">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!hierarchylevel3hist.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!hierarchylevel3hist.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                      <TablixHeader>
+                        <Size>0.6cm</Size>
+                        <CellContents>
+                          <Textbox Name="hierarchylevel3hist">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>=Fields!hierarchylevel3hist.Value</Value>
+                                    <Style>
+                                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                                      <FontSize>8pt</FontSize>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>White</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style>
+                                  <TextAlign>Center</TextAlign>
+                                </Style>
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>hierarchylevel3hist</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.6cm</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox15">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "Claims Total",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "LTA Total")</Value>
+                                    <Style>
+                                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                                      <FontSize>8pt</FontSize>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>White</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style>
+                                  <TextAlign>Center</TextAlign>
+                                </Style>
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox15</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <BackgroundColor>=switch(fields!hierarchylevel2hist.Value  = "Legal Ops - Claims", "MidnightBlue",fields!hierarchylevel2hist.Value ="Legal Ops - LTA", "Red")</BackgroundColor>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>1.2cm</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox21">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Firm </Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>9pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>White</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style>
+                              <TextAlign>Center</TextAlign>
+                            </Style>
+                          </Paragraph>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total </Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>9pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                  <Color>White</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style>
+                              <TextAlign>Center</TextAlign>
+                            </Style>
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox21</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <BackgroundColor>#004f59</BackgroundColor>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                </TablixMember>
+              </TablixMembers>
+            </TablixColumnHierarchy>
+            <TablixRowHierarchy>
+              <TablixMembers>
+                <TablixMember>
+                  <Group Name="gl_fin_day_in_month">
+                    <GroupExpressions>
+                      <GroupExpression>=Fields!Calender.Value</GroupExpression>
+                    </GroupExpressions>
+                  </Group>
+                  <SortExpressions>
+                    <SortExpression>
+                      <Value>=Fields!gl_fin_day_in_month.Value</Value>
+                    </SortExpression>
+                  </SortExpressions>
+                  <TablixHeader>
+                    <Size>2.92808cm</Size>
+                    <CellContents>
+                      <Textbox Name="Calender">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>=Fields!Calender.Value</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <Format>m</Format>
+                                  <Color>White</Color>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style>
+                              <TextAlign>Left</TextAlign>
+                            </Style>
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Calender</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <BackgroundColor>Gray</BackgroundColor>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>2.92808cm</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox1">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total Hours MTD</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>8pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox1</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>2.92808cm</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox5">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>AVG Hours MTD</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>8pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value />
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>8pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox5</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+              </TablixMembers>
+            </TablixRowHierarchy>
+            <DataSetName>DailyHours</DataSetName>
+            <Filters>
+              <Filter>
+                <FilterExpression>=Fields!current_fin_month.Value</FilterExpression>
+                <Operator>Equal</Operator>
+                <FilterValues>
+                  <FilterValue>Current</FilterValue>
+                </FilterValues>
+              </Filter>
+            </Filters>
+            <Top>2.1175cm</Top>
+            <Height>3cm</Height>
+            <Width>10.37517cm</Width>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Tablix>
+          <Textbox Name="Textbox3">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>Hours are shown on the days that they were recorded - Not the date in which they were worked. </Value>
+                    <Style>
+                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                      <Color>DimGray</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style />
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox1</rd:DefaultName>
+            <Top>2.11199in</Top>
+            <Left>2.92808cm</Left>
+            <Height>0.3125in</Height>
+            <Width>7.05555in</Width>
+            <ZIndex>1</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Textbox Name="Textbox12">
+            <CanGrow>true</CanGrow>
+            <KeepTogether>true</KeepTogether>
+            <Paragraphs>
+              <Paragraph>
+                <TextRuns>
+                  <TextRun>
+                    <Value>Daily Average Hours recorded </Value>
+                    <Style>
+                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                      <Color>DimGray</Color>
+                    </Style>
+                  </TextRun>
+                  <TextRun>
+                    <Value>=Sum(Fields!Hours_Recorded.Value)/max(Fields!number_of_work_days.Value)</Value>
+                    <Style>
+                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                      <FontWeight>Bold</FontWeight>
+                      <Format>#,0;(#,0)</Format>
+                      <Color>Gray</Color>
+                    </Style>
+                  </TextRun>
+                </TextRuns>
+                <Style />
+              </Paragraph>
+            </Paragraphs>
+            <rd:DefaultName>Textbox12</rd:DefaultName>
+            <Top>1.28819cm</Top>
+            <Left>2.92808cm</Left>
+            <Height>0.75875cm</Height>
+            <Width>17.92109cm</Width>
+            <ZIndex>2</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+              <PaddingLeft>2pt</PaddingLeft>
+              <PaddingRight>2pt</PaddingRight>
+              <PaddingTop>2pt</PaddingTop>
+              <PaddingBottom>2pt</PaddingBottom>
+            </Style>
+          </Textbox>
+          <Image Name="Image1">
+            <Source>Embedded</Source>
+            <Value>WeightmansLLP_BrandedImage_Daily_hours_by_Department___Daily_Hours_by_Department__SelectColour_Small_0_dual_line</Value>
+            <Sizing>FitProportional</Sizing>
+            <Left>0.75in</Left>
+            <Height>0.50597in</Height>
+            <Width>7.45834in</Width>
+            <ZIndex>3</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Image>
+        </ReportItems>
+        <Height>2.42449in</Height>
+        <Style />
+      </Body>
+      <Width>8.20834in</Width>
+      <Page>
+        <PageHeight>29.7cm</PageHeight>
+        <PageWidth>21cm</PageWidth>
+        <LeftMargin>2cm</LeftMargin>
+        <RightMargin>2cm</RightMargin>
+        <TopMargin>2cm</TopMargin>
+        <BottomMargin>2cm</BottomMargin>
+        <ColumnSpacing>0.13cm</ColumnSpacing>
+        <Style />
+      </Page>
+    </ReportSection>
+  </ReportSections>
+  <ReportParametersLayout>
+    <GridLayoutDefinition>
+      <NumberOfColumns>4</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
+    </GridLayoutDefinition>
+  </ReportParametersLayout>
+  <EmbeddedImages>
+    <EmbeddedImage Name="WeightmansLLP_BrandedImage_Daily_hours_by_Department___Daily_Hours_by_Department__SelectColour_Small_0_dual_line">
+      <MIMEType>image/png</MIMEType>
+      <ImageData>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</ImageData>
+    </EmbeddedImage>
+  </EmbeddedImages>
+  <rd:ReportUnitType>Cm</rd:ReportUnitType>
+  <rd:ReportID>4faa353e-f678-41d9-86f6-5a41bc483b74</rd:ReportID>
+</Report>
