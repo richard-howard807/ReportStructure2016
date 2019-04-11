@@ -2893,11 +2893,12 @@ AND reporting_exclusions=0</CommandText>
     <DataSet Name="Debt">
       <Query>
         <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
-        <CommandText>SELECT coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),Client.altnumber,CASE WHEN ISNUMERIC(Client.number) = 1 THEN RIGHT(CAST(CAST(Client.number AS int)  + 100000000 AS varchar(9)),8) ELSE Client.number END)  AS client_code
+        <CommandText>
+SELECT coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),Client.altnumber,CASE WHEN ISNUMERIC(Client.number) = 1 THEN RIGHT(CAST(CAST(Client.number AS int)  + 100000000 AS varchar(9)),8) ELSE Client.number END)  AS client_code
 ,isnull(right(Matter.loadnumber, len(Matter.loadnumber) - charindex('-',Matter.loadnumber)),right(Matter.altnumber, len(Matter.altnumber) - charindex('-',Matter.altnumber)))  AS matter_number 
 
 , SUM(ARAmt) AS [Gross Debt]
-, SUM(ARFee) AS [Net Debt]
+, SUM(ISNULL(ARFee,0)+ISNULL(ARHCo,0)+ISNULL(ARSCo,0)) AS [Net Debt]
 , SUM(ARTAx) AS [VAT Debt]
 
 FROM TE_3E_Prod.dbo.ARDetail
@@ -2911,8 +2912,8 @@ INNER JOIN red_dw.dbo.fact_dimension_main ON fact_dimension_main.client_code=coa
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key 
  AND hierarchylevel4hist LIKE '%Litigation London%'
 
--- WHERE coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),Client.altnumber,CASE WHEN ISNUMERIC(Client.number) = 1 THEN RIGHT(CAST(CAST(Client.number AS int)  + 100000000 AS varchar(9)),8) ELSE Client.number END) ='00023442'
---AND ISNULL(right(Matter.loadnumber, len(Matter.loadnumber) - charindex('-',Matter.loadnumber)),right(Matter.altnumber, len(Matter.altnumber) - charindex('-',Matter.altnumber))) ='00000010'
+--WHERE coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),Client.altnumber,CASE WHEN ISNUMERIC(Client.number) = 1 THEN RIGHT(CAST(CAST(Client.number AS int)  + 100000000 AS varchar(9)),8) ELSE Client.number END) ='T2002'
+--AND ISNULL(right(Matter.loadnumber, len(Matter.loadnumber) - charindex('-',Matter.loadnumber)),right(Matter.altnumber, len(Matter.altnumber) - charindex('-',Matter.altnumber))) ='00000369'
 
 GROUP BY coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),Client.altnumber,CASE WHEN ISNUMERIC(Client.number) = 1 THEN RIGHT(CAST(CAST(Client.number AS int)  + 100000000 AS varchar(9)),8) ELSE Client.number END)
 , isnull(right(Matter.loadnumber, len(Matter.loadnumber) - charindex('-',Matter.loadnumber)),right(Matter.altnumber, len(Matter.altnumber) - charindex('-',Matter.altnumber)))</CommandText>
