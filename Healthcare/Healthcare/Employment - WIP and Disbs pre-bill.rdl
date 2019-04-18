@@ -25,45 +25,110 @@
             <Value>=Parameters!Matter.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT        Matters.Client, Matters.Matter, Matters.Description, UnbilledWIP.WorkRate AS ChargeRate, 
-                         TE_3E_Prod.dbo.Timekeeper.Number + ' ' + TE_3E_Prod.dbo.Timekeeper.DisplayName AS tt_feecod, SUM(UnbilledWIP.WorkHrs) AS MinutesWorked, 
-                         SUM(UnbilledWIP.WorkAmt) AS NetAmount, NULL AS DisbNotes, NULL AS DisbClientRef, NULL AS DisbClient, NULL AS DisbMatter, NULL AS DisbAmount, NULL 
-                         AS DisbVAT, NULL AS DisbJoin, NULL AS AccountsUser, NULL AS DisbsFeeArrangement, CASE WHEN [WorkRate] &gt; 0 THEN (SUM(WorkRate) / COUNT(WorkRate)) 
-                         ELSE 0 END AS HourlyRate, TE_3E_Prod.dbo.Timekeeper.Number AS FE, 1 AS xOrder
-FROM            (SELECT        ISNULL(RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)), RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client, 
-                                                    ISNULL(SUBSTRING(LoadNumber, CHARINDEX('-', LoadNumber) + 1, LEN(LoadNumber)), SUBSTRING(AltNumber, CHARINDEX('-', AltNumber) + 1, 
-                                                    LEN(AltNumber))) AS Matter, MattIndex, LoadNumber, Description
-                          FROM            TE_3E_Prod.dbo.Matter WITH(NOLOCK)
-                          ) AS Matters INNER JOIN
-                         TE_3E_Prod.dbo.Timecard AS UnbilledWIP WITH(NOLOCK)  ON Matters.MattIndex = UnbilledWIP.Matter LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.Timekeeper WITH(NOLOCK)  ON UnbilledWIP.Timekeeper = TE_3E_Prod.dbo.Timekeeper.TkprIndex
-                         --INNER JOIN                         axxia01.dbo.camatgrp AS camatgrp ON Matters.Client = camatgrp.mg_client COLLATE database_default AND 
-                         --Matters.Matter = camatgrp.mg_matter COLLATE database_default
-WHERE        (UnbilledWIP.WIPRemoveDate IS NULL) AND (UnbilledWIP.IsActive = 1) AND (Matters.Client = @Client) AND (Matters.Matter IN (@Matter))
-GROUP BY Matters.Client, Matters.Matter, Matters.Description, UnbilledWIP.WorkRate, TE_3E_Prod.dbo.Timekeeper.Number + ' ' + TE_3E_Prod.dbo.Timekeeper.DisplayName, 
-                         TE_3E_Prod.dbo.Timekeeper.Number
+        <CommandText>SELECT   Matters.Client ,
+         Matters.Matter ,
+         Matters.Description ,
+         UnbilledWIP.WorkRate AS ChargeRate ,
+         TE_3E_Prod.dbo.Timekeeper.Number + ' '
+         + TE_3E_Prod.dbo.Timekeeper.DisplayName AS tt_feecod ,
+         SUM(UnbilledWIP.WorkHrs) AS MinutesWorked ,
+         SUM(UnbilledWIP.WorkAmt) AS NetAmount ,
+         NULL AS DisbNotes ,
+         NULL AS DisbClientRef ,
+         NULL AS DisbClient ,
+         NULL AS DisbMatter ,
+         NULL AS DisbAmount ,
+         NULL AS DisbVAT ,
+         NULL AS DisbJoin ,
+         NULL AS AccountsUser ,
+         NULL AS DisbsFeeArrangement ,
+         CASE WHEN [WorkRate] &gt; 0 THEN ( SUM(WorkRate) / COUNT(WorkRate))
+              ELSE 0
+         END AS HourlyRate ,
+         TE_3E_Prod.dbo.Timekeeper.Number AS FE ,
+         1 AS xOrder
+FROM     (   SELECT ISNULL(
+                        RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)) ,
+                        RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client ,
+                    ISNULL(
+                        SUBSTRING(
+                            LoadNumber ,
+                            CHARINDEX('-', LoadNumber) + 1,
+                            LEN(LoadNumber)) ,
+                        SUBSTRING(
+                            AltNumber ,
+                            CHARINDEX('-', AltNumber) + 1,
+                            LEN(AltNumber))) AS Matter ,
+                    MattIndex ,
+                    LoadNumber ,
+                    Description
+             FROM   TE_3E_Prod.dbo.Matter WITH ( NOLOCK )) AS Matters
+         INNER JOIN TE_3E_Prod.dbo.Timecard AS UnbilledWIP WITH ( NOLOCK ) ON Matters.MattIndex = UnbilledWIP.Matter
+         LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper WITH ( NOLOCK ) ON UnbilledWIP.Timekeeper = TE_3E_Prod.dbo.Timekeeper.TkprIndex
+
+WHERE    ( UnbilledWIP.WIPRemoveDate IS NULL )
+         AND ( UnbilledWIP.IsActive = 1 )
+         AND ( Matters.Client = @Client )
+         AND ( Matters.Matter IN ( @Matter ))
+GROUP BY Matters.Client ,
+         Matters.Matter ,
+         Matters.Description ,
+         UnbilledWIP.WorkRate ,
+         TE_3E_Prod.dbo.Timekeeper.Number + ' '
+         + TE_3E_Prod.dbo.Timekeeper.DisplayName ,
+         TE_3E_Prod.dbo.Timekeeper.Number
 UNION
-SELECT        Matters_1.Client, Matters_1.Matter, Matters_1.Description, UnbilledWIP.WorkRate AS ChargeRate, NULL AS mg_feearn, NULL AS MinutesWorked, NULL 
-                         AS NetAmount, REPLACE(UnbilledWIP.Narrative, 'Supplier: ', '') AS DisbNotes, NULL AS DisbClientRef, Matters_1.Client AS DisbClient, 
-                         Matters_1.Matter AS DisbMatter, SUM(COALESCE (VchrDetail.Amount, UnbilledWIP.WorkAmt)) AS DisbAmount, SUM(ISNULL(VchrTax.CalcAmt, 0)) AS DisbVAT, NULL 
-                         AS DisbJoin, Timekeeper_1.DisplayName AS AccountsUser, NULL AS DisbsFeeArrangement, NULL AS HourlyRate, Timekeeper_1.Number AS FE, 2 AS xOrder
-FROM            (SELECT        ISNULL(RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)), RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client, 
-                                                    ISNULL(SUBSTRING(LoadNumber, CHARINDEX('-', LoadNumber) + 1, LEN(LoadNumber)), SUBSTRING(AltNumber, CHARINDEX('-', AltNumber) + 1, 
-                                                    LEN(AltNumber))) AS Matter, MattIndex, LoadNumber, Description
-                          FROM            TE_3E_Prod.dbo.Matter AS Matter_1 WITH(NOLOCK) 
-                 ) AS Matters_1 
-                          INNER JOIN
-                         TE_3E_Prod.dbo.CostCard AS UnbilledWIP  WITH(NOLOCK) ON Matters_1.MattIndex = UnbilledWIP.Matter LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.Timekeeper AS Timekeeper_1  WITH(NOLOCK) ON UnbilledWIP.Timekeeper = Timekeeper_1.TkprIndex 
-                         --INNER JOIN
-                         --axxia01.dbo.camatgrp AS camatgrp ON Matters_1.Client = camatgrp.mg_client COLLATE database_default AND 
-                         --Matters_1.Matter = camatgrp.mg_matter COLLATE database_default 
-                         LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.VchrDetail AS VchrDetail WITH(NOLOCK)  ON UnbilledWIP.CostIndex = VchrDetail.CostCard LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.VchrTax AS VchrTax WITH(NOLOCK)  ON VchrDetail.Voucher = VchrTax.Voucher
-WHERE        (UnbilledWIP.WIPRemoveDate IS NULL) AND (UnbilledWIP.IsActive = 1) AND (Matters_1.Client = @Client) AND (Matters_1.Matter IN (@Matter))
-GROUP BY Matters_1.Client, Matters_1.Matter, Matters_1.Description, UnbilledWIP.WorkRate, Timekeeper_1.Number + ' ' + Timekeeper_1.DisplayName, 
-                         UnbilledWIP.Narrative, Timekeeper_1.DisplayName, Timekeeper_1.Number</CommandText>
+SELECT   Matters_1.Client ,
+         Matters_1.Matter ,
+         Matters_1.Description ,
+         UnbilledWIP.WorkRate AS ChargeRate ,
+         NULL AS mg_feearn ,
+         NULL AS MinutesWorked ,
+         NULL AS NetAmount ,
+         REPLACE(UnbilledWIP.Narrative_UnformattedText, 'Supplier: ', '') AS DisbNotes ,
+         NULL AS DisbClientRef ,
+         Matters_1.Client AS DisbClient ,
+         Matters_1.Matter AS DisbMatter ,
+         SUM(COALESCE(VchrDetail.Amount, UnbilledWIP.WorkAmt)) AS DisbAmount ,
+         SUM(ISNULL(VchrTax.CalcAmt, 0)) AS DisbVAT ,
+         NULL AS DisbJoin ,
+         Timekeeper_1.DisplayName AS AccountsUser ,
+         NULL AS DisbsFeeArrangement ,
+         NULL AS HourlyRate ,
+         Timekeeper_1.Number AS FE ,
+         2 AS xOrder
+FROM     (   SELECT ISNULL(
+                        RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)) ,
+                        RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client ,
+                    ISNULL(
+                        SUBSTRING(
+                            LoadNumber ,
+                            CHARINDEX('-', LoadNumber) + 1,
+                            LEN(LoadNumber)) ,
+                        SUBSTRING(
+                            AltNumber ,
+                            CHARINDEX('-', AltNumber) + 1,
+                            LEN(AltNumber))) AS Matter ,
+                    MattIndex ,
+                    LoadNumber ,
+                    Matter_1.DisplayName Description
+             FROM   TE_3E_Prod.dbo.Matter AS Matter_1 WITH ( NOLOCK )) AS Matters_1
+         INNER JOIN TE_3E_Prod.dbo.CostCard AS UnbilledWIP WITH ( NOLOCK ) ON Matters_1.MattIndex = UnbilledWIP.Matter
+         LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper AS Timekeeper_1 WITH ( NOLOCK ) ON UnbilledWIP.Timekeeper = Timekeeper_1.TkprIndex
+         LEFT OUTER JOIN TE_3E_Prod.dbo.VchrDetail AS VchrDetail WITH ( NOLOCK ) ON UnbilledWIP.CostIndex = VchrDetail.CostCard
+         LEFT OUTER JOIN TE_3E_Prod.dbo.VchrTax AS VchrTax WITH ( NOLOCK ) ON VchrDetail.Voucher = VchrTax.Voucher
+WHERE    ( UnbilledWIP.WIPRemoveDate IS NULL )
+         AND ( UnbilledWIP.IsActive = 1 )
+         AND ( Matters_1.Client = @Client )
+         AND ( Matters_1.Matter IN ( @Matter ))
+GROUP BY Matters_1.Client ,
+         Matters_1.Matter ,
+         Matters_1.Description ,
+         UnbilledWIP.WorkRate ,
+         Timekeeper_1.Number + ' ' + Timekeeper_1.DisplayName ,
+       UnbilledWIP.Narrative_UnformattedText ,
+         Timekeeper_1.DisplayName ,
+         Timekeeper_1.Number;</CommandText>
       </Query>
       <Fields>
         <Field Name="Client">
@@ -1209,7 +1274,6 @@ fact_dimension_main
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
