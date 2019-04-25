@@ -25,9 +25,10 @@
             <Value>=Parameters!Matter.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT   Matters.Client ,
+        <CommandText>
+SELECT   Matters.Client ,
          Matters.Matter ,
-         Matters.Description ,
+         Matters.DisplayName [Description] ,
          UnbilledWIP.WorkRate AS ChargeRate ,
          TE_3E_Prod.dbo.Timekeeper.Number + ' '
          + TE_3E_Prod.dbo.Timekeeper.DisplayName AS tt_feecod ,
@@ -47,32 +48,25 @@
          END AS HourlyRate ,
          TE_3E_Prod.dbo.Timekeeper.Number AS FE ,
          1 AS xOrder
-FROM     (   SELECT ISNULL(
-                        RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)) ,
-                        RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client ,
-                    ISNULL(
-                        SUBSTRING(
-                            LoadNumber ,
-                            CHARINDEX('-', LoadNumber) + 1,
-                            LEN(LoadNumber)) ,
-                        SUBSTRING(
-                            AltNumber ,
-                            CHARINDEX('-', AltNumber) + 1,
-                            LEN(AltNumber))) AS Matter ,
+FROM     (   SELECT client.AltNumber AS Client ,
+                    SUBSTRING(
+                        matter.AltNumber ,
+                        CHARINDEX('-', matter.AltNumber) + 1,
+                        LEN(matter.AltNumber)) AS Matter ,
                     MattIndex ,
-                    LoadNumber ,
-                    Description
-             FROM   TE_3E_Prod.dbo.Matter WITH ( NOLOCK )) AS Matters
-         INNER JOIN TE_3E_Prod.dbo.Timecard AS UnbilledWIP WITH ( NOLOCK ) ON Matters.MattIndex = UnbilledWIP.Matter
-         LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper WITH ( NOLOCK ) ON UnbilledWIP.Timekeeper = TE_3E_Prod.dbo.Timekeeper.TkprIndex
-
+                    matter.LoadNumber ,
+                    matter.DisplayName
+             FROM   TE_3E_Prod.dbo.Client AS client
+                    INNER JOIN TE_3E_Prod.dbo.Matter AS matter ON client.ClientIndex = matter.Client ) AS Matters
+         INNER JOIN TE_3E_Prod.dbo.Timecard AS UnbilledWIP ON Matters.MattIndex = UnbilledWIP.Matter
+         LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper  ON UnbilledWIP.Timekeeper = TE_3E_Prod.dbo.Timekeeper.TkprIndex
 WHERE    ( UnbilledWIP.WIPRemoveDate IS NULL )
          AND ( UnbilledWIP.IsActive = 1 )
          AND ( Matters.Client = @Client )
          AND ( Matters.Matter IN ( @Matter ))
 GROUP BY Matters.Client ,
          Matters.Matter ,
-         Matters.Description ,
+         Matters.DisplayName ,
          UnbilledWIP.WorkRate ,
          TE_3E_Prod.dbo.Timekeeper.Number + ' '
          + TE_3E_Prod.dbo.Timekeeper.DisplayName ,
@@ -80,7 +74,7 @@ GROUP BY Matters.Client ,
 UNION
 SELECT   Matters_1.Client ,
          Matters_1.Matter ,
-         Matters_1.Description ,
+         Matters_1.DisplayName [Description] ,
          UnbilledWIP.WorkRate AS ChargeRate ,
          NULL AS mg_feearn ,
          NULL AS MinutesWorked ,
@@ -97,36 +91,30 @@ SELECT   Matters_1.Client ,
          NULL AS HourlyRate ,
          Timekeeper_1.Number AS FE ,
          2 AS xOrder
-FROM     (   SELECT ISNULL(
-                        RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)) ,
-                        RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client ,
-                    ISNULL(
-                        SUBSTRING(
-                            LoadNumber ,
-                            CHARINDEX('-', LoadNumber) + 1,
-                            LEN(LoadNumber)) ,
-                        SUBSTRING(
-                            AltNumber ,
-                            CHARINDEX('-', AltNumber) + 1,
-                            LEN(AltNumber))) AS Matter ,
+FROM     (   SELECT client.AltNumber AS Client ,
+                    SUBSTRING(
+                        matter.AltNumber ,
+                        CHARINDEX('-', matter.AltNumber) + 1,
+                        LEN(matter.AltNumber)) AS Matter ,
                     MattIndex ,
-                    LoadNumber ,
-                    Matter_1.DisplayName Description
-             FROM   TE_3E_Prod.dbo.Matter AS Matter_1 WITH ( NOLOCK )) AS Matters_1
-         INNER JOIN TE_3E_Prod.dbo.CostCard AS UnbilledWIP WITH ( NOLOCK ) ON Matters_1.MattIndex = UnbilledWIP.Matter
-         LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper AS Timekeeper_1 WITH ( NOLOCK ) ON UnbilledWIP.Timekeeper = Timekeeper_1.TkprIndex
-         LEFT OUTER JOIN TE_3E_Prod.dbo.VchrDetail AS VchrDetail WITH ( NOLOCK ) ON UnbilledWIP.CostIndex = VchrDetail.CostCard
-         LEFT OUTER JOIN TE_3E_Prod.dbo.VchrTax AS VchrTax WITH ( NOLOCK ) ON VchrDetail.Voucher = VchrTax.Voucher
+                    matter.LoadNumber ,
+                    matter.DisplayName
+             FROM   TE_3E_Prod.dbo.Client AS client
+                    INNER JOIN TE_3E_Prod.dbo.Matter AS matter ON client.ClientIndex = matter.Client ) AS Matters_1
+         INNER JOIN TE_3E_Prod.dbo.CostCard AS UnbilledWIP  ON Matters_1.MattIndex = UnbilledWIP.Matter
+         LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper AS Timekeeper_1  ON UnbilledWIP.Timekeeper = Timekeeper_1.TkprIndex
+         LEFT OUTER JOIN TE_3E_Prod.dbo.VchrDetail AS VchrDetail  ON UnbilledWIP.CostIndex = VchrDetail.CostCard
+         LEFT OUTER JOIN TE_3E_Prod.dbo.VchrTax AS VchrTax  ON VchrDetail.Voucher = VchrTax.Voucher
 WHERE    ( UnbilledWIP.WIPRemoveDate IS NULL )
          AND ( UnbilledWIP.IsActive = 1 )
          AND ( Matters_1.Client = @Client )
          AND ( Matters_1.Matter IN ( @Matter ))
 GROUP BY Matters_1.Client ,
          Matters_1.Matter ,
-         Matters_1.Description ,
+         Matters_1.DisplayName ,
          UnbilledWIP.WorkRate ,
          Timekeeper_1.Number + ' ' + Timekeeper_1.DisplayName ,
-       UnbilledWIP.Narrative_UnformattedText ,
+         UnbilledWIP.Narrative_UnformattedText ,
          Timekeeper_1.DisplayName ,
          Timekeeper_1.Number;</CommandText>
       </Query>
@@ -229,9 +217,12 @@ GROUP BY Matters_1.Client ,
             <Value>=Parameters!Client.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT matter_number as ParaValue, matter_number + ' ' + matter_description  as ParaLabel  FROM dbo.dim_matter_header_current 
-WHERE  client_code  = @Client
-and date_closed_case_management IS NULL AND reporting_exclusions = 0</CommandText>
+        <CommandText>SELECT RIGHT('0000000' + master_matter_number,8) AS ParaValue ,
+       master_matter_number + ' ' + matter_description AS ParaLabel
+FROM   red_dw.dbo.dim_matter_header_current
+WHERE  master_client_code = @Client
+       AND date_closed_case_management IS NULL
+       AND reporting_exclusions = 0;</CommandText>
       </Query>
       <Fields>
         <Field Name="ParaValue">
@@ -2719,7 +2710,7 @@ fact_dimension_main
   <ReportParameters>
     <ReportParameter Name="Client">
       <DataType>String</DataType>
-      <Prompt>Client</Prompt>
+      <Prompt>Client (Use MS Client No):</Prompt>
     </ReportParameter>
     <ReportParameter Name="Matter">
       <DataType>String</DataType>
