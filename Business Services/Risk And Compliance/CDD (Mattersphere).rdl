@@ -2450,9 +2450,14 @@ WHERE  name ='Client Due Diligence.png'</CommandText>
     <DataSet Name="Team">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Department">
+            <Value>=Parameters!Department.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>SELECT DISTINCT  hierarchylevel4hist AS [Team]
 FROM red_dw.dbo.dim_fed_hierarchy_history WHERE dss_current_flag='Y'
-AND (hierarchylevel3hist='Real Estate' OR hierarchylevel4hist='Family' OR hierarchylevel4hist='Glasgow' OR hierarchylevel3hist='Corp-Comm'  OR hierarchylevel4hist='Wills, Trusts and Estates')
+AND (hierarchylevel3hist IN (@Department))
 AND hierarchylevel4hist IS NOT NULL
 AND activeud=1
 AND fed_code &lt;&gt; 'Unknown'
@@ -2472,6 +2477,9 @@ ORDER BY hierarchylevel4hist</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@Department">
+            <Value>=Parameters!Department.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@Team">
             <Value>=Parameters!Team.Value</Value>
           </QueryParameter>
@@ -2565,7 +2573,7 @@ AND hierarchylevel4hist IS NOT NULL
 AND activeud=1
 AND fed_code &lt;&gt; 'Unknown'
 AND display_name NOT LIKE '%Budget%'
-AND hierarchylevel4hist=@Team
+AND hierarchylevel4hist in (@Team)
 AND jobtitle NOT IN ('Administration Assistant','Legal Secretary')
 AND fed_code NOT IN ('5407','5903')
 AND leaver=0
@@ -2578,6 +2586,27 @@ ORDER BY name</CommandText>
         </Field>
         <Field Name="FeeEarner">
           <DataField>FeeEarner</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Department">
+      <Query>
+        <DataSourceName>ReportStylingOnDWH01</DataSourceName>
+        <CommandText>SELECT DISTINCT  hierarchylevel3hist AS department
+FROM red_dw.dbo.dim_fed_hierarchy_history WHERE dss_current_flag='Y'
+AND (hierarchylevel3hist='Real Estate' OR hierarchylevel4hist='Family' OR hierarchylevel4hist='Glasgow' OR hierarchylevel3hist='Corp-Comm'  OR hierarchylevel4hist='Wills, Trusts and Estates')
+AND hierarchylevel3hist IS NOT NULL
+AND activeud=1
+AND fed_code &lt;&gt; 'Unknown'
+AND display_name NOT LIKE '%Budget%'
+AND hierarchylevel4hist&lt;&gt;'Planning and Construction'
+AND fed_code NOT IN ('5407','5903')
+ORDER BY hierarchylevel3hist</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="department">
+          <DataField>department</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4879,6 +4908,18 @@ ORDER BY name</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Department">
+      <DataType>String</DataType>
+      <Prompt>Department</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Department</DataSetName>
+          <ValueField>department</ValueField>
+          <LabelField>department</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
     <ReportParameter Name="Team">
       <DataType>String</DataType>
       <Prompt>Team</Prompt>
@@ -4889,6 +4930,7 @@ ORDER BY name</CommandText>
           <LabelField>Team</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="FeeEarner">
       <DataType>String</DataType>
@@ -4900,12 +4942,13 @@ ORDER BY name</CommandText>
           <LabelField>FeeEarner</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4915,11 +4958,16 @@ ORDER BY name</CommandText>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>Team</ParameterName>
+          <ParameterName>Department</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
+          <ParameterName>Team</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>FeeEarner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
