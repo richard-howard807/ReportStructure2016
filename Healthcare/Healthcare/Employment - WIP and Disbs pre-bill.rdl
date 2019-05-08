@@ -26,6 +26,16 @@
           </QueryParameter>
         </QueryParameters>
         <CommandText>
+-- For testing purposes
+-- DECLARE @Client VARCHAR(500) = '720451'
+-- ,@Matter VARCHAR(1000) = '00001011'
+/*
+		LD 20190502 
+			1) Amended to enable users to use the Mattersphere client numbers as the Fed codes didn't allow for merged clients
+			2) Amended the code to use a calculation for disb vat instead of using the VchrTax.CalcAmount as there may be more than one trans on a voucher
+					
+*/
+
 SELECT   Matters.Client ,
          Matters.Matter ,
          Matters.DisplayName [Description] ,
@@ -48,7 +58,7 @@ SELECT   Matters.Client ,
          END AS HourlyRate ,
          TE_3E_Prod.dbo.Timekeeper.Number AS FE ,
          1 AS xOrder
-FROM     (   SELECT client.AltNumber AS Client ,
+FROM     (   SELECT client.Number AS Client ,
                     SUBSTRING(
                         matter.AltNumber ,
                         CHARINDEX('-', matter.AltNumber) + 1,
@@ -84,14 +94,15 @@ SELECT   Matters_1.Client ,
          Matters_1.Client AS DisbClient ,
          Matters_1.Matter AS DisbMatter ,
          SUM(COALESCE(VchrDetail.Amount, UnbilledWIP.WorkAmt)) AS DisbAmount ,
-         SUM(ISNULL(VchrTax.CalcAmt, 0)) AS DisbVAT ,
-         NULL AS DisbJoin ,
+         --SUM(ISNULL(VchrTax.CalcAmt, 0)) AS DisbVAT ,
+         SUM(COALESCE(VchrDetail.Amount,WorkAmt) * (tax.Rate/100)) DisbVAT,
+		 NULL AS DisbJoin ,
          Timekeeper_1.DisplayName AS AccountsUser ,
          NULL AS DisbsFeeArrangement ,
          NULL AS HourlyRate ,
          Timekeeper_1.Number AS FE ,
          2 AS xOrder
-FROM     (   SELECT client.AltNumber AS Client ,
+FROM     (   SELECT client.Number AS Client ,
                     SUBSTRING(
                         matter.AltNumber ,
                         CHARINDEX('-', matter.AltNumber) + 1,
@@ -105,6 +116,11 @@ FROM     (   SELECT client.AltNumber AS Client ,
          LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper AS Timekeeper_1  ON UnbilledWIP.Timekeeper = Timekeeper_1.TkprIndex
          LEFT OUTER JOIN TE_3E_Prod.dbo.VchrDetail AS VchrDetail  ON UnbilledWIP.CostIndex = VchrDetail.CostCard
          LEFT OUTER JOIN TE_3E_Prod.dbo.VchrTax AS VchrTax  ON VchrDetail.Voucher = VchrTax.Voucher
+		 LEFT OUTER JOIN (SELECT  [TaxLkUp] [TaxCode]
+									,[Rate]
+    
+					 FROM [TE_3E_Prod].[dbo].[TaxDate]
+								WHERE NxEndDate = '9999-12-31 00:00:00.000') tax ON UnbilledWIP.TaxCode = tax.[TaxCode]
 WHERE    ( UnbilledWIP.WIPRemoveDate IS NULL )
          AND ( UnbilledWIP.IsActive = 1 )
          AND ( Matters_1.Client = @Client )
