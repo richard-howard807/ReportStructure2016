@@ -2697,48 +2697,53 @@ OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverp
 ELSE
 ISNULL(fact_finance_summary.[defence_costs_reserve], 0)
 END AS [Defence Costs Reserve Held (before payments)], --LEADLINKED
+ISNULL(fact_finance_summary.[defence_costs_reserve], 0) - total_amount_billed +disbursements_billed AS [Defence Costs Reserve Outstanding],
 
 
-ISNULL(
-(CASE
-WHEN (
-dim_detail_client.[coop_master_reporting] = 'Yes'
-OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
-)
-AND ISNULL(dim_detail_core_details.[is_this_the_lead_file], 'No') = 'Yes' THEN
-ISNULL(fact_finance_summary.[defence_costs_reserve], 0)
-WHEN
-(
-dim_detail_client.[coop_master_reporting] = 'Yes'
-OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
-) THEN
-0
-ELSE
-ISNULL(fact_finance_summary.[defence_costs_reserve], 0)
-END
-),
-0
-)
-- ISNULL(
-(CASE
-WHEN (
-dim_detail_client.[coop_master_reporting] = 'Yes'
-OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
-)
-AND ISNULL(dim_detail_core_details.[is_this_the_lead_file], 'No') = 'Yes' THEN
-ISNULL(defence_costs_billed, 0)
-WHEN
-(
-dim_detail_client.[coop_master_reporting] = 'Yes'
-OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
-) THEN
-0
-ELSE
-defence_costs_billed
-END
-),
-0
-) AS [Defence Costs Reserve Outstanding],
+
+--ISNULL(
+--(CASE
+--WHEN (
+--dim_detail_client.[coop_master_reporting] = 'Yes'
+--OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
+--)
+--AND ISNULL(dim_detail_core_details.[is_this_the_lead_file], 'No') = 'Yes' THEN
+--ISNULL(fact_finance_summary.[defence_costs_reserve], 0)
+--WHEN
+--(
+--dim_detail_client.[coop_master_reporting] = 'Yes'
+--OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
+--) THEN
+--0
+--ELSE
+--ISNULL(fact_finance_summary.[defence_costs_reserve], 0) - total_amount_billed
+--END
+--),
+--0
+--)
+--- ISNULL(
+--(CASE
+--WHEN (
+--dim_detail_client.[coop_master_reporting] = 'Yes'
+--OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
+--)
+--AND ISNULL(dim_detail_core_details.[is_this_the_lead_file], 'No') = 'Yes' THEN
+--ISNULL(defence_costs_billed, 0) - total_amount_billed
+--WHEN
+--(
+--dim_detail_client.[coop_master_reporting] = 'Yes'
+--OR dim_fed_hierarchy_history.hierarchylevel4hist = 'Fraud and Credit Hire Liverpool'
+--) THEN
+--0
+--ELSE
+--defence_costs_billed - total_amount_billed
+--END
+--),
+--0
+--) AS [Defence Costs Reserve Outstanding],
+vat_billed,
+vat_amount,
+
 total_amount_billed [Total paid to date  ],
 total_outstanding_reserve [Total Outstanding Reserve],
 CASE
@@ -2872,8 +2877,7 @@ INNER JOIN red_dw.dbo.fact_dimension_main
 ON dim_client.client_code = fact_dimension_main.client_code
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
 ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
---INNER JOIN #Team AS Team
---ON Team.ListValue COLLATE DATABASE_DEFAULT = dim_fed_hierarchy_history.hierarchylevel4hist COLLATE DATABASE_DEFAULT
+
 INNER JOIN red_dw.dbo.dim_matter_header_current
 ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
 LEFT OUTER JOIN red_dw.dbo.fact_detail_paid_detail
@@ -3125,6 +3129,7 @@ OR dim_matter_header_current.date_closed_case_management &gt;= '2014-01-01'
 )
 AND hierarchylevel4hist IN (@Team)
 
+
 --AND dim_fed_hierarchy_history.name IN (@FeeEarner)
 --AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate </CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
@@ -3342,8 +3347,16 @@ AND hierarchylevel4hist IN (@Team)
           <DataField>Defence Costs Reserve Outstanding</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="vat_billed">
+          <DataField>vat_billed</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
         <Field Name="Total_paid_to_date__">
           <DataField>Total paid to date  </DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="vat_amount">
+          <DataField>vat_amount</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="Total_Outstanding_Reserve">
@@ -15194,7 +15207,8 @@ ORDER BY 1</CommandText>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Fields!Defence_Costs_Reserve_Outstanding.Value</Value>
+                                          <Value>=Fields!Defence_Costs_Reserve_Held__before_payments_.Value - 
+Fields!Total_Billed_To_Date_.Value</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -23031,7 +23045,8 @@ ORDER BY 1</CommandText>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Sum(Fields!Defence_Costs_Reserve_Outstanding.Value)</Value>
+                                          <Value>=sum(Fields!Defence_Costs_Reserve_Held__before_payments_.Value - 
+Fields!Total_Billed_To_Date_.Value)</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -36253,7 +36268,8 @@ ORDER BY 1</CommandText>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Fields!Defence_Costs_Reserve_Outstanding.Value</Value>
+                                          <Value>=Fields!Defence_Costs_Reserve_Held__before_payments_.Value - 
+Fields!Total_Billed_To_Date_.Value</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -41311,7 +41327,8 @@ ORDER BY 1</CommandText>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>=Sum(Fields!Defence_Costs_Reserve_Outstanding.Value)</Value>
+                                          <Value>=Sum(Fields!Defence_Costs_Reserve_Held__before_payments_.Value - 
+Fields!Total_Billed_To_Date_.Value)</Value>
                                           <Style>
                                             <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                             <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
