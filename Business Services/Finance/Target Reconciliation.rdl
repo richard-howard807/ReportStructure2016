@@ -13,6 +13,11 @@
     <DataSet Name="Budget">
       <Query>
         <DataSourceName>DATAWAREHOUSEON2016</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>USE red_dw
 
 SELECT        fact_budget_activity.*, dim_fed_hierarchy_history.name, 
@@ -23,11 +28,8 @@ hierarchylevel3hist, hierarchylevel2hist
 FROM            fact_budget_activity
 inner join dim_fed_hierarchy_history ON fact_budget_activity.fed_business_key = fed_hierarchy_business_key
 AND budget_date BETWEEN dss_start_date AND dss_end_date
-where financial_budget_year =
-(
-select fin_year from dim_date
-where cast(getdate() - 1 as date) = calendar_date
-)</CommandText>
+where financial_budget_year = @FinYear
+</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -138,6 +140,21 @@ where cast(getdate() - 1 as date) = calendar_date
         <Field Name="hierarchylevel2hist">
           <DataField>hierarchylevel2hist</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="FinYear">
+      <Query>
+        <DataSourceName>DATAWAREHOUSEON2016</DataSourceName>
+        <CommandText>SELECT        fin_year
+FROM            dim_date
+WHERE        (CAST(GETDATE() - 1 AS date) = calendar_date)</CommandText>
+        <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
+      </Query>
+      <Fields>
+        <Field Name="fin_year">
+          <DataField>fin_year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -800,10 +817,29 @@ where cast(getdate() - 1 as date) = calendar_date
       </Page>
     </ReportSection>
   </ReportSections>
+  <ReportParameters>
+    <ReportParameter Name="FinYear">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>FinYear</DataSetName>
+          <ValueField>fin_year</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Financial Year</Prompt>
+    </ReportParameter>
+  </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>4</NumberOfColumns>
       <NumberOfRows>2</NumberOfRows>
+      <CellDefinitions>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>FinYear</ParameterName>
+        </CellDefinition>
+      </CellDefinitions>
     </GridLayoutDefinition>
   </ReportParametersLayout>
   <rd:ReportUnitType>Cm</rd:ReportUnitType>
