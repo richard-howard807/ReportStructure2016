@@ -2464,23 +2464,23 @@ WHERE  name ='Go-Ahead_Group.png'</CommandText>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <CommandText>SELECT 
 
-dim_receipt_date.receipt_date [Calender ], 
-receipt_fin_day_in_month [glfinday],
-receipt_fin_day_in_week,
-receipt_week_end_flag [gl_week_end_flag],
-dim_receipt_date.receipt_holiday_flag [gl_holiday_flag],
+dim_gl_date.gl_calendar_date [Calender ], 
+gl_fin_day_in_month [glfinday],
+gl_fin_day_in_week receipt_fin_day_in_week,
+gl_week_end_flag [gl_week_end_flag],
+dim_gl_date.gl_holiday_flag [gl_holiday_flag],
 pete.hierarchylevel2, pete.hierarchylevel3, pete.receipt_total [Receipt Total]
 ,0 debt_target_ytd, 0 opening_debt, 0 team_debt_target  
-FROM red_dw.dbo.dim_receipt_date
+FROM red_dw.dbo.dim_gl_date
 
 LEFT JOIN 
 (
-SELECT receipt_date,
+SELECT gldate [receipt_date],
 hierarchylevel2, hierarchylevel3
 ,SUM(ISNULL(receipt_total,0)) receipt_total
 --, fact_debt_monthly.debt_month
 from red_dw.dbo.fact_bill_receipts 
-inner JOIN red_dw.dbo.dim_matter_owner
+left JOIN red_dw.dbo.dim_matter_owner
 ON dim_matter_owner.dim_matter_owner_key = fact_bill_receipts.dim_matter_owner_key
 
 --INNER JOIN red_dw.dbo.fact_debt_monthly 
@@ -2490,13 +2490,13 @@ AND hierarchylevel2 IN
 ('Legal Ops - LTA'
 ,'Legal Ops - Claims'
 )
-GROUP BY  receipt_date,
+GROUP BY  gldate ,
 hierarchylevel2, hierarchylevel3
 --, fact_debt_monthly.debt_month
 ) pete
-ON pete.receipt_date = dim_receipt_date.receipt_date
+ON pete.receipt_date = dim_gl_date.gl_calendar_date
 --INNER JOIN debt ON debt.hierarchylevel2hist = pete.hierarchylevel2
-WHERE dim_receipt_date.receipt_current_fin_month = 'Current'
+WHERE dim_gl_date.gl_current_fin_month = 'Current'
 union
 SELECT red_dw.dbo.dim_date.calendar_date,fin_day_in_month,red_dw.dbo.dim_date.cal_day_in_week,''weekendflag,''holidayflag,open_bal.businessline, open_bal.practicearea,
 0 recept_total,SUM(open_bal.debt_target_ytd) debt_target_ytd,SUM(open_bal.opening_debt) opening_debt, SUM(open_bal.team_debt_target) team_debt_target
