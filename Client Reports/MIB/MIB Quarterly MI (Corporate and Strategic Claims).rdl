@@ -2458,14 +2458,16 @@ WHERE  name ='MIB Quarterly MI (Corporate and Strategic Claims).png'</CommandTex
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT RTRIM(dim_matter_header_current.client_code)+'-'+RTRIM(dim_matter_header_current.matter_number) AS [Supplier Reference]
+        <CommandText>SELECT
+service_category,
+ RTRIM(dim_matter_header_current.client_code)+'-'+RTRIM(dim_matter_header_current.matter_number) AS [Supplier Reference]
 ,matter_description
 ,dim_detail_core_details.[date_instructions_received] AS [Date of Instruction]
 ,dim_detail_core_details.[clients_claims_handler_surname_forename]
-,defence_costs_billed AS [Value Billed since instruction]
-,AmountBilledQTR.TotalBilled AS [Value Billed this quarter]
-,HoursBilled / 60 AS [Numbers of hours billed since instruction]
-,HoursBilledQTR / 60 AS [Number of hours billed this quarter]
+,ISNULL(defence_costs_billed,0) AS [Value Billed since instruction]
+,ISNULL(AmountBilledQTR.TotalBilled,0) AS [Value Billed this quarter]
+,ISNULL(HoursBilled,0) / 60 AS [Numbers of hours billed since instruction]
+,ISNULL(HoursBilledQTR,0) / 60 AS [Number of hours billed this quarter]
 ,CASE WHEN service_category ='Exclusive Corporate' THEN date_closed_case_management ELSE  dim_detail_outcome.[mib_grp_zurich_pizza_hut_date_of_final_bill]  END  AS [Date of closure]
 ,CASE WHEN (CASE WHEN service_category ='Exclusive Corporate' THEN date_closed_case_management ELSE  dim_detail_outcome.[mib_grp_zurich_pizza_hut_date_of_final_bill]  END) IS NULL THEN 'Active' ELSE 'Closed' END AS [Status of instruction]
 FROM red_dw.dbo.dim_matter_header_current
@@ -2523,9 +2525,14 @@ GROUP BY  fact_bill.dim_matter_header_curr_key
  WHERE client_group_code='00000002'
 --AND master_client_code='M1001'
 AND date_opened_case_management&gt;='2019-04-01'
-AND service_category IN ('Exclusive Corporate','Strategic')</CommandText>
+AND service_category IN ('Exclusive Corporate','Strategic')
+AND NOT ( dim_detail_client.client_code = '00722378' AND dim_detail_client.matter_number = '00000016')</CommandText>
       </Query>
       <Fields>
+        <Field Name="service_category">
+          <DataField>service_category</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Supplier_Reference">
           <DataField>Supplier Reference</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -2571,9 +2578,8 @@ AND service_category IN ('Exclusive Corporate','Strategic')</CommandText>
     <DataSet Name="Quarters">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DATEADD(qq, DATEDIFF(qq, 0, GETDATE()) - 1, 0) AS StartLastQuarter
-,DATEADD(dd, -1, DATEADD(qq, DATEDIFF(qq, 0, GETDATE()), 0)) AS EndLastQuarter
-</CommandText>
+        <CommandText>SELECT DATEADD(qq, DATEDIFF(qq, 0, GETDATE()) , 0) AS StartLastQuarter
+,DATEADD(dd, -1, DATEADD(qq, DATEDIFF(qq, 0, GETDATE())+1, 0)) AS EndLastQuarter</CommandText>
       </Query>
       <Fields>
         <Field Name="StartLastQuarter">
@@ -2700,6 +2706,7 @@ AND service_category IN ('Exclusive Corporate','Strategic')</CommandText>
                               </Style>
                             </Textbox>
                             <ColSpan>11</ColSpan>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell />
