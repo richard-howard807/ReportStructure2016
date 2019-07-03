@@ -2478,12 +2478,14 @@ SELECT DISTINCT RTRIM(dim_client.client_code)+'-'+dim_matter_header_current.matt
               , dim_detail_core_details.track AS [Track]
               , dim_date.cal_month_name AS [Month Name]
               , dim_date.cal_month AS [Month]
+              , dim_date.cal_year AS [Year]
               , final_bill_flag AS [Final Bill Flag]
               , final_bill_date AS [Final Bill Date]
               , CASE WHEN dim_matter_header_current.date_closed_case_management IS NULL THEN DATEDIFF(DAY, final_bill_date, GETDATE()) ELSE DATEDIFF(DAY, final_bill_date, dim_matter_header_current.date_closed_case_management) END AS [Days between final billed and closed]
               , bill_total AS [Bill Total]
               , fees_total AS [Profit Costs]
               , 1 AS [Matter Count]
+, case when fin_year = 2020 then 1 ELSE 0 END [YTD Total Count]
 
 FROM red_dw.dbo.fact_matter_summary
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_matter_summary.dim_fed_hierarchy_history_key 
@@ -2498,7 +2500,7 @@ INNER JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.client_
        AND dim_detail_core_details.fixed_fee='Yes'
 INNER JOIN red_dw.dbo.dim_client ON dim_client.dim_client_key = fact_matter_summary.dim_client_key
 INNER JOIN red_dw.dbo.dim_date ON dim_date.calendar_date = dim_matter_header_current.final_bill_date
-       AND fin_year='2020' 
+       AND fin_year IN (2019,2020) 
        AND current_cal_month&lt;&gt;'Current' 
  LEFT OUTER JOIN (SELECT master_fact_key, SUM(fees_total) AS fees_total, SUM(bill_total) AS bill_total 
                                   FROM red_dw.dbo.fact_bill_matter_detail_summary
@@ -2578,6 +2580,10 @@ WHERE  reporting_exclusions=0</CommandText>
           <DataField>Month Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Year">
+          <DataField>Year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
         <Field Name="Month">
           <DataField>Month</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
@@ -2596,6 +2602,10 @@ WHERE  reporting_exclusions=0</CommandText>
         </Field>
         <Field Name="Matter_Count">
           <DataField>Matter Count</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="YTD_Total_Count">
+          <DataField>YTD Total Count</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
@@ -2695,7 +2705,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Month_Name.Value</Value>
+                                      <Value>=Fields!Month_Name.Value + " " + CSTR(Fields!Year.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2762,7 +2772,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>YTD</Value>
+                                      <Value>YTD Current</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2894,14 +2904,14 @@ WHERE  reporting_exclusions=0</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox113">
+                            <Textbox Name="YTD_Total_Count">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Matter_Count.Value)</Value>
+                                      <Value>=Sum(Fields!YTD_Total_Count.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2920,7 +2930,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox113</rd:DefaultName>
+                              <rd:DefaultName>YTD_Total_Count</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3033,14 +3043,14 @@ WHERE  reporting_exclusions=0</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox114">
+                            <Textbox Name="YTD_Total_Count1">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Matter_Count.Value)</Value>
+                                      <Value>=Sum(Fields!YTD_Total_Count.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3059,7 +3069,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox114</rd:DefaultName>
+                              <rd:DefaultName>YTD_Total_Count1</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3172,14 +3182,14 @@ WHERE  reporting_exclusions=0</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox115">
+                            <Textbox Name="YTD_Total_Count2">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Matter_Count.Value)</Value>
+                                      <Value>=Sum(Fields!YTD_Total_Count.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3198,7 +3208,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox115</rd:DefaultName>
+                              <rd:DefaultName>YTD_Total_Count2</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3311,14 +3321,14 @@ WHERE  reporting_exclusions=0</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox116">
+                            <Textbox Name="YTD_Total_Count3">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Matter_Count.Value)</Value>
+                                      <Value>=Sum(Fields!YTD_Total_Count.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3337,7 +3347,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox116</rd:DefaultName>
+                              <rd:DefaultName>YTD_Total_Count3</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3450,14 +3460,14 @@ WHERE  reporting_exclusions=0</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox117">
+                            <Textbox Name="YTD_Total_Count4">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Matter_Count.Value)</Value>
+                                      <Value>=Sum(Fields!YTD_Total_Count.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3476,7 +3486,7 @@ WHERE  reporting_exclusions=0</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox117</rd:DefaultName>
+                              <rd:DefaultName>YTD_Total_Count4</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3524,7 +3534,7 @@ WHERE  reporting_exclusions=0</CommandText>
                     <TablixMember>
                       <Group Name="Month_Name1">
                         <GroupExpressions>
-                          <GroupExpression>=Fields!Month_Name.Value</GroupExpression>
+                          <GroupExpression>=Fields!Month.Value</GroupExpression>
                         </GroupExpressions>
                       </Group>
                       <SortExpressions>
