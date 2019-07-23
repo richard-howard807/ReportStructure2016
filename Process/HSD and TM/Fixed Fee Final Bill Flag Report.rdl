@@ -2460,7 +2460,8 @@ WHERE  name ='Fixed_Fee_Final_Bill_Flag_Report.png'</CommandText>
             <Value>=Parameters!FedCodes.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
+        <CommandText>--23/07/2019 - ES - 27318 - removed final bill flag requirement and added logic to where clause
+
 SELECT DISTINCT RTRIM(dim_client.client_code)+'-'+dim_matter_header_current.matter_number AS [Weightmans Reference]
               , dim_client.client_code AS [Client Code]
               , dim_matter_header_current.matter_number AS [Matter Number]
@@ -2496,7 +2497,7 @@ INNER JOIN (SELECT DISTINCT val FROM red_dw.dbo.SplitDelimitedToRows(@FedCodes,'
 ON dim_fed_hierarchy_history.fed_code=FE.val collate database_default
 INNER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key=fact_matter_summary.dim_matter_header_curr_key
 INNER JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.client_code = fact_matter_summary.client_code AND dim_detail_core_details.matter_number = fact_matter_summary.matter_number 
-        AND final_bill_flag=1
+        --AND final_bill_flag=1
        AND dim_detail_core_details.fixed_fee='Yes'
 INNER JOIN red_dw.dbo.dim_client ON dim_client.dim_client_key = fact_matter_summary.dim_client_key
 INNER JOIN red_dw.dbo.dim_date ON dim_date.calendar_date = dim_matter_header_current.final_bill_date
@@ -2505,7 +2506,15 @@ INNER JOIN red_dw.dbo.dim_date ON dim_date.calendar_date = dim_matter_header_cur
  LEFT OUTER JOIN (SELECT master_fact_key, SUM(fees_total) AS fees_total, SUM(bill_total) AS bill_total 
                                   FROM red_dw.dbo.fact_bill_matter_detail_summary
                                   GROUP BY master_fact_key) AS bills ON bills.master_fact_key = fact_matter_summary.master_fact_key
-WHERE  reporting_exclusions=0</CommandText>
+INNER JOIN red_dw.dbo.dim_detail_outcome ON dim_detail_outcome.client_code = fact_matter_summary.client_code
+AND dim_detail_outcome.matter_number = fact_matter_summary.matter_number 
+
+WHERE  reporting_exclusions=0
+ AND ((dim_detail_core_details.present_position IN ('Claim concluded but costs outstanding','Claim and costs concluded but recovery outstanding','Final bill due - claim and costs concluded','Final bill sent - unpaid','To be closed/minor balances to be clear'))
+ OR outcome_of_case IS NOT NULL 
+ OR date_claim_concluded IS NOT NULL
+ OR dim_detail_outcome.[date_costs_settled] IS NOT NULL )
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Weightmans_Reference">
