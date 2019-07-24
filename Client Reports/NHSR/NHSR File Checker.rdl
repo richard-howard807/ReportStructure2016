@@ -3421,18 +3421,19 @@ PATHCONTAINS(@FeeArrangement,dim_detail_finance[output_wip_fee_arrangement]),
     <DataSet Name="DataSet1">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT client_code AS [client_code]
-	,matter_number AS [matter_number]
+        <CommandText>SELECT RTRIM(client_code) AS [client_code]
+	,RTRIM(matter_number) AS [matter_number]
 	,tskDesc AS  [task_description]
     ,dbUser.usrfullname AS [MSUpdatedBy]
+	,tskCompleted
+	,tskActive
 FROM red_dw.dbo.dim_matter_header_current
 INNER JOIN MS_Prod.dbo.dbTasks
  ON ms_fileid=fileID
 LEFT OUTER JOIN MS_Prod.dbo.dbUser ON dbTasks.UpdatedBy=dbUser.usrid
-
 WHERE client_group_code='00000003'
-AND tskActive=1 AND tskComplete=1
-AND tskDesc   LIKE '%File opening process%'</CommandText>
+AND tskDesc LIKE '%File opening process%'
+AND tskComplete=1 AND tskActive=1</CommandText>
       </Query>
       <Fields>
         <Field Name="client_code">
@@ -3450,6 +3451,14 @@ AND tskDesc   LIKE '%File opening process%'</CommandText>
         <Field Name="MSUpdatedBy">
           <DataField>MSUpdatedBy</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="tskCompleted">
+          <DataField>tskCompleted</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="tskActive">
+          <DataField>tskActive</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -5177,16 +5186,9 @@ AND tskDesc   LIKE '%File opening process%'</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=IIF(ISNOTHING(LOOKUP(TRIM(Fields!Client.Value)&amp;TRIM(Fields!Matter.Value)
+                                      <Value>=LOOKUP(TRIM(Fields!Client.Value)&amp;TRIM(Fields!Matter.Value)
 ,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
-,Fields!MSUpdatedBy.Value, "DataSet1"))
-,Lookup(TRIM(Fields!Client.Value)+"."+TRIM(Fields!Matter.Value),
-		TRIM(Fields!T_Client.Value)+"."+TRIM(Fields!T_Matter.Value),
-		Fields!dim_task_owner_task_owner_name_.Value, "DS_Tasks")
-,LOOKUP(TRIM(Fields!Client.Value)&amp;TRIM(Fields!Matter.Value)
-,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
-,Fields!MSUpdatedBy.Value, "DataSet1")
-)</Value>
+,Fields!MSUpdatedBy.Value, "DataSet1")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
