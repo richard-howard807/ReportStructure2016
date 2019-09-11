@@ -3583,14 +3583,19 @@ WHERE
     <DataSet Name="outstandingdebt">
       <Query>
         <DataSourceName>Reporting</DataSourceName>
-        <CommandText>SELECT  DISTINCT fact_debt.client_code, fact_debt.matter_number , fact_debt.outstanding_total_bill
+        <CommandText>
+
+
+SELECT  DISTINCT fact_debt.client_code, fact_debt.matter_number , sum(fact_debt.outstanding_total_bill) [outstanding_total_bill],  fact_bill_detail_summary.bill_total
 
 
  FROM red_dw.dbo.fact_debt
 left JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_debt.dim_matter_header_curr_key
+LEFT JOIN red_dw.dbo.fact_bill_detail_summary ON fact_bill_detail_summary.master_fact_key = fact_debt.master_fact_key 
  WHERE fact_debt.client_code IN ('00257248','R00016', '00513126')
  AND reporting_exclusions = 0 
-</CommandText>
+
+group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandText>
       </Query>
       <Fields>
         <Field Name="client_code">
@@ -3603,6 +3608,10 @@ left JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_
         </Field>
         <Field Name="outstanding_total_bill">
           <DataField>outstanding_total_bill</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="bill_total">
+          <DataField>bill_total</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
@@ -5741,7 +5750,6 @@ left JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_
                             <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -8466,7 +8474,7 @@ IIF(ISNOTHING(Fields!hdi_gerling_reference.Value) = false AND Fields!hdi_gerling
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=lookup(fields!client.Value &amp; fields!matter.Value, Fields!client_code.Value &amp; fields!matter_number.Value, Fields!Fees_Paid.Value, "Feeslookup3e")</Value>
+                                  <Value>=lookup(fields!client.Value &amp; fields!matter.Value , Fields!client_code.Value &amp; Fields!matter_number.Value , Fields!bill_total.Value, "outstandingdebt")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -13841,7 +13849,7 @@ IIF(ISNOTHING(Fields!hdi_gerling_reference.Value) = false AND Fields!hdi_gerling
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=lookup(fields!client.Value &amp; fields!matter.Value, Fields!client_code.Value &amp; fields!matter_number.Value, Fields!Fees_Paid.Value, "Feeslookup3e")</Value>
+                                  <Value>=lookup(fields!client.Value &amp; fields!matter.Value , Fields!client_code.Value &amp; Fields!matter_number.Value , Fields!bill_total.Value, "outstandingdebt")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -18892,7 +18900,7 @@ IIF(ISNOTHING(Fields!hdi_gerling_reference.Value) = false AND Fields!hdi_gerling
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!weightmans_fees_paid.Value</Value>
+                                      <Value>=lookup(fields!client.Value &amp; fields!matter.Value , Fields!client_code.Value &amp; Fields!matter_number.Value , Fields!bill_total.Value, "outstandingdebt")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
