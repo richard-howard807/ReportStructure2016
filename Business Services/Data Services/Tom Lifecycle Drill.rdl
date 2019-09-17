@@ -27,12 +27,12 @@
 	    header.matter_description[Description], 
 		header.date_opened_case_management [Open Date], 
 		header.date_closed_case_management [Date Closed ], 
- fact_matter_summary_current.last_bill_date [Last Bill Date], 
+lastbill.[Last Bill Date], 
 defence_costs_billed [Defence Costs Billed], 
 defence_costs_reserve [Defence Cost Reserve ],
 outcome_of_case [Outcome of Case], 
 
-      DATEDIFF(DAY, header.date_opened_case_management,  fact_matter_summary_current.last_bill_date) [Lifecycle ], 
+      DATEDIFF(DAY, header.date_opened_case_management,  lastbill.[Last Bill Date]) [Lifecycle ], 
 
        SUM(   CASE
                   WHEN header.date_closed_case_management
@@ -53,7 +53,7 @@ outcome_of_case [Outcome of Case],
        AVG(   CASE
                   WHEN header.date_closed_case_management
                        BETWEEN '2018-05-01' AND '2019-04-30' THEN
-                      DATEDIFF(DAY, header.date_opened_case_management,  fact_matter_summary_current.last_bill_date)
+                      DATEDIFF(DAY, header.date_opened_case_management, lastbill.[Last Bill Date])
                   ELSE
                       0
               END
@@ -61,7 +61,7 @@ outcome_of_case [Outcome of Case],
        AVG(   CASE
                   WHEN header.date_closed_case_management
                        BETWEEN '2019-05-01' AND GETDATE() THEN
-                      DATEDIFF(DAY, header.date_opened_case_management, fact_matter_summary_current.last_bill_date )
+                      DATEDIFF(DAY, header.date_opened_case_management, lastbill.[Last Bill Date] )
                   ELSE
                       0
               END
@@ -76,6 +76,19 @@ FROM red_dw.dbo.fact_dimension_main
         ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
 		LEFT JOIN dim_detail_outcome ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
 				LEFT JOIN fact_matter_summary_current ON fact_matter_summary_current.dim_client_key = fact_dimension_main.dim_client_key
+				LEFT JOIN ( SELECT client_code, matter_number, 
+				
+				           CASE
+               WHEN (fact_matter_summary_current.last_bill_date) = '1753-01-01' THEN
+                   NULL
+               ELSE
+                   fact_matter_summary_current.last_bill_date
+           END AS [Last Bill Date]
+
+		   FROM red_dw.dbo.fact_matter_summary_current 
+				
+				
+				) lastbill ON lastbill.client_code = header.client_code AND lastbill.matter_number = header.matter_number
 	
 WHERE
     --header.date_closed_case_management IS NULL 
@@ -86,8 +99,9 @@ AND dim_fed_hierarchy_history.name = @FeeEarnerName
     AND hierarchylevel2hist IN ( 'Legal Ops - LTA', 'Legal Ops - Claims' )
     AND header.date_closed_case_management
     BETWEEN '2018-05-01' AND GETDATE()
+
 GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_number,
-            DATEDIFF(DAY, header.date_opened_case_management, fact_matter_summary_current.last_bill_date),
+            DATEDIFF(DAY, header.date_opened_case_management, lastbill.[Last Bill Date]),
             hierarchylevel2hist,
             hierarchylevel3hist,
             hierarchylevel4hist,
@@ -95,7 +109,7 @@ GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_numb
             header.matter_description,
             header.date_opened_case_management,
             header.date_closed_case_management,
-            last_bill_date,
+            lastbill.[Last Bill Date],
             defence_costs_billed,
             defence_costs_reserve,
             outcome_of_case</CommandText>
@@ -142,21 +156,21 @@ GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_numb
           <DataField>Defence Costs Billed</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="Lifecycle_">
-          <DataField>Lifecycle </DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Defence_Cost_Reserve_">
           <DataField>Defence Cost Reserve </DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="LFY">
-          <DataField>LFY</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Outcome_of_Case">
           <DataField>Outcome of Case</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Lifecycle_">
+          <DataField>Lifecycle </DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="LFY">
+          <DataField>LFY</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="YTD">
           <DataField>YTD</DataField>
