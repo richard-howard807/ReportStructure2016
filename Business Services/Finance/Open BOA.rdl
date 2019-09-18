@@ -2447,75 +2447,42 @@ WHERE  name ='Minus_Disbursements_Report.png'</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="MinusDisbs">
+    <DataSet Name="DataSet1">
       <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT fact_disbursements_detail.client_code AS [Client Code]
-	, fact_disbursements_detail.matter_number AS [Matter Number]
-	, matter_description AS [Matter Description]
-	, client_name AS [Client Name]
-	, name AS [Matter Owner]
-	, hierarchylevel4hist AS [Team]
-	, locationidud AS [Office]
-	, SUM(ISNULL(unbilled_hard_disbursements,0)+ISNULL(unbilled_soft_disbursements,0)) AS [Unbilled Disbursements]
-	, costype_description AS [Disbursement Description]
-FROM red_dw.dbo.fact_disbursements_detail
-LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_disbursements_detail.dim_matter_header_curr_key
-LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_disbursements_detail.dim_fed_hierarchy_history_key
-LEFT OUTER JOIN red_dw.dbo.dim_employee ON dim_employee.dim_employee_key = dim_fed_hierarchy_history.dim_employee_key
-
-WHERE reporting_exclusions=0
-
-GROUP BY fact_disbursements_detail.client_code 
-	, fact_disbursements_detail.matter_number 
-	, matter_description 
-	, client_name 
-	, name
-	, hierarchylevel4hist 
-	, locationidud 
-	, costype_description
-
-HAVING SUM(ISNULL(unbilled_hard_disbursements,0)+ISNULL(unbilled_soft_disbursements,0))&lt;0
-
-ORDER BY fact_disbursements_detail.client_code
-	, fact_disbursements_detail.matter_number </CommandText>
+        <DataSourceName>ReportStylingOnDWH01</DataSourceName>
+        <CommandText> 
+SELECT
+C.DisplayName AS 'Client Name',
+M.Number AS 'Matter #',
+MAX(IM.InvDate) As 'Last Invoice',
+SUM(IM.OrgBOA) As 'Open BOA'
+FROM TE_3E_Prod.dbo.INVMASTER IM WITH (NOLOCK)
+INNER JOIN TE_3E_Prod.dbo.Matter AS M ON M.MattIndex = IM.LeadMatter
+INNER JOIN TE_3E_Prod.dbo.Client AS C ON C.ClientIndex = M.Client
+WHERE IM.IsReversed = '0'
+--AND MAX(InvDate) BETWEEN @Startdate AND @Enddate
+GROUP BY
+       C.DisplayName,
+       M.Number
+HAVING SUM(IM.OrgBOA) != 0.00
+ORDER BY 'Open BOA' Asc</CommandText>
       </Query>
       <Fields>
-        <Field Name="Client_Code">
-          <DataField>Client Code</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Matter_Number">
-          <DataField>Matter Number</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Matter_Description">
-          <DataField>Matter Description</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="Client_Name">
           <DataField>Client Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Matter_Owner">
-          <DataField>Matter Owner</DataField>
+        <Field Name="Matter__">
+          <DataField>Matter #</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Team">
-          <DataField>Team</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="Last_Invoice">
+          <DataField>Last Invoice</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
-        <Field Name="Office">
-          <DataField>Office</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Unbilled_Disbursements">
-          <DataField>Unbilled Disbursements</DataField>
+        <Field Name="Open_BOA">
+          <DataField>Open BOA</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="Disbursement_Description">
-          <DataField>Disbursement Description</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -2536,25 +2503,10 @@ ORDER BY fact_disbursements_detail.client_code
                       <Width>1.46875in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>2.75in</Width>
+                      <Width>1in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>1.59375in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.4375in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.52083in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.14583in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.35417in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.91667in</Width>
+                      <Width>1in</Width>
                     </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
@@ -2563,14 +2515,14 @@ ORDER BY fact_disbursements_detail.client_code
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox4">
+                            <Textbox Name="Textbox1">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Client Code</Value>
+                                      <Value>Client Name</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2589,7 +2541,141 @@ ORDER BY fact_disbursements_detail.client_code
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox4</rd:DefaultName>
+                              <rd:DefaultName>Textbox1</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Matter </Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox2</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox5">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Last Invoice</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox5</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -2637,7 +2723,7 @@ ORDER BY fact_disbursements_detail.client_code
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Matter Number</Value>
+                                      <Value>Open BOA</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2695,681 +2781,11 @@ ORDER BY fact_disbursements_detail.client_code
                             </Textbox>
                           </CellContents>
                         </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox10">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Matter Description</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox10</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox13">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Client Name</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox13</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox16">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Matter Owner</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox16</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox19">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Team</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox19</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox22">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Office</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox22</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox25">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Unbilled Disbursements</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox25</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox28">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Disbursement Description</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox28</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
                       </TablixCells>
                     </TablixRow>
                     <TablixRow>
                       <Height>0.20833in</Height>
                       <TablixCells>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Client_Code">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!Client_Code.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Client_Code</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Matter_Number">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!Matter_Number.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Matter_Number</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Matter_Description">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!Matter_Description.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Matter_Description</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
                         <TablixCell>
                           <CellContents>
                             <Textbox Name="Client_Name">
@@ -3439,14 +2855,14 @@ ORDER BY fact_disbursements_detail.client_code
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Matter_Owner">
+                            <Textbox Name="Matter__">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Matter_Owner.Value</Value>
+                                      <Value>=Fields!Matter__.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3465,7 +2881,7 @@ ORDER BY fact_disbursements_detail.client_code
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Matter_Owner</rd:DefaultName>
+                              <rd:DefaultName>Matter__</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3506,19 +2922,20 @@ ORDER BY fact_disbursements_detail.client_code
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Team">
+                            <Textbox Name="Last_Invoice">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Team.Value</Value>
+                                      <Value>=Fields!Last_Invoice.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>d</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -3532,7 +2949,7 @@ ORDER BY fact_disbursements_detail.client_code
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Team</rd:DefaultName>
+                              <rd:DefaultName>Last_Invoice</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3573,19 +2990,20 @@ ORDER BY fact_disbursements_detail.client_code
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Office">
+                            <Textbox Name="Open_BOA">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Office.Value</Value>
+                                      <Value>=Fields!Open_BOA.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>C</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -3599,144 +3017,7 @@ ORDER BY fact_disbursements_detail.client_code
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Office</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Unbilled_Disbursements">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!Unbilled_Disbursements.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <Format>'£'#,0.00</Format>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Unbilled_Disbursements</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                                <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
-                              </Style>
-                            </Textbox>
-                            <rd:Selected>true</rd:Selected>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Disbursement_Description">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!Disbursement_Description.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Disbursement_Description</rd:DefaultName>
+                              <rd:DefaultName>Open_BOA</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3785,11 +3066,6 @@ ORDER BY fact_disbursements_detail.client_code
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
                   </TablixMembers>
                 </TablixColumnHierarchy>
                 <TablixRowHierarchy>
@@ -3805,10 +3081,10 @@ ORDER BY fact_disbursements_detail.client_code
                 </TablixRowHierarchy>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
-                <DataSetName>MinusDisbs</DataSetName>
+                <DataSetName>DataSet1</DataSetName>
                 <Top>0.0441cm</Top>
                 <Height>0.78124in</Height>
-                <Width>14.8875in</Width>
+                <Width>5.16875in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -3820,9 +3096,10 @@ ORDER BY fact_disbursements_detail.client_code
                 </Style>
               </Tablix>
             </ReportItems>
-            <Top>0.3175cm</Top>
+            <Top>0.29986cm</Top>
+            <Left>1.08479cm</Left>
             <Height>1.02777in</Height>
-            <Width>14.8875in</Width>
+            <Width>9.43958in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -3830,7 +3107,7 @@ ORDER BY fact_disbursements_detail.client_code
             </Style>
           </Rectangle>
         </ReportItems>
-        <Height>1.16666in</Height>
+        <Height>1.33333in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3866,207 +3143,23 @@ ORDER BY fact_disbursements_detail.client_code
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>14.8875in</Width>
+      <Width>10.02292in</Width>
       <Page>
         <PageHeader>
-          <Height>1.07457in</Height>
+          <Height>0.63707in</Height>
           <PrintOnFirstPage>true</PrintOnFirstPage>
           <PrintOnLastPage>true</PrintOnLastPage>
           <ReportItems>
-            <Rectangle Name="rctReportName">
-              <ReportItems>
-                <Textbox Name="txtTotalPages">
-                  <CanGrow>true</CanGrow>
-                  <ToggleImage>
-                    <InitialState>=CBool(First(Fields!txtTotalPages_InitialToggleState.Value, "DefaultProperties"))</InitialState>
-                  </ToggleImage>
-                  <KeepTogether>true</KeepTogether>
-                  <Paragraphs>
-                    <Paragraph>
-                      <TextRuns>
-                        <TextRun>
-                          <Label>Pages</Label>
-                          <Value>="Total pages: " &amp; Globals!TotalPages</Value>
-                          <Style>
-                            <FontStyle>=First(Fields!txtTotalPages_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                            <FontFamily>=First(Fields!txtTotalPages_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                            <FontSize>=First(Fields!txtTotalPages_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                            <FontWeight>=First(Fields!txtTotalPages_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                            <TextDecoration>=First(Fields!txtTotalPages_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                            <Color>=First(Fields!txtTotalPages_Color.Value, "DefaultProperties")</Color>
-                          </Style>
-                        </TextRun>
-                      </TextRuns>
-                      <LeftIndent>=First(Fields!txtTotalPages_Indent_LeftIndent.Value, "DefaultProperties")</LeftIndent>
-                      <RightIndent>=First(Fields!txtTotalPages_Indent_RightIndent.Value, "DefaultProperties")</RightIndent>
-                      <HangingIndent>=First(Fields!txtTotalPages_Indent_HangingIndent.Value, "DefaultProperties")</HangingIndent>
-                      <SpaceBefore>=First(Fields!txtTotalPages_SpaceBefore.Value, "DefaultProperties")</SpaceBefore>
-                      <SpaceAfter>=First(Fields!txtTotalPages_SpaceAfter.Value, "DefaultProperties")</SpaceAfter>
-                      <Style>
-                        <TextAlign>=First(Fields!txtTotalPages_TextAlign.Value, "DefaultProperties")</TextAlign>
-                        <LineHeight>=First(Fields!txtTotalPages_LineHeight.Value, "DefaultProperties")</LineHeight>
-                      </Style>
-                    </Paragraph>
-                  </Paragraphs>
-                  <Height>0.24208in</Height>
-                  <Width>14.8875in</Width>
-                  <Visibility>
-                    <Hidden>=CBool(First(Fields!txtTotalPages_Hidden.Value, "DefaultProperties"))</Hidden>
-                  </Visibility>
-                  <ToolTip>=First(Fields!txtTotalPages_ToolTip.Value, "DefaultProperties")</ToolTip>
-                  <Style>
-                    <Border>
-                      <Color>=First(Fields!txtTotalPages_BorderColor_Default.Value, "DefaultProperties")</Color>
-                      <Style>=First(Fields!txtTotalPages_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                      <Width>=First(Fields!txtTotalPages_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                    </Border>
-                    <TopBorder>
-                      <Color>=First(Fields!txtTotalPages_BorderColor_Top.Value, "DefaultProperties")</Color>
-                      <Style>=First(Fields!txtTotalPages_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                      <Width>=First(Fields!txtTotalPages_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                    </TopBorder>
-                    <BottomBorder>
-                      <Color>=First(Fields!txtTotalPages_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                      <Style>=First(Fields!txtTotalPages_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                      <Width>=First(Fields!txtTotalPages_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                    </BottomBorder>
-                    <LeftBorder>
-                      <Color>=First(Fields!txtTotalPages_BorderColor_Left.Value, "DefaultProperties")</Color>
-                      <Style>=First(Fields!txtTotalPages_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                      <Width>=First(Fields!txtTotalPages_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                    </LeftBorder>
-                    <RightBorder>
-                      <Color>=First(Fields!txtTotalPages_BorderColor_Right.Value, "DefaultProperties")</Color>
-                      <Style>=First(Fields!txtTotalPages_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                      <Width>=First(Fields!txtTotalPages_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                    </RightBorder>
-                    <BackgroundColor>=First(Fields!txtTotalPages_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                    <VerticalAlign>=First(Fields!txtTotalPages_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                    <PaddingLeft>=First(Fields!txtTotalPages_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                    <PaddingRight>=First(Fields!txtTotalPages_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                    <PaddingTop>=First(Fields!txtTotalPages_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                    <PaddingBottom>=First(Fields!txtTotalPages_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                  </Style>
-                </Textbox>
-              </ReportItems>
-              <KeepTogether>true</KeepTogether>
-              <Top>0.78124in</Top>
-              <Height>0.24208in</Height>
-              <Width>14.8875in</Width>
-              <Visibility>
-                <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!rctReportName_ToolTip.Value, "DefaultProperties")</ToolTip>
-              <Style>
-                <Border>
-                  <Color>=First(Fields!rctReportName_BorderColor_Default.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                </Border>
-                <TopBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Top.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                </TopBorder>
-                <BottomBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                </BottomBorder>
-                <LeftBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Left.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                </LeftBorder>
-                <RightBorder>
-                  <Color>=First(Fields!rctReportName_BorderColor_Right.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!rctReportName_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!rctReportName_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                </RightBorder>
-                <BackgroundColor>=First(Fields!rctReportName_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-              </Style>
-            </Rectangle>
-            <Image Name="WeightmansLogo">
-              <Source>Database</Source>
-              <Value>=First(Fields!file_stream.Value, "ReportLogo")</Value>
-              <MIMEType>=First(Fields!imgLogo1_Mimetype.Value, "DefaultProperties")</MIMEType>
+            <Image Name="Image1">
+              <Source>Embedded</Source>
+              <Value>WeightmansLLP_BrandedImage_Open_BOA__Open_BOA_SelectColour_Small_0_dual_line</Value>
               <Sizing>FitProportional</Sizing>
-              <ActionInfo>
-                <Actions>
-                  <Action>
-                    <Hyperlink>=First(Fields!imgLogo1_Action_GoToURL.Value, "DefaultProperties")</Hyperlink>
-                  </Action>
-                </Actions>
-              </ActionInfo>
-              <Top>0.125in</Top>
-              <Height>0.65624in</Height>
-              <Width>1.7in</Width>
-              <ZIndex>1</ZIndex>
-              <Visibility>
-                <Hidden>=CBool(First(Fields!imgLogo1_Hidden.Value, "DefaultProperties"))</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!imgLogo1_Tooltip.Value, "DefaultProperties")</ToolTip>
-              <Style>
-                <Border>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Default.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                </Border>
-                <TopBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Top.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                </TopBorder>
-                <BottomBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                </BottomBorder>
-                <LeftBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Left.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                </LeftBorder>
-                <RightBorder>
-                  <Color>=First(Fields!imgLogo1_BorderColor_Right.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!imgLogo1_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!imgLogo1_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                </RightBorder>
-                <PaddingLeft>=First(Fields!imgLogo1_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                <PaddingRight>=First(Fields!imgLogo1_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                <PaddingTop>=First(Fields!imgLogo1_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                <PaddingBottom>=First(Fields!imgLogo1_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-              </Style>
-            </Image>
-            <Image Name="ReportTitle">
-              <Source>Database</Source>
-              <Value>=First(Fields!file_stream.Value, "ReportTitle")</Value>
-              <MIMEType>=First(Fields!imgLogo2_Mimetype.Value, "DefaultProperties")</MIMEType>
-              <Sizing>FitProportional</Sizing>
-              <ActionInfo>
-                <Actions>
-                  <Action>
-                    <Hyperlink>=First(Fields!imgLogo2_Action_GoToURL.Value, "DefaultProperties")</Hyperlink>
-                  </Action>
-                </Actions>
-              </ActionInfo>
-              <Top>0.125in</Top>
-              <Left>1.7in</Left>
-              <Height>0.64235in</Height>
-              <Width>13.1875in</Width>
-              <ZIndex>2</ZIndex>
-              <Visibility>
-                <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!imgLogo2_Tooltip.Value, "DefaultProperties")</ToolTip>
+              <Height>0.62846in</Height>
+              <Width>7.73958in</Width>
               <Style>
                 <Border>
                   <Style>None</Style>
                 </Border>
-                <PaddingLeft>=First(Fields!imgLogo2_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                <PaddingRight>=First(Fields!imgLogo2_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                <PaddingTop>=First(Fields!imgLogo2_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                <PaddingBottom>=First(Fields!imgLogo2_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
               </Style>
             </Image>
           </ReportItems>
@@ -4106,78 +3199,10 @@ ORDER BY fact_disbursements_detail.client_code
           </Style>
         </PageHeader>
         <PageFooter>
-          <Height>1.23716in</Height>
+          <Height>0.97674in</Height>
           <PrintOnFirstPage>true</PrintOnFirstPage>
           <PrintOnLastPage>true</PrintOnLastPage>
           <ReportItems>
-            <Textbox Name="txtPageNumber">
-              <CanGrow>true</CanGrow>
-              <KeepTogether>true</KeepTogether>
-              <Paragraphs>
-                <Paragraph>
-                  <TextRuns>
-                    <TextRun>
-                      <Label>Page Number</Label>
-                      <Value>="Page " &amp; Globals!PageNumber &amp; " of " &amp; Globals!TotalPages</Value>
-                      <Style>
-                        <FontFamily>=First(Fields!txtPageNumber_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                        <FontSize>=First(Fields!txtPageNumber_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                        <FontWeight>Normal</FontWeight>
-                        <TextDecoration>None</TextDecoration>
-                        <Color>=First(Fields!txtPageNumber_Color.Value, "DefaultProperties")</Color>
-                      </Style>
-                    </TextRun>
-                  </TextRuns>
-                  <LeftIndent>=First(Fields!txtPageNumber_Indent_LeftIndent.Value, "DefaultProperties")</LeftIndent>
-                  <RightIndent>=First(Fields!txtPageNumber_Indent_RightIndent.Value, "DefaultProperties")</RightIndent>
-                  <HangingIndent>=First(Fields!txtPageNumber_Indent_HangingIndent.Value, "DefaultProperties")</HangingIndent>
-                  <SpaceBefore>=First(Fields!txtPageNumber_SpaceBefore.Value, "DefaultProperties")</SpaceBefore>
-                  <SpaceAfter>=First(Fields!txtPageNumber_SpaceAfter.Value, "DefaultProperties")</SpaceAfter>
-                  <Style>
-                    <TextAlign>=First(Fields!txtPageNumber_TextAlign.Value, "DefaultProperties")</TextAlign>
-                  </Style>
-                </Paragraph>
-              </Paragraphs>
-              <Height>0.25in</Height>
-              <Width>14.8875in</Width>
-              <Visibility>
-                <Hidden>=CBool(First(Fields!txtPageNumber_Visibility_Hidden.Value, "DefaultProperties"))</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!txtPageNumber_ToolTip.Value, "DefaultProperties")</ToolTip>
-              <Style>
-                <Border>
-                  <Color>=First(Fields!txtPageNumber_BorderColor_Default.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!txtPageNumber_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!txtPageNumber_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                </Border>
-                <TopBorder>
-                  <Color>=First(Fields!txtPageNumber_BorderColor_Top.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!txtPageNumber_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!txtPageNumber_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                </TopBorder>
-                <BottomBorder>
-                  <Color>=First(Fields!txtPageNumber_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!txtPageNumber_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!txtPageNumber_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                </BottomBorder>
-                <LeftBorder>
-                  <Color>=First(Fields!txtPageNumber_BorderColor_Left.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!txtPageNumber_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!txtPageNumber_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                </LeftBorder>
-                <RightBorder>
-                  <Color>=First(Fields!txtPageNumber_BorderColor_Right.Value, "DefaultProperties")</Color>
-                  <Style>=First(Fields!txtPageNumber_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                  <Width>=First(Fields!txtPageNumber_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                </RightBorder>
-                <BackgroundColor>=First(Fields!txtPageNumber_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                <VerticalAlign>=First(Fields!txtPageNumber_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                <PaddingLeft>=First(Fields!txtPageNumber_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                <PaddingRight>=First(Fields!txtPageNumber_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                <PaddingTop>=First(Fields!txtPageNumber_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                <PaddingBottom>=First(Fields!txtPageNumber_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-              </Style>
-            </Textbox>
             <Textbox Name="txtReportDescriptionTitle">
               <CanGrow>true</CanGrow>
               <KeepTogether>true</KeepTogether>
@@ -4291,8 +3316,7 @@ ORDER BY fact_disbursements_detail.client_code
               </Paragraphs>
               <Top>0.55556in</Top>
               <Height>0.36938in</Height>
-              <Width>14.8875in</Width>
-              <ZIndex>1</ZIndex>
+              <Width>9.43958in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -4345,8 +3369,8 @@ ORDER BY fact_disbursements_detail.client_code
               </ActionInfo>
               <Top>0.22974in</Top>
               <Height>0.25638in</Height>
-              <Width>14.8875in</Width>
-              <ZIndex>2</ZIndex>
+              <Width>9.43958in</Width>
+              <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -4433,6 +3457,31 @@ ORDER BY fact_disbursements_detail.client_code
       </CellDefinitions>
     </GridLayoutDefinition>
   </ReportParametersLayout>
+  <EmbeddedImages>
+    <EmbeddedImage Name="WeightmansLLP_BrandedImage_Open_BOA__Open_BOA_SelectColour_Small_0_dual_line">
+      <MIMEType>image/png</MIMEType>
+      <ImageData>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</ImageData>
+    </EmbeddedImage>
+  </EmbeddedImages>
   <ConsumeContainerWhitespace>true</ConsumeContainerWhitespace>
   <rd:ReportUnitType>Inch</rd:ReportUnitType>
   <rd:ReportID>44560a93-f094-48ae-8cf4-00bd39732022</rd:ReportID>
