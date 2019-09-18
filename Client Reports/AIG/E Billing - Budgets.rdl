@@ -4401,16 +4401,21 @@ SELECT   TRIM(header.client_code) + '/' + header.matter_number [lkp_ref] ,
          budgeting.aig_fixed_fee_budget_fees ,
          detail_client.has_budget_been_approved ,
          budgeting.[aigtotalbudgethourlyrate] ,
-         CONCAT(
+         CONCAT_WS(',',
              CASE WHEN detail_client.aig_litigation_number IS NULL
                        OR detail_client.aig_litigation_number = '' THEN
                       'No LIT Number'
              END ,
-             CASE WHEN detail_client.aig_litigation_number LIKE '%LIT-%'
+             CASE WHEN detail_client.aig_litigation_number LIKE 'LIT-%'
                        AND detail_client.aig_litigation_number &lt;&gt; 'LIT-16777 UKSC'
-                       AND ( budgeting.[aig_fixed_fee_budget_fees] IS NULL )
-                       AND ( budgeting.[aig_costs_practice_area_only_budget] IS NULL )
-                       AND ( budgeting.[aigtotalbudgethourlyrate] IS NULL ) THEN
+                       AND ISNULL(budgeting.[aig_fixed_fee_budget_fees],0) = 0 
+                       AND ISNULL(budgeting.[aig_costs_practice_area_only_budget],0) =0 
+                       AND ISNULL(budgeting.[aigtotalbudgethourlyrate],0) = 0 
+					   AND ISNULL(detail_client.has_budget_been_approved,'') = ''
+					   AND ISNULL(budgeting.total_budget_uploaded,0) = 0
+                       AND ISNULL(detail_client.date_budget_uploaded,'') ='' 
+					  					   
+					   THEN
                       'No budget figures'
              END,
              CASE WHEN ISNULL(detail_client.has_budget_been_approved, '') = 'Rejected' THEN
@@ -4432,11 +4437,19 @@ SELECT   TRIM(header.client_code) + '/' + header.matter_number [lkp_ref] ,
                    OR ISNULL(detail_client.hide_flag, '') = 'Y' THEN 0
               WHEN detail_client.aig_litigation_number IS NULL
                    OR detail_client.aig_litigation_number = '' THEN 1
-              WHEN detail_client.aig_litigation_number LIKE '%LIT-%'
-                   AND detail_client.aig_litigation_number &lt;&gt; 'LIT-16777 UKSC'
-                   AND ( budgeting.[aig_fixed_fee_budget_fees] IS NULL )
-                   AND ( budgeting.[aig_costs_practice_area_only_budget] IS NULL )
-                   AND ( budgeting.[aigtotalbudgethourlyrate] IS NULL ) THEN 1
+              WHEN detail_client.aig_litigation_number LIKE 'LIT-%'
+                       AND detail_client.aig_litigation_number &lt;&gt; 'LIT-16777 UKSC'
+                       AND ISNULL(budgeting.[aig_fixed_fee_budget_fees],0) = 0 
+                       AND ISNULL(budgeting.[aig_costs_practice_area_only_budget],0) =0 
+                       AND ISNULL(budgeting.[aigtotalbudgethourlyrate],0) = 0 
+					   AND ISNULL(detail_client.has_budget_been_approved,'') = ''
+					   AND ISNULL(budgeting.total_budget_uploaded,0) = 0
+                       AND ISNULL(detail_client.date_budget_uploaded,'') ='' 
+					  					   
+					   THEN
+                      1
+
+
               WHEN detail_client.has_budget_been_approved = 'Rejected' THEN 1
               WHEN detail_client.has_budget_been_approved = 'No' THEN 1
               WHEN detail_client.aig_litigation_number LIKE '%[*]LIT-%' THEN 1
@@ -4453,8 +4466,7 @@ WHERE    1 = 1
          AND header.date_closed_case_management IS NULL
          AND header.reporting_exclusions &lt;&gt; 1
          AND ISNULL(header.case_id, 0) &lt;&gt; '464543'
---AND TRIM(header.client_code) + '/' + header.matter_number  = 'A2002/00014630'
-</CommandText>
+--AND TRIM(header.client_code) + '/' + header.matter_number  = 'A2002/</CommandText>
       </Query>
       <Fields>
         <Field Name="lkp_ref">
@@ -9845,7 +9857,7 @@ WHERE    1 = 1
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!master_matter_number.Value</Value>
+                                      <Value>=RIGHT("00000000" + Fields!master_matter_number.Value,8)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -10439,7 +10451,7 @@ WHERE    1 = 1
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Lookup(Fields!lookupbd.Value, Fields!lkp_ref.Value, Fields!exception.Value, "sqlAIG")</Value>
+                                      <Value>=iif(lookup(Fields!lookupbd.Value,Fields!lkp_ref.Value,Fields!exception_ind.Value,"sqlAIG")=1,Lookup(Fields!lookupbd.Value, Fields!lkp_ref.Value, Fields!exception.Value, "sqlAIG"),"")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -19941,7 +19953,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>1.02777in</Height>
-            <Width>104.64483in</Width>
+            <Width>93.64483in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -21528,7 +21540,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!master_matter_number.Value</Value>
+                                  <Value>=RIGHT("00000000" + Fields!master_matter_number.Value,8)</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -24238,7 +24250,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>104.64483in</Width>
+      <Width>93.64483in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -24281,7 +24293,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
                     </Paragraph>
                   </Paragraphs>
                   <Height>0.24208in</Height>
-                  <Width>103.64483in</Width>
+                  <Width>93.64483in</Width>
                   <Visibility>
                     <Hidden>=CBool(First(Fields!txtTotalPages_Hidden.Value, "DefaultProperties"))</Hidden>
                   </Visibility>
@@ -24324,7 +24336,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
               <KeepTogether>true</KeepTogether>
               <Top>0.78124in</Top>
               <Height>0.24208in</Height>
-              <Width>103.64483in</Width>
+              <Width>93.64483in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -24425,7 +24437,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
               <Top>0.125in</Top>
               <Left>1.81071in</Left>
               <Height>0.64235in</Height>
-              <Width>101.83412in</Width>
+              <Width>91.83412in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -24512,7 +24524,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
               </Paragraphs>
               <Top>0.14111cm</Top>
               <Height>0.25in</Height>
-              <Width>103.64483in</Width>
+              <Width>93.64483in</Width>
               <Visibility>
                 <Hidden>=CBool(First(Fields!txtPageNumber_Visibility_Hidden.Value, "DefaultProperties"))</Hidden>
               </Visibility>
@@ -24675,7 +24687,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
               </Paragraphs>
               <Top>0.61112in</Top>
               <Height>0.36938in</Height>
-              <Width>103.64483in</Width>
+              <Width>93.64483in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
@@ -24729,7 +24741,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
               </ActionInfo>
               <Top>0.2853in</Top>
               <Height>0.25638in</Height>
-              <Width>103.64483in</Width>
+              <Width>93.64483in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
