@@ -4393,6 +4393,7 @@ inner JOIN cte ON cte.dimKEY = dim_tasks.dim_tasks_key</CommandText>
 */
 
 SELECT   TRIM(header.client_code) + '/' + header.matter_number [lkp_ref] ,
+		 header.matter_description,
          detail_client.aig_litigation_number ,
          header.present_position ,
          outcome.outcome_of_case ,
@@ -4400,7 +4401,10 @@ SELECT   TRIM(header.client_code) + '/' + header.matter_number [lkp_ref] ,
          budgeting.aig_costs_practice_area_only_budget ,
          budgeting.aig_fixed_fee_budget_fees ,
          detail_client.has_budget_been_approved ,
-         budgeting.[aigtotalbudgethourlyrate] ,
+         budgeting.aigtotalbudgethourlyrate ,
+		 lead_budget_details.budget_approved,
+		 lead_budget_details.total_budget_uploaded,
+         lead_budget_details.date_budget_uploaded,
          CONCAT_WS(',',
              CASE WHEN detail_client.aig_litigation_number IS NULL
                        OR detail_client.aig_litigation_number = '' THEN
@@ -4411,9 +4415,9 @@ SELECT   TRIM(header.client_code) + '/' + header.matter_number [lkp_ref] ,
                        AND ISNULL(budgeting.[aig_fixed_fee_budget_fees],0) = 0 
                        AND ISNULL(budgeting.[aig_costs_practice_area_only_budget],0) =0 
                        AND ISNULL(budgeting.[aigtotalbudgethourlyrate],0) = 0 
-					   AND ISNULL(detail_client.has_budget_been_approved,'') = ''
-					   AND ISNULL(budgeting.total_budget_uploaded,0) = 0
-                       AND ISNULL(detail_client.date_budget_uploaded,'') ='' 
+					   AND ISNULL(lead_budget_details.budget_approved,'') = ''
+					   AND ISNULL(lead_budget_details.total_budget_uploaded,0) = 0
+                       AND ISNULL(lead_budget_details.date_budget_uploaded,'') ='' 
 					  					   
 					   THEN
                       'No budget figures'
@@ -4442,9 +4446,9 @@ SELECT   TRIM(header.client_code) + '/' + header.matter_number [lkp_ref] ,
                        AND ISNULL(budgeting.[aig_fixed_fee_budget_fees],0) = 0 
                        AND ISNULL(budgeting.[aig_costs_practice_area_only_budget],0) =0 
                        AND ISNULL(budgeting.[aigtotalbudgethourlyrate],0) = 0 
-					   AND ISNULL(detail_client.has_budget_been_approved,'') = ''
-					   AND ISNULL(budgeting.total_budget_uploaded,0) = 0
-                       AND ISNULL(detail_client.date_budget_uploaded,'') ='' 
+					   AND ISNULL(lead_budget_details.budget_approved,'') = ''
+					   AND ISNULL(lead_budget_details.total_budget_uploaded,0) = 0
+                       AND ISNULL(lead_budget_details.date_budget_uploaded,'') ='' 
 					  					   
 					   THEN
                       1
@@ -4461,16 +4465,42 @@ FROM     red_dw.dbo.fact_dimension_main main
          LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome outcome ON outcome.dim_detail_outcome_key = main.dim_detail_outcome_key
          LEFT OUTER JOIN red_dw.dbo.dim_detail_client detail_client ON detail_client.dim_detail_client_key = main.dim_detail_client_key
          LEFT OUTER JOIN red_dw.dbo.fact_detail_cost_budgeting budgeting ON main.master_fact_key = budgeting.master_fact_key
+
+		 LEFT OUTER JOIN  (
+				SELECT dim_detail_client.aig_litigation_number
+					,MAX(dim_detail_client.date_budget_uploaded) date_budget_uploaded
+					,MAX(cost_budgeting.total_budget_uploaded) total_budget_uploaded
+					,MAX(dim_detail_client.has_budget_been_approved) budget_approved
+				FROM red_dw.dbo.fact_dimension_main main
+				INNER JOIN red_dw.dbo.dim_matter_header_current header ON header.dim_matter_header_curr_key = main.dim_matter_header_curr_key
+				INNER JOIN red_dw.dbo.dim_detail_client dim_detail_client ON dim_detail_client.dim_detail_client_key = main.dim_detail_client_key
+				INNER JOIN red_dw.dbo.fact_detail_cost_budgeting cost_budgeting ON cost_budgeting.master_fact_key = main.master_fact_key
+
+				WHERE 1=1
+					--AND dim_detail_client.aig_litigation_number = 'LIT-21253'
+					AND header.client_group_code = '00000013'
+					AND header.reporting_exclusions &lt;&gt; 1
+					AND UPPER(dim_detail_client.aig_litigation_number) LIKE '%LIT%'
+					AND dim_detail_client.aig_litigation_number &lt;&gt; 'No LIT'
+					AND dim_detail_client.aig_litigation_number IS NOT NULL 
+				GROUP BY dim_detail_client.aig_litigation_number
+						) lead_budget_details ON lead_budget_details.aig_litigation_number = detail_client.aig_litigation_number
+
+
 WHERE    1 = 1
          AND header.client_group_code = '00000013'
          AND header.date_closed_case_management IS NULL
          AND header.reporting_exclusions &lt;&gt; 1
          AND ISNULL(header.case_id, 0) &lt;&gt; '464543'
---AND TRIM(header.client_code) + '/' + header.matter_number  = 'A2002/</CommandText>
+--AND TRIM(header.master_client_code) + '/' + header.master_matter_number  = 'A2002/10505'</CommandText>
       </Query>
       <Fields>
         <Field Name="lkp_ref">
           <DataField>lkp_ref</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_description">
+          <DataField>matter_description</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="aig_litigation_number">
@@ -4509,9 +4539,21 @@ WHERE    1 = 1
           <DataField>exception</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="budget_approved">
+          <DataField>budget_approved</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="exception_ind">
           <DataField>exception_ind</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="total_budget_uploaded">
+          <DataField>total_budget_uploaded</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="date_budget_uploaded">
+          <DataField>date_budget_uploaded</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
