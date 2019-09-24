@@ -2457,14 +2457,32 @@ WHERE  name ='Live_Report_Number_of_Live_Files.png'</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@StartDate">
-            <Value>=Parameters!StartDate.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@EndDate">
-            <Value>=Parameters!EndDate.Value</Value>
+          <QueryParameter Name="@matter">
+            <Value>=Parameters!matter.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
+        <CommandText>--USE [Reporting]
+--GO
+--/****** Object:  StoredProcedure [dbo].[1stcentral]    Script Date: 24/09/2019 11:48:10 ******/
+--SET ANSI_NULLS ON
+--GO
+--SET QUOTED_IDENTIFIER ON
+--GO
+--ALTER  PROCEDURE [dbo].[1stcentral]--EXEC [dbo].[inquestreport] 'Casualty Liverpool 2','Open' ,'Inquest                                 ',NULL,NULL
+
+
+
+
+--(
+--@matter AS NVARCHAR(MAX)
+--,@StartDate AS DATE NULL
+--,@EndDate AS DATE NULL
+
+--)
+--AS
+--BEGIN
+
+--SELECT ListValue  INTO #matter FROM Reporting.dbo.[udt_TallySplit]('|', @matter)
 
 
 
@@ -2477,15 +2495,12 @@ SELECT dim_date.calendar_date [Work Date],
        fact_all_time_activity.time_charge_value [WIP Amount],
 	 dim_bill.  bill_number [Invoice Number],
 	   RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number) [Matter Number],
+	
 
        time_activity_descrn [Time Type],
        narrative [Narrative],
 	   disc.matter_description [Matter Name],
 	  fact_bill_matter.last_bill_date [Bill Date ]
-
-
-	   
-
 
 
 FROM red_dw.dbo.fact_all_time_activity
@@ -2508,14 +2523,18 @@ FROM red_dw.dbo.fact_all_time_activity
 		LEFT JOIN red_dw.dbo.fact_bill_matter ON fact_bill_matter.dim_matter_header_curr_key = fact_all_time_activity.dim_matter_header_curr_key
 		--LEFT JOIN dim_fed_hierarchy_history AS FE ON FE.fed_code = fact_all_time_activity.fed_code_fee_earner
 
+	--	INNER JOIN #matter AS matter ON matter.ListValue COLLATE DATABASE_DEFAULT = 	   RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number)  COLLATE DATABASE_DEFAULT
+
 
 WHERE 
  dim_all_time_activity.client_code = 'W20352'
 
 AND dim_all_time_activity.reporting_exclusions = 0 
-AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
+--AND RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number) IN('W20352/00000003','W20352/00000003','W20352/00000004','W20352/00000005')
+--AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
+AND RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number) IN (@matter)
 
-</CommandText>
+--END </CommandText>
       </Query>
       <Fields>
         <Field Name="Work_Date">
@@ -2568,6 +2587,87 @@ AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="DataSet1">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>
+
+
+
+SELECT DISTINCT
+	   RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number) [Matter Number]
+
+
+
+FROM red_dw.dbo.fact_all_time_activity
+    LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history
+        ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_all_time_activity.dim_fed_hierarchy_history_key
+    LEFT JOIN red_dw.dbo.dim_all_time_activity
+        ON dim_all_time_activity.dim_all_time_activity_key = fact_all_time_activity.dim_all_time_activity_key
+    LEFT JOIN red_dw.dbo.dim_bill_narrative
+        ON dim_bill_narrative.transaction_sequence_number = dim_all_time_activity.transaction_sequence_number
+    LEFT OUTER JOIN red_dw.dbo.dim_date
+        ON dim_date.dim_date_key = fact_all_time_activity.dim_transaction_date_key
+		LEFT JOIN red_dw.dbo.dim_bill ON dim_bill.dim_bill_key = fact_all_time_activity.dim_bill_key
+		LEFT JOIN red_dw.dbo.dim_date AS bd ON dim_date.dim_date_key = fact_all_time_activity.dim_bill_date_key
+		LEFT JOIN (
+		SELECT client_code, matter_number, matter_description , dim_matter_header_curr_key, final_bill_date
+		FROM red_dw.dbo.dim_matter_header_current
+		WHERE client_code ='W20352'
+		
+		) AS  disc ON disc.dim_matter_header_curr_key = fact_all_time_activity.dim_matter_header_curr_key
+		LEFT JOIN red_dw.dbo.fact_bill_matter ON fact_bill_matter.dim_matter_header_curr_key = fact_all_time_activity.dim_matter_header_curr_key
+		--LEFT JOIN dim_fed_hierarchy_history AS FE ON FE.fed_code = fact_all_time_activity.fed_code_fee_earner
+
+	--	INNER JOIN #matter AS matter ON matter.ListValue COLLATE DATABASE_DEFAULT = 	   RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number)  COLLATE DATABASE_DEFAULT
+
+
+WHERE 
+ dim_all_time_activity.client_code = 'W20352'
+
+AND dim_all_time_activity.reporting_exclusions = 0 
+--AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
+--AND RTRIM(dim_all_time_activity.client_code) + '/'+ RTRIM(dim_all_time_activity.matter_number) IN (@matter)
+
+
+ORDER BY [Matter Number]</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Matter_Number">
+          <DataField>Matter Number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="bill">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT bill_number, client_code, matter_number 
+
+
+FROM red_dw.dbo.fact_bill
+
+
+
+
+WHERE client_code = 'W20352'
+AND bill_number &lt;&gt; 'PURGE'</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="bill_number">
+          <DataField>bill_number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="client_code">
+          <DataField>client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_number">
+          <DataField>matter_number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -2579,7 +2679,7 @@ AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
                 <TablixBody>
                   <TablixColumns>
                     <TablixColumn>
-                      <Width>1.67361in</Width>
+                      <Width>0.94444in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.41667in</Width>
@@ -4878,7 +4978,7 @@ AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
                 <PageName>1st Central Bills </PageName>
                 <Top>0.07939cm</Top>
                 <Height>0.86457in</Height>
-                <Width>15.45486in</Width>
+                <Width>14.72569in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -5361,19 +5461,23 @@ AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
-    <ReportParameter Name="StartDate">
-      <DataType>DateTime</DataType>
-      <Prompt>Bill Date From </Prompt>
-    </ReportParameter>
-    <ReportParameter Name="EndDate">
-      <DataType>DateTime</DataType>
-      <Prompt>Bill Date To </Prompt>
+    <ReportParameter Name="matter">
+      <DataType>String</DataType>
+      <Prompt>matter</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>DataSet1</DataSetName>
+          <ValueField>Matter_Number</ValueField>
+          <LabelField>Matter_Number</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>8</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5382,13 +5486,8 @@ AND 	  fact_bill_matter.last_bill_date BETWEEN @StartDate AND @EndDate
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>StartDate</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>EndDate</ParameterName>
+          <RowIndex>5</RowIndex>
+          <ParameterName>matter</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
