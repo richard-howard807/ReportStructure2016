@@ -2455,9 +2455,15 @@ WHERE  name ='Minus_Disbursements_Report.png'</CommandText>
             <Value>=Parameters!Matter.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText> 
- 
+        <CommandText>
+
+
 SELECT
+client_code, matter_number, 
+
+  RTRIM(dim_matter_header_current.client_code)+'-'+ RTRIM(dim_matter_header_current.matter_number) [reference ],
+             REPLACE(LTRIM(REPLACE(RTRIM(client_code), '0', ' ')), ' ', '0') + '-'
+           + REPLACE(LTRIM(REPLACE(RTRIM(matter_number), '0', ' ')), ' ', '0') AS [Mattersphere Weightmans Reference],
 C.DisplayName AS 'Client Name',
 M.Number AS 'Matter #',
 MAX(IM.InvDate) As 'Last Invoice',
@@ -2465,18 +2471,38 @@ SUM(IM.OrgBOA) As 'Open BOA'
 FROM TE_3E_Prod.dbo.INVMASTER IM WITH (NOLOCK)
 INNER JOIN TE_3E_Prod.dbo.Matter AS M ON M.MattIndex = IM.LeadMatter
 INNER JOIN TE_3E_Prod.dbo.Client AS C ON C.ClientIndex = M.Client
+LEFT JOIN red_dw.dbo.dim_matter_header_current ON M.AltNumber = RTRIM(red_dw.dbo.dim_matter_header_current.client_code)+'-'+ RTRIM(red_dw.dbo.dim_matter_header_current.matter_number) COLLATE DATABASE_DEFAULT 
+
 WHERE IM.IsReversed = '0'
-AND M.Number LIKE CONCAT('%',@Matter, '%') OR @Matter IS NULL 
---AND MAX(InvDate) BETWEEN @Startdate AND @Enddate
+AND (REPLACE(LTRIM(REPLACE(RTRIM(client_code), '0', ' ')), ' ', '0') + '-'
+           + REPLACE(LTRIM(REPLACE(RTRIM(matter_number), '0', ' ')), ' ', '0') LIKE CONCAT('%',@Matter, '%') OR @Matter IS NULL )
+
 GROUP BY
        C.DisplayName,
-       M.Number
+       M.Number, dim_matter_header_current.client_code, dim_matter_header_current.matter_number,   RTRIM(red_dw.dbo.dim_matter_header_current.client_code)+'-'+ RTRIM(red_dw.dbo.dim_matter_header_current.matter_number) 
 HAVING SUM(IM.OrgBOA) != 0.00
 ORDER BY 'Open BOA' Asc
+
 
 </CommandText>
       </Query>
       <Fields>
+        <Field Name="client_code">
+          <DataField>client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_number">
+          <DataField>matter_number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="reference_">
+          <DataField>reference </DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Mattersphere_Weightmans_Reference">
+          <DataField>Mattersphere Weightmans Reference</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Client_Name">
           <DataField>Client Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -2938,7 +2964,7 @@ ORDER BY 'Open BOA' Asc
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Last_Invoice.Value</Value>
+                                      <Value>=Max(Fields!Last_Invoice.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3325,7 +3351,7 @@ ORDER BY 'Open BOA' Asc
               </Paragraphs>
               <Top>0.55556in</Top>
               <Height>0.36938in</Height>
-              <Width>9.43958in</Width>
+              <Width>7.73958in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -3378,7 +3404,7 @@ ORDER BY 'Open BOA' Asc
               </ActionInfo>
               <Top>0.22974in</Top>
               <Height>0.25638in</Height>
-              <Width>9.43958in</Width>
+              <Width>7.73958in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
