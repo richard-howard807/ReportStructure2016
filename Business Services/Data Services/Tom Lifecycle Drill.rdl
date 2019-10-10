@@ -30,7 +30,19 @@
 lastbill.[Last Bill Date], 
 defence_costs_billed [Defence Costs Billed], 
 defence_costs_reserve [Defence Cost Reserve ],
-outcome_of_case [Outcome of Case], 
+
+
+
+	 CASE WHEN   header.date_closed_case_management
+    BETWEEN '2018-05-01' AND GETDATE()    THEN 1 
+	
+		   WHEN 
+	             hierarchylevel2hist = 'Legal Ops - Claims'
+				 AND header.date_closed_case_management IS NULL 
+	                       AND present_position IN ( 'Final bill sent - unpaid',
+	                                                 'To be closed/minor balances to be clear                     '
+	                                               )  THEN 1 ELSE 0  END [inclusion],
+              
 
       DATEDIFF(DAY, header.date_opened_case_management,  lastbill.[Last Bill Date]) [Lifecycle ], 
 
@@ -189,8 +201,8 @@ FROM red_dw.dbo.fact_dimension_main
 
     LEFT JOIN red_dw.dbo.fact_finance_summary
         ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
-		LEFT JOIN dim_detail_outcome ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
-				LEFT JOIN fact_matter_summary_current ON fact_matter_summary_current.dim_client_key = fact_dimension_main.dim_client_key
+		LEFT JOIN red_dw.dbo.dim_detail_outcome ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+				LEFT JOIN red_dw.dbo.fact_matter_summary_current ON fact_matter_summary_current.dim_client_key = fact_dimension_main.dim_client_key
 
 				LEFT JOIN ( SELECT client_code, matter_number, 
 				
@@ -216,8 +228,15 @@ WHERE
     AND LOWER(header.matter_description) NOT LIKE '%test%'
 AND dim_fed_hierarchy_history.name = @FeeEarnerName
     AND hierarchylevel2hist IN ( 'Legal Ops - LTA', 'Legal Ops - Claims' )
-    AND header.date_closed_case_management
-    BETWEEN '2018-05-01' AND GETDATE()
+    AND   CASE WHEN   header.date_closed_case_management
+    BETWEEN '2018-05-01' AND GETDATE()    THEN 1 
+	
+		   WHEN 
+	             hierarchylevel2hist = 'Legal Ops - Claims'
+				 AND header.date_closed_case_management IS NULL 
+	                       AND present_position IN ( 'Final bill sent - unpaid',
+	                                                 'To be closed/minor balances to be clear                     '
+	                                               )  THEN 1 ELSE 0  END = 1 
 
 GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_number,
             DATEDIFF(DAY, header.date_opened_case_management, lastbill.[Last Bill Date]),
@@ -230,8 +249,9 @@ GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_numb
             header.date_closed_case_management,
             lastbill.[Last Bill Date],
             defence_costs_billed,
-            defence_costs_reserve,
-            outcome_of_case</CommandText>
+            defence_costs_reserve, 
+			header.present_position
+</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -279,9 +299,9 @@ GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_numb
           <DataField>Defence Cost Reserve </DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="Outcome_of_Case">
-          <DataField>Outcome of Case</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="inclusion">
+          <DataField>inclusion</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="Lifecycle_">
           <DataField>Lifecycle </DataField>
@@ -299,20 +319,20 @@ GROUP BY	fact_dimension_main.client_code + '/' + fact_dimension_main.matter_numb
           <DataField>Q1</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="AVG_LC_LFY">
-          <DataField>AVG LC LFY</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Q3">
           <DataField>Q3</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="AVG_LC_YTD">
-          <DataField>AVG LC YTD</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Q4">
           <DataField>Q4</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AVG_LC_LFY">
+          <DataField>AVG LC LFY</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AVG_LC_YTD">
+          <DataField>AVG LC YTD</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="AVG_LC_q1_2">
