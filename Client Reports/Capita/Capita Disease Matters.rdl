@@ -2485,6 +2485,7 @@ WHERE  name ='Capita_Disease_Matters.png'</CommandText>
             dim_detail_outcome[capita_date_final_fee_paid],
             fact_detail_elapsed_days[elapsed_days_live_case_management_system],
             dim_detail_health[tinnitus],
+            dim_detail_claim[rsa_tinnitus],
             dim_detail_core_details[moj_apply],
             dim_detail_practice_area[did_claim_conclude_in_moj_portal],
             dim_detail_core_details[is_there_an_issue_on_liability],
@@ -2537,6 +2538,7 @@ WHERE  name ='Capita_Disease_Matters.png'</CommandText>
      	  dim_detail_core_details[referral_reason],
 		  dim_detail_core_details[proceedings_issued],
 		  fact_finance_summary[wip],
+		  dim_detail_practice_area[tinnitus],
 		  "Liability Admitted", if(dim_detail_core_details[is_there_an_issue_on_liability]="No","Yes","No"),
 		  -- AM logic for defence costs reserve
 		  "New Defence Costs Reserve", if(isblank(dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]) = false,0.00,fact_detail_cost_budgeting[total_estimated_profit_costs] - fact_finance_summary[defence_costs_billed]),
@@ -2580,7 +2582,10 @@ WHERE  name ='Capita_Disease_Matters.png'</CommandText>
             "Defence Costs Reserve",  if(dim_date_matter_closed_case_management[dim_date_key] &lt;&gt; 0, 0, fact_finance_summary[defence_costs_reserve] - fact_finance_summary[total_amount_billed]),
             "Damages Reserve", if(isblank(dim_detail_outcome[date_claim_concluded]) = FALSE() || isblank(dim_detail_outcome[date_costs_settled]) = FALSE() || dim_date_matter_closed_case_management[dim_date_key] &lt;&gt; 0, 0, fact_detail_future_care[disease_total_estimated_settlement_value]),
             "Claimant Solicitor Costs Reserve", if(isblank(dim_detail_outcome[date_costs_settled]) = FALSE() || dim_date_matter_closed_case_management[dim_date_key] = 0,  fact_detail_claim[disease_total_estimated_settlement], 0),
-            "Paid Damages", fact_detail_paid_detail[total_settlement_value_of_the_claim_paid_by_all_the_parties] - fact_detail_paid_detail[cru_paid_by_all_parties] - fact_detail_client[nhs_charges_paid_by_all_parties]
+            "Paid Damages", fact_detail_paid_detail[total_settlement_value_of_the_claim_paid_by_all_the_parties] - fact_detail_paid_detail[cru_paid_by_all_parties] - fact_detail_client[nhs_charges_paid_by_all_parties],
+           "Tinnitus2",IF(ISBLANK(dim_detail_practice_area[tinnitus]) || dim_detail_practice_area[tinnitus]= "",
+            				IF(ISBLANK(dim_detail_claim[rsa_tinnitus]) || dim_detail_claim[rsa_tinnitus]  = "",
+            				iF(ISBLANK(dim_detail_health[tinnitus]) || dim_detail_health[tinnitus] = "","",dim_detail_health[tinnitus]),dim_detail_claim[rsa_tinnitus]),dim_detail_practice_area[tinnitus])
         ),
         dim_matter_header_current[reporting_exclusions] = 0,
         PATHCONTAINS ( "00046253|W15373", dim_client[client_code] ),
@@ -3859,6 +3864,10 @@ ORDER BY
         </Field>
         <Field Name="client_matter">
           <Value>=Fields!dim_client_client_code_trimmed_.Value+Fields!dim_matter_header_current_matter_number_trimmed_.Value</Value>
+        </Field>
+        <Field Name="TinnitusCalc">
+          <DataField>[Tinnitus2]</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
         </Field>
       </Fields>
     </DataSet>
@@ -9192,14 +9201,14 @@ Bills
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="dim_detail_health_tinnitus_">
+                            <Textbox Name="TinnitusCalc1">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_detail_health_tinnitus_.Value</Value>
+                                      <Value>=Fields!TinnitusCalc.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -9218,7 +9227,7 @@ Bills
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>dim_detail_health_tinnitus_</rd:DefaultName>
+                              <rd:DefaultName>TinnitusCalc1</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -13439,7 +13448,6 @@ Bills
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -18141,7 +18149,7 @@ Bills
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>1.02777in</Height>
-            <Width>73.84032in</Width>
+            <Width>74.84032in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -18185,7 +18193,7 @@ Bills
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>74.12157in</Width>
+      <Width>74.84032in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
