@@ -7,10 +7,10 @@
       <rd:SecurityType>Integrated</rd:SecurityType>
       <rd:DataSourceID>8e7fab94-5770-42f6-9a55-42799876a92a</rd:DataSourceID>
     </DataSource>
-    <DataSource Name="ConcSesh">
-      <DataSourceReference>SVR-LIV-XASQ-01</DataSourceReference>
+    <DataSource Name="ReportingOnSQL2012">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>3810c955-35bb-41e3-bd8e-98dbf46b4844</rd:DataSourceID>
+      <rd:DataSourceID>9c144612-0669-4186-b0ab-f2947efc104c</rd:DataSourceID>
     </DataSource>
   </DataSources>
   <DataSets>
@@ -2447,50 +2447,54 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="ConcSesh">
+    <DataSet Name="IAContacts">
       <Query>
-        <DataSourceName>ConcSesh</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@startdate">
-            <Value>=Parameters!startdate.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@enddate">
-            <Value>=Parameters!enddate.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>SELECT [ConcurrentSessionsID]
-      ,[TimeStamp]
-      ,[ConcurrentSessionCountTotal]
-      ,[ConcurrentSessionCountDesktopActive]
-      ,[ConcurrentSessionCountPubApps]
-      ,[ConcurrentSessionCountDesktopDisconnected]
-  FROM [LogonAudit].[dbo].[ConcurrentSessions]
-  WHERE TimeStamp BETWEEN @startdate AND @enddate
-  ORDER BY TimeStamp </CommandText>
+        <DataSourceName>ReportStylingOnDWH01</DataSourceName>
+        <CommandText>
+
+
+-- Gets survivor record (rank 1) for any merged contact that exists in IA
+
+select distinct c_parent.dim_client_key ContactId, 1 [Rank], c_parent.dim_client_key GroupID
+-- select *
+from MS_PROD.dbo.dbContactMergeDelete a
+inner join red_dw.dbo.dim_client c_parent on a.NewContID = c_parent.contactid
+inner join red_dw.dbo.dim_client c_child on a.OldContID = c_child.contactid
+where a.executionstatus = 5
+and cast (c_parent.dim_client_key as varchar(60)) in (select UCI from [SVR-LIV-IASQ-01].InterAction.weightmans.vwContacts)
+and cast (c_child.dim_client_key as varchar(60)) in (select UCI from [SVR-LIV-IASQ-01].InterAction.weightmans.vwContacts)
+
+	
+ union 
+
+ -- Gets victim record (rank 2 +) for any merged contact that exists in IA
+
+select distinct c_child.dim_client_key, row_number() over (partition by NewContID order by OldContID) + 1 [Rank], c_parent.dim_client_key GroupID
+-- select *
+from MS_PROD.dbo.dbContactMergeDelete a
+inner join red_dw.dbo.dim_client c_parent on a.NewContID = c_parent.contactid
+inner join red_dw.dbo.dim_client c_child on a.OldContID = c_child.contactid
+where a.executionstatus = 5
+and cast (c_parent.dim_client_key as varchar(60)) in (select UCI from [SVR-LIV-IASQ-01].InterAction.weightmans.vwContacts)
+and cast (c_child.dim_client_key as varchar(60)) in (select UCI from [SVR-LIV-IASQ-01].InterAction.weightmans.vwContacts)
+
+
+order by 3, 2
+
+
+</CommandText>
       </Query>
       <Fields>
-        <Field Name="ConcurrentSessionsID">
-          <DataField>ConcurrentSessionsID</DataField>
+        <Field Name="ContactId">
+          <DataField>ContactId</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="TimeStamp">
-          <DataField>TimeStamp</DataField>
-          <rd:TypeName>System.DateTime</rd:TypeName>
+        <Field Name="Rank">
+          <DataField>Rank</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
         </Field>
-        <Field Name="ConcurrentSessionCountTotal">
-          <DataField>ConcurrentSessionCountTotal</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="ConcurrentSessionCountDesktopActive">
-          <DataField>ConcurrentSessionCountDesktopActive</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="ConcurrentSessionCountPubApps">
-          <DataField>ConcurrentSessionCountPubApps</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="ConcurrentSessionCountDesktopDisconnected">
-          <DataField>ConcurrentSessionCountDesktopDisconnected</DataField>
+        <Field Name="GroupID">
+          <DataField>GroupID</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
@@ -2514,355 +2518,11 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                     <TablixColumn>
                       <Width>1.46875in</Width>
                     </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.66667in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.4375in</Width>
-                    </TablixColumn>
-                    <TablixColumn>
-                      <Width>1.70833in</Width>
-                    </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
                     <TablixRow>
                       <Height>0.57291in</Height>
                       <TablixCells>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox4">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Concurrent Sessions ID</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox4</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox7">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Time Stamp</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox7</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox10">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Concurrent Session Count Total</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox10</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox13">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Concurrent Session Count Desktop Active</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox13</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="Textbox16">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>Concurrent Session Count Pub Apps</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>Textbox16</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
                         <TablixCell>
                           <CellContents>
                             <Textbox Name="Textbox19">
@@ -2872,7 +2532,7 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Concurrent Session Count Desktop Disconnected</Value>
+                                      <Value>ContactId</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2930,6 +2590,140 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                             </Textbox>
                           </CellContents>
                         </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox20">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Rank</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox20</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox21">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>GroupID</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox21</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
                       </TablixCells>
                     </TablixRow>
                     <TablixRow>
@@ -2937,14 +2731,14 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="ConcurrentSessionsID">
+                            <Textbox Name="ContactId">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!ConcurrentSessionsID.Value</Value>
+                                      <Value>=Fields!ContactId.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2963,7 +2757,7 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>ConcurrentSessionsID</rd:DefaultName>
+                              <rd:DefaultName>ContactId</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3004,20 +2798,19 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="TimeStamp">
+                            <Textbox Name="Rank">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!TimeStamp.Value</Value>
+                                      <Value>=Fields!Rank.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <Format>dd/MM/yyyy HH:mm</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -3031,7 +2824,7 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>TimeStamp</rd:DefaultName>
+                              <rd:DefaultName>Rank</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3072,14 +2865,14 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="ConcurrentSessionCountTotal">
+                            <Textbox Name="GroupID">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!ConcurrentSessionCountTotal.Value</Value>
+                                      <Value>=Fields!GroupID.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3098,208 +2891,7 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>ConcurrentSessionCountTotal</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="ConcurrentSessionCountDesktopActive">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!ConcurrentSessionCountDesktopActive.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>ConcurrentSessionCountDesktopActive</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="ConcurrentSessionCountPubApps">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!ConcurrentSessionCountPubApps.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>ConcurrentSessionCountPubApps</rd:DefaultName>
-                              <Style>
-                                <Border>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
-                                </Border>
-                                <TopBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
-                                </TopBorder>
-                                <BottomBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
-                                </BottomBorder>
-                                <LeftBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
-                                </LeftBorder>
-                                <RightBorder>
-                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
-                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
-                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
-                                </RightBorder>
-                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
-                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
-                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
-                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
-                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
-                              </Style>
-                            </Textbox>
-                          </CellContents>
-                        </TablixCell>
-                        <TablixCell>
-                          <CellContents>
-                            <Textbox Name="ConcurrentSessionCountDesktopDisconnected">
-                              <CanGrow>true</CanGrow>
-                              <KeepTogether>true</KeepTogether>
-                              <Paragraphs>
-                                <Paragraph>
-                                  <TextRuns>
-                                    <TextRun>
-                                      <Value>=Fields!ConcurrentSessionCountDesktopDisconnected.Value</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
-                                  </TextRuns>
-                                  <Style>
-                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
-                                  </Style>
-                                </Paragraph>
-                              </Paragraphs>
-                              <rd:DefaultName>ConcurrentSessionCountDesktopDisconnected</rd:DefaultName>
+                              <rd:DefaultName>GroupID</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3347,9 +2939,6 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
-                    <TablixMember />
                   </TablixMembers>
                 </TablixColumnHierarchy>
                 <TablixRowHierarchy>
@@ -3365,10 +2954,10 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                 </TablixRowHierarchy>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
-                <DataSetName>ConcSesh</DataSetName>
-                <Top>0.0441cm</Top>
+                <DataSetName>IAContacts</DataSetName>
+                <Top>0.31309cm</Top>
                 <Height>0.78124in</Height>
-                <Width>9.43958in</Width>
+                <Width>4.62708in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -3598,35 +3187,19 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
                 <PaddingBottom>=First(Fields!imgLogo1_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
               </Style>
             </Image>
-            <Image Name="ReportTitle">
-              <Source>Database</Source>
-              <Value>=First(Fields!file_stream.Value, "ReportTitle")</Value>
-              <MIMEType>=First(Fields!imgLogo2_Mimetype.Value, "DefaultProperties")</MIMEType>
+            <Image Name="Image1">
+              <Source>Embedded</Source>
+              <Value>WeightmansLLP_BrandedImage_IA_Contact_Merge__IA_Contact_Merge_SelectColour_Small_0_dual_line</Value>
               <Sizing>FitProportional</Sizing>
-              <ActionInfo>
-                <Actions>
-                  <Action>
-                    <Hyperlink>=First(Fields!imgLogo2_Action_GoToURL.Value, "DefaultProperties")</Hyperlink>
-                  </Action>
-                </Actions>
-              </ActionInfo>
               <Top>0.125in</Top>
               <Left>1.7in</Left>
-              <Height>0.64235in</Height>
+              <Height>0.65624in</Height>
               <Width>10.43441in</Width>
               <ZIndex>2</ZIndex>
-              <Visibility>
-                <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
-              </Visibility>
-              <ToolTip>=First(Fields!imgLogo2_Tooltip.Value, "DefaultProperties")</ToolTip>
               <Style>
                 <Border>
                   <Style>None</Style>
                 </Border>
-                <PaddingLeft>=First(Fields!imgLogo2_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
-                <PaddingRight>=First(Fields!imgLogo2_Padding_Right.Value, "DefaultProperties")</PaddingRight>
-                <PaddingTop>=First(Fields!imgLogo2_Padding_Top.Value, "DefaultProperties")</PaddingTop>
-                <PaddingBottom>=First(Fields!imgLogo2_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
               </Style>
             </Image>
           </ReportItems>
@@ -3979,14 +3552,6 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
-    <ReportParameter Name="startdate">
-      <DataType>DateTime</DataType>
-      <Prompt>Start Date</Prompt>
-    </ReportParameter>
-    <ReportParameter Name="enddate">
-      <DataType>DateTime</DataType>
-      <Prompt>End Date</Prompt>
-    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -3998,19 +3563,46 @@ WHERE  name ='Concurrent_Sessions.png'</CommandText>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
         </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>startdate</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>enddate</ParameterName>
-        </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
   </ReportParametersLayout>
+  <EmbeddedImages>
+    <EmbeddedImage Name="WeightmansLLP_BrandedImage_IA_Contact_Merge__IA_Contact_Merge_SelectColour_Small_0_dual_line">
+      <MIMEType>image/png</MIMEType>
+      <ImageData>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</ImageData>
+    </EmbeddedImage>
+  </EmbeddedImages>
   <ConsumeContainerWhitespace>true</ConsumeContainerWhitespace>
   <rd:ReportUnitType>Inch</rd:ReportUnitType>
   <rd:ReportID>44560a93-f094-48ae-8cf4-00bd39732022</rd:ReportID>
