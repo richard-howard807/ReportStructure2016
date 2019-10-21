@@ -2468,6 +2468,10 @@ REPLACE(c.matter_description, CHAR(9),'') [Matter Description],
  a.name [Matter Owner],
  --b.payor_name_parent,
  b.payor_name [Payor Name], 
+ COALESCE(Ref.client_reference, Ref.insurerclient_reference,Ref.defendant_reference) [Payor Reference],
+ Ref.client_reference,
+ Ref.insurerclient_reference,
+ Ref.defendant_reference,
  a.bill_date [Invoice Date],
  a.bill_number [Bill Number],
  a.fees_balance [Fees],
@@ -2484,8 +2488,26 @@ FROM red_dw.dbo.fact_payor_debt_detail a
 INNER JOIN red_dw.dbo.dim_payor b ON b.dim_payor_key = a.dim_payor_key
 INNER JOIN Reporting.dbo.dim_payor_parent d ON b.payorindex = d.payorindex
 INNER JOIN red_dw.dbo.dim_matter_header_current c ON c.dim_matter_header_curr_key = a.dim_matter_header_curr_key
+LEFT OUTER JOIN (SELECT dim_matter_header_current.master_client_code
+					, dim_matter_header_current.master_matter_number
+					, dim_client_involvement.client_name
+					, client_reference
+					, insurerclient_name
+					, insurerclient_reference
+					, defendant_name
+					, defendant_reference
+				FROM red_dw.dbo.fact_dimension_main
+				LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+				LEFT OUTER JOIN red_dw.dbo.dim_client_involvement ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
+				LEFT OUTER JOIN red_dw.dbo.dim_defendant_involvement ON dim_defendant_involvement.dim_defendant_involvem_key = fact_dimension_main.dim_defendant_involvem_key
+				WHERE dim_client_involvement.client_name LIKE CONCAT('%',@payor_name, '%')
+				OR insurerclient_name LIKE CONCAT('%',@payor_name, '%')
+				OR defendant_name LIKE CONCAT('%',@payor_name, '%')) 
+				AS Ref ON Ref.master_client_code = c.master_client_code AND Ref.master_matter_number = c.master_matter_number
 WHERE d.payor_name_parent = @payor_name
-AND a.total_balance &lt;&gt; 0</CommandText>
+AND a.total_balance &lt;&gt; 0
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Name">
@@ -2516,9 +2538,17 @@ AND a.total_balance &lt;&gt; 0</CommandText>
           <DataField>Payor Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Payor_Reference">
+          <DataField>Payor Reference</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Invoice_Date">
           <DataField>Invoice Date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="client_reference">
+          <DataField>client_reference</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Bill_Number">
           <DataField>Bill Number</DataField>
@@ -2528,9 +2558,17 @@ AND a.total_balance &lt;&gt; 0</CommandText>
           <DataField>Fees</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="insurerclient_reference">
+          <DataField>insurerclient_reference</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Disbursements">
           <DataField>Disbursements</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="defendant_reference">
+          <DataField>defendant_reference</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="VAT">
           <DataField>VAT</DataField>
@@ -2674,6 +2712,9 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
                   <Width>2.23958in</Width>
                 </TablixColumn>
                 <TablixColumn>
+                  <Width>1.65625in</Width>
+                </TablixColumn>
+                <TablixColumn>
                   <Width>1in</Width>
                 </TablixColumn>
                 <TablixColumn>
@@ -2776,9 +2817,10 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
                             <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
-                        <ColSpan>13</ColSpan>
+                        <ColSpan>14</ColSpan>
                       </CellContents>
                     </TablixCell>
+                    <TablixCell />
                     <TablixCell />
                     <TablixCell />
                     <TablixCell />
@@ -3160,6 +3202,73 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox16</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                            </Border>
+                            <TopBorder>
+                              <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                            </RightBorder>
+                            <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Payor Reference</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                    <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4170,6 +4279,73 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Payor_Name</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                            </Border>
+                            <TopBorder>
+                              <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                            </RightBorder>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Payor_Reference">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Payor_Reference.Value</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                    <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Payor_Reference</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5229,6 +5405,73 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox3">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>White</Color>
+                                    <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataFooter_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataFooter_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataFooter_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox3</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataFooter_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataFooter_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                            </Border>
+                            <TopBorder>
+                              <Color>=First(Fields!tblDataFooter_BorderColor_Top.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataFooter_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataFooter_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>=First(Fields!tblDataFooter_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataFooter_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataFooter_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>=First(Fields!tblDataFooter_BorderColor_Left.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataFooter_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataFooter_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>=First(Fields!tblDataFooter_BorderColor_Right.Value, "DefaultProperties")</Color>
+                              <Style>=First(Fields!tblDataFooter_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataFooter_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                            </RightBorder>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataFooter_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataFooter_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataFooter_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataFooter_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataFooter_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataFooter_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataFooter_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox21">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -5993,6 +6236,7 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
@@ -6022,7 +6266,7 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
             <PageName>=Parameters!Client.Label + " Detail"</PageName>
             <Top>6.94973cm</Top>
             <Height>1.26041in</Height>
-            <Width>21.81149in</Width>
+            <Width>23.46774in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -7381,7 +7625,7 @@ WHEN payor_name_parent = 'DERWENT / SEVERN TRENT' THEN '257248'
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>21.81149in</Width>
+      <Width>23.46774in</Width>
       <Page>
         <PageHeight>8.5in</PageHeight>
         <PageWidth>11in</PageWidth>
