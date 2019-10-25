@@ -8,37 +8,42 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>c6df6bf9-6b87-4717-9209-df7c9fe31002</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="Reporting">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>740c633a-1eb7-4046-8bd3-d78c35944365</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="MonthlyOneToOneStatus">
       <Query>
-        <DataSourceName>ReportingOnSQL2008SVR</DataSourceName>
+        <DataSourceName>Reporting</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@YearPeriod">
-            <Value>=Parameters!YearPeriod.Value</Value>
+          <QueryParameter Name="@CalendarMonth">
+            <Value>=Parameters!CalendarMonth.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@BusinessLine">
-            <Value>=Parameters!BusinessLine.Value</Value>
+          <QueryParameter Name="@Division">
+            <Value>=Parameters!Division.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@PracticeArea">
-            <Value>=Parameters!PracticeArea.Value</Value>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
           </QueryParameter>
           <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>SolvingDisputes.Monthly1_1StatusReportV2</CommandText>
+        <CommandText>monthly_121_status_report</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="Employee_Name">
-          <DataField>Employee Name</DataField>
+        <Field Name="employee_name">
+          <DataField>employee_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="EmployeeId">
-          <DataField>EmployeeId</DataField>
-          <rd:TypeName>System.Guid</rd:TypeName>
+          <DataField>employeeid</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="OneToOneFlag">
           <DataField>OneToOneFlag</DataField>
@@ -48,56 +53,58 @@
           <DataField>EmpCount</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="PracticeArea">
-          <DataField>PracticeArea</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="ManagementExclusions">
-          <DataField>ManagementExclusions</DataField>
+        <Field Name="management_exclusions">
+          <DataField>management_exclusions</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="businessline">
-          <DataField>businessline</DataField>
+        <Field Name="division">
+          <DataField>division</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="department">
+          <DataField>department</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Office">
-          <DataField>Office</DataField>
+          <DataField>office</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Team">
-          <DataField>Team</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Extension">
-          <DataField>Extension</DataField>
+          <DataField>team</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="ExcludeCount">
           <DataField>ExcludeCount</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="Role1">
-          <DataField>Role1</DataField>
+        <Field Name="managementroleud">
+          <DataField>managementroleud</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Role2">
-          <DataField>Role2</DataField>
+        <Field Name="managementrole2ud">
+          <DataField>managementrole2ud</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="JobTitle">
-          <DataField>JobTitle</DataField>
+          <DataField>jobtitle</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="EmployeeStartDate">
+          <DataField>EmployeeStartDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
     <DataSet Name="YearPeriod">
       <Query>
-        <DataSourceName>ReportingOnSQL2008SVR</DataSourceName>
-        <CommandText>select distinct LEFT(MonthName,3) + ' ' + right(Year_cal,2) as PeriodLabel, YearPeriod_fin
-from Reporting.Accounts.DynamicCalendar 
-WHERE Year_cal &gt;= 2014
-and Year_cal &lt;= year(GETDATE())	
-ORDER BY YearPeriod_fin desc</CommandText>
+        <DataSourceName>Reporting</DataSourceName>
+        <CommandText>SELECT DISTINCT cal_month_name + ' ' + CAST(cal_year AS VARCHAR) as PeriodLabel
+
+, cal_month
+from red_dw.dbo.dim_date
+WHERE cal_year &gt;= YEAR(DATEADD("yyyy",-2,GETDATE()))
+and cal_year &lt;= year(GETDATE())	
+ORDER BY 2 desc</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -105,60 +112,74 @@ ORDER BY YearPeriod_fin desc</CommandText>
           <DataField>PeriodLabel</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="YearPeriod_fin">
-          <DataField>YearPeriod_fin</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="cal_month">
+          <DataField>cal_month</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="BusinessLine">
+    <DataSet Name="Division">
       <Query>
-        <DataSourceName>ReportingOnSQL2008SVR</DataSourceName>
-        <CommandText>SELECT DISTINCT Businessline FROM Accounts.Structure
-WHERE businessline NOT IN ('Unknown')</CommandText>
+        <DataSourceName>Reporting</DataSourceName>
+        <CommandText>
+SELECT  DISTINCT hierarchylevel2hist [Division]
+
+
+FROM red_dw.dbo.dim_fed_hierarchy_history 
+
+WHERE activeud = 1
+AND leaver = 0
+AND dss_current_flag = 'Y'
+AND fed_code IS NOT NULL
+AND fed_code &lt;&gt; 'Unknown'
+AND hierarchylevel2hist NOT IN ('Insurance','Solving Disputes')
+ORDER BY 1</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="Businessline">
-          <DataField>Businessline</DataField>
+        <Field Name="Division">
+          <DataField>Division</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="PracticeArea">
+    <DataSet Name="Department">
       <Query>
-        <DataSourceName>ReportingOnSQL2008SVR</DataSourceName>
+        <DataSourceName>Reporting</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@BusinessLine">
-            <Value>=Parameters!BusinessLine.Value</Value>
+          <QueryParameter Name="@Division">
+            <Value>=Parameters!Division.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandType>StoredProcedure</CommandType>
-        <CommandText>[Internal].PracticeAreaByBusinessLine</CommandText>
+        <CommandText>SELECT department 
+FROM Reporting.dbo.list_departments(@Division)
+
+order by 1
+</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="PracticeArea">
-          <DataField>PracticeArea</DataField>
+        <Field Name="department">
+          <DataField>department</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
     <DataSet Name="Team">
       <Query>
-        <DataSourceName>ReportingOnSQL2008SVR</DataSourceName>
+        <DataSourceName>Reporting</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@PracticeArea">
-            <Value>=Parameters!PracticeArea.Value</Value>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,",")</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandType>StoredProcedure</CommandType>
-        <CommandText>[Internal].TeamByPracticeArea</CommandText>
+        <CommandText>
+SELECT team FROM Reporting.dbo.list_teams(@Department)</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
         <Field Name="Team">
-          <DataField>Team</DataField>
+          <DataField>team</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -172,32 +193,81 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>10.4904cm</Width>
+                  <Width>5.10133cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>6.99793cm</Width>
+                  <Width>2.93179cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.82353cm</Width>
+                  <Width>3.01625cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.96938cm</Width>
+                  <Width>2.80459cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.47896cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>0.6cm</Height>
+                  <Height>1.39375cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox1">
+                        <Textbox Name="Textbox4">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>="No. of Employees" &amp; "- Period " &amp; parameters!YearPeriod.Label</Value>
+                                  <Value>="Overall Summary for " + Parameters!CalendarMonth.Label</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <ColSpan>5</ColSpan>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>1.12917cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox15">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Number of Employees</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -208,7 +278,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox1</rd:DefaultName>
+                          <rd:DefaultName>Textbox15</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -232,7 +302,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's Anticipated</Value>
+                                  <Value>Anticipated</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -267,7 +337,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's that have taken place</Value>
+                                  <Value>Completed</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -302,7 +372,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's that remain outstanding</Value>
+                                  <Value>Outstanding</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -314,6 +384,41 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox21</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox88">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Percentage Complete</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox88</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -348,7 +453,9 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>EmpCount</rd:DefaultName>
@@ -374,13 +481,15 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=sum(Fields!EmpCount.Value) - sum(iif(Fields!ExcludeCount.Value&gt;=0.5 or Fields!ManagementExclusions.Value = 1,1,0))</Value>
+                                  <Value>=sum(Fields!EmpCount.Value) - sum(iif(Fields!ExcludeCount.Value&gt;=0.5 or Fields!management_exclusions.Value = 1,1,0))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox17</rd:DefaultName>
@@ -412,7 +521,9 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>OneToOneFlag</rd:DefaultName>
@@ -438,16 +549,53 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=sum(iif(Fields!OneToOneFlag.Value=0 and Fields!ManagementExclusions.Value=0 and Fields!ExcludeCount.Value&lt;0.5,1,0))</Value>
+                                  <Value>=sum(iif(Fields!OneToOneFlag.Value=0 and Fields!management_exclusions.Value=0 and Fields!ExcludeCount.Value&lt;0.5,1,0))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox22</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox89">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=ReportItems!OneToOneFlag.Value / ReportItems!Textbox17.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>0%</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox89</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -471,27 +619,30 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
               <TablixMembers>
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>MonthlyOneToOneStatus</DataSetName>
+            <PageName>Summary</PageName>
             <Filters>
               <Filter>
-                <FilterExpression>=Fields!ManagementExclusions.Value</FilterExpression>
+                <FilterExpression>=Fields!management_exclusions.Value</FilterExpression>
                 <Operator>Equal</Operator>
                 <FilterValues>
                   <FilterValue DataType="Integer">0</FilterValue>
                 </FilterValues>
               </Filter>
             </Filters>
-            <Top>1.8175cm</Top>
-            <Height>1.2cm</Height>
-            <Width>35.28124cm</Width>
+            <Left>0.0889cm</Left>
+            <Height>3.12292cm</Height>
+            <Width>17.33292cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -502,21 +653,70 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>10.44595cm</Width>
+                  <Width>5.10133cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>6.9979cm</Width>
+                  <Width>2.93179cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.82353cm</Width>
+                  <Width>3.01625cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.96938cm</Width>
+                  <Width>2.80459cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.47896cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>0.6cm</Height>
+                  <Height>1.26146cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox7">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>="Department Summary for " + Parameters!CalendarMonth.Label</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <ColSpan>5</ColSpan>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>1.12917cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -527,7 +727,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Practice Area</Value>
+                                  <Value>Department</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -555,14 +755,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox20">
+                        <Textbox Name="Textbox9">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's Anticipated</Value>
+                                  <Value>Anticipated</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -573,7 +773,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox20</rd:DefaultName>
+                          <rd:DefaultName>Textbox3</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -590,14 +790,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox24">
+                        <Textbox Name="Textbox10">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's that have taken place</Value>
+                                  <Value>Completed</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -608,7 +808,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <rd:DefaultName>Textbox5</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -625,14 +825,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox34">
+                        <Textbox Name="Textbox26">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's that remain outstanding</Value>
+                                  <Value>Outstanding</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -643,7 +843,42 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox34</rd:DefaultName>
+                          <rd:DefaultName>Textbox21</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox96">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Percentage Complete</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox88</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -665,14 +900,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="PracticeArea1">
+                        <Textbox Name="department">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!PracticeArea.Value</Value>
+                                  <Value>=Fields!department.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
@@ -681,7 +916,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>PracticeArea1</rd:DefaultName>
+                          <rd:DefaultName>department</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -704,13 +939,15 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!EmpCount.Value) - sum(iif(Fields!ExcludeCount.Value&gt;=0.5 or Fields!ManagementExclusions.Value = 1,1,0))</Value>
+                                  <Value>=Sum(Fields!EmpCount.Value) - sum(iif(Fields!ExcludeCount.Value&gt;=0.5 or Fields!management_exclusions.Value = 1,1,0))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>EmpCount3</rd:DefaultName>
@@ -742,7 +979,9 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>OneToOneFlag2</rd:DefaultName>
@@ -768,16 +1007,53 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=sum(iif(Fields!OneToOneFlag.Value=0 and Fields!ManagementExclusions.Value=0 and Fields!ExcludeCount.Value&lt;0.5,1,0))</Value>
+                                  <Value>=sum(iif(Fields!OneToOneFlag.Value=0 and Fields!management_exclusions.Value=0 and Fields!ExcludeCount.Value&lt;0.5,1,0))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox35</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox92">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=ReportItems!OneToOneFlag2.Value/ReportItems!EmpCount3.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>0%</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox92</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -801,20 +1077,22 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
               <TablixMembers>
                 <TablixMember />
+                <TablixMember />
                 <TablixMember>
                   <Group Name="Details">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!PracticeArea.Value</GroupExpression>
+                      <GroupExpression>=Fields!department.Value</GroupExpression>
                     </GroupExpressions>
                   </Group>
                   <SortExpressions>
                     <SortExpression>
-                      <Value>=Fields!PracticeArea.Value</Value>
+                      <Value>=Fields!department.Value</Value>
                     </SortExpression>
                   </SortExpressions>
                 </TablixMember>
@@ -823,17 +1101,17 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             <DataSetName>MonthlyOneToOneStatus</DataSetName>
             <Filters>
               <Filter>
-                <FilterExpression>=Fields!ManagementExclusions.Value</FilterExpression>
+                <FilterExpression>=Fields!management_exclusions.Value</FilterExpression>
                 <Operator>Equal</Operator>
                 <FilterValues>
                   <FilterValue DataType="Integer">0</FilterValue>
                 </FilterValues>
               </Filter>
             </Filters>
-            <Top>5.03695cm</Top>
-            <Left>0.04445cm</Left>
-            <Height>1.2cm</Height>
-            <Width>35.23676cm</Width>
+            <Top>3.29931cm</Top>
+            <Left>0.0889cm</Left>
+            <Height>2.99063cm</Height>
+            <Width>17.33292cm</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -845,21 +1123,70 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>10.46818cm</Width>
+                  <Width>5.10133cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>6.9979cm</Width>
+                  <Width>2.93179cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.82353cm</Width>
+                  <Width>3.01625cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.96938cm</Width>
+                  <Width>2.80459cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.47896cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>0.6cm</Height>
+                  <Height>1.26146cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox8">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>="Office Summary for " + Parameters!CalendarMonth.Label</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <ColSpan>5</ColSpan>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>1.12917cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -898,14 +1225,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox23">
+                        <Textbox Name="Textbox12">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's Anticipated</Value>
+                                  <Value>Anticipated</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -916,7 +1243,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox20</rd:DefaultName>
+                          <rd:DefaultName>Textbox3</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -933,14 +1260,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox25">
+                        <Textbox Name="Textbox13">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's that have taken place</Value>
+                                  <Value>Completed</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -951,7 +1278,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <rd:DefaultName>Textbox5</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -968,14 +1295,14 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox36">
+                        <Textbox Name="Textbox27">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>No. of Monthly 1:1's that remain outstanding</Value>
+                                  <Value>Outstanding</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -986,7 +1313,42 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox34</rd:DefaultName>
+                          <rd:DefaultName>Textbox21</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox91">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Percentage Complete</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox88</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -1047,13 +1409,15 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!EmpCount.Value) - sum(iif(Fields!ExcludeCount.Value&gt;=0.5 or Fields!ManagementExclusions.Value = 1,1,0))</Value>
+                                  <Value>=Sum(Fields!EmpCount.Value) - sum(iif(Fields!ExcludeCount.Value&gt;=0.5 or Fields!management_exclusions.Value = 1,1,0))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>EmpCount3</rd:DefaultName>
@@ -1085,7 +1449,9 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>OneToOneFlag2</rd:DefaultName>
@@ -1111,16 +1477,53 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=sum(iif(Fields!OneToOneFlag.Value=0 and Fields!ManagementExclusions.Value=0 and Fields!ExcludeCount.Value&lt;0.5,1,0))</Value>
+                                  <Value>=sum(iif(Fields!OneToOneFlag.Value=0 and Fields!management_exclusions.Value=0 and Fields!ExcludeCount.Value&lt;0.5,1,0))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
-                              <Style />
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox35</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox95">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=ReportItems!OneToOneFlag3.Value/ReportItems!EmpCount4.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <Format>0%</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox95</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -1144,10 +1547,12 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
               <TablixMembers>
+                <TablixMember />
                 <TablixMember />
                 <TablixMember>
                   <Group Name="Details2">
@@ -1169,17 +1574,17 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             </PageBreak>
             <Filters>
               <Filter>
-                <FilterExpression>=Fields!ManagementExclusions.Value</FilterExpression>
+                <FilterExpression>=Fields!management_exclusions.Value</FilterExpression>
                 <Operator>Equal</Operator>
                 <FilterValues>
                   <FilterValue DataType="Integer">0</FilterValue>
                 </FilterValues>
               </Filter>
             </Filters>
-            <Top>8.10612cm</Top>
-            <Left>0.02223cm</Left>
-            <Height>1.2cm</Height>
-            <Width>35.25899cm</Width>
+            <Top>6.46632cm</Top>
+            <Left>0.0889cm</Left>
+            <Height>2.99063cm</Height>
+            <Width>17.33292cm</Width>
             <ZIndex>2</ZIndex>
             <Style>
               <Border>
@@ -1187,96 +1592,54 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
               </Border>
             </Style>
           </Tablix>
-          <Image Name="Image1">
-            <Source>Embedded</Source>
-            <Value>Executive_SummaryAllv1</Value>
-            <Sizing>FitProportional</Sizing>
-            <Top>0.28222cm</Top>
-            <Height>1.5cm</Height>
-            <Width>35.28125cm</Width>
-            <ZIndex>3</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-            </Style>
-          </Image>
-          <Image Name="Image2">
-            <Source>Embedded</Source>
-            <Value>Practice_Area_SummaryAllv1</Value>
-            <Sizing>FitProportional</Sizing>
-            <Top>3.53695cm</Top>
-            <Left>0.02223cm</Left>
-            <Height>1.5cm</Height>
-            <Width>35.25901cm</Width>
-            <ZIndex>4</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-            </Style>
-          </Image>
-          <Image Name="Image3">
-            <Source>Embedded</Source>
-            <Value>Office_SummaryAllv1</Value>
-            <Sizing>FitProportional</Sizing>
-            <Top>6.57084cm</Top>
-            <Height>1.5cm</Height>
-            <Width>35.28124cm</Width>
-            <ZIndex>5</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-            </Style>
-          </Image>
           <Tablix Name="Tablix7">
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>7.97687cm</Width>
+                  <Width>8.07757cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>6.9979cm</Width>
+                  <Width>5.82083cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.80133cm</Width>
+                  <Width>4.14888cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.9916cm</Width>
+                  <Width>5.86021cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>0.6cm</Height>
+                  <Height>1.18208cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox44">
+                        <Textbox Name="Textbox16">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Employee Name</Value>
+                                  <Value>Outstanding 1-2-1's</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
                                     <FontWeight>Bold</FontWeight>
-                                    <Color>White</Color>
+                                    <Color>#004f59</Color>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox44</rd:DefaultName>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
-                            <BackgroundColor>#004f59</BackgroundColor>
+                            <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1287,6 +1650,119 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox76">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox76</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox77">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox77</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox78">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox78</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox48">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -1294,7 +1770,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Practice Area</Value>
+                                  <Value>Department</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -1390,35 +1866,33 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.6cm</Height>
-                  <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Employee_Name">
+                        <Textbox Name="Textbox46">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Employee_Name.Value</Value>
+                                  <Value>Employee Name</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Employee_Name</rd:DefaultName>
+                          <rd:DefaultName>Textbox44</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1427,16 +1901,21 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="PracticeArea">
+                        <Textbox Name="department1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!PracticeArea.Value</Value>
+                                  <Value>=Fields!department.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
@@ -1445,7 +1924,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>PracticeArea</rd:DefaultName>
+                          <rd:DefaultName>department1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -1523,6 +2002,38 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="employee_name1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!employee_name.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>employee_name1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
                   </TablixCells>
                 </TablixRow>
               </TablixRows>
@@ -1541,6 +2052,9 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                   <KeepWithGroup>After</KeepWithGroup>
                 </TablixMember>
                 <TablixMember>
+                  <KeepWithGroup>After</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
                   <Group Name="Details1" />
                 </TablixMember>
               </TablixMembers>
@@ -1549,9 +2063,10 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             <PageBreak>
               <BreakLocation>End</BreakLocation>
             </PageBreak>
+            <PageName>Outstanding</PageName>
             <Filters>
               <Filter>
-                <FilterExpression>=iif(Fields!OneToOneFlag.Value = 0 and Fields!ExcludeCount.Value &lt; 0.5  and Fields!ManagementExclusions.Value = 0,1,0)</FilterExpression>
+                <FilterExpression>=iif(Fields!OneToOneFlag.Value = 0 and Fields!ExcludeCount.Value &lt; 0.5  and Fields!management_exclusions.Value = 0,1,0)</FilterExpression>
                 <Operator>Equal</Operator>
                 <FilterValues>
                   <FilterValue DataType="Integer">1</FilterValue>
@@ -1560,81 +2075,74 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             </Filters>
             <SortExpressions>
               <SortExpression>
-                <Value>=Fields!Employee_Name.Value</Value>
+                <Value>=Fields!department.Value</Value>
+              </SortExpression>
+              <SortExpression>
+                <Value>=Fields!Team.Value</Value>
+              </SortExpression>
+              <SortExpression>
+                <Value>=Fields!employee_name.Value</Value>
               </SortExpression>
             </SortExpressions>
-            <Top>11.17528cm</Top>
-            <Height>1.2cm</Height>
-            <Width>32.7677cm</Width>
-            <ZIndex>6</ZIndex>
+            <Top>10.12549cm</Top>
+            <Left>0.04445cm</Left>
+            <Height>2.38208cm</Height>
+            <Width>23.90749cm</Width>
+            <ZIndex>3</ZIndex>
             <Style>
               <Border>
                 <Style>None</Style>
               </Border>
             </Style>
           </Tablix>
-          <Image Name="Image4">
-            <Source>Embedded</Source>
-            <Value>Outstanding_One_to_Ones</Value>
-            <Sizing>FitProportional</Sizing>
-            <Top>9.67528cm</Top>
-            <Left>0.04445cm</Left>
-            <Height>1.5cm</Height>
-            <Width>32.74548cm</Width>
-            <ZIndex>7</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-            </Style>
-          </Image>
           <Tablix Name="Tablix8">
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>7.97687cm</Width>
+                  <Width>8.12202cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>6.9979cm</Width>
+                  <Width>5.82083cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.80133cm</Width>
+                  <Width>4.14888cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>8.9916cm</Width>
+                  <Width>5.86021cm</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>0.6cm</Height>
+                  <Height>1.04979cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox45">
+                        <Textbox Name="Textbox20">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Employee Name</Value>
+                                  <Value>Completed 1-2-1's</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
                                     <FontWeight>Bold</FontWeight>
-                                    <Color>White</Color>
+                                    <Color>#004f59</Color>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox44</rd:DefaultName>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
-                            <BackgroundColor>#004f59</BackgroundColor>
+                            <VerticalAlign>Middle</VerticalAlign>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1645,6 +2153,119 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox81">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox81</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox82">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox82</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox83">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>14pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>#004f59</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox83</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <VerticalAlign>Middle</VerticalAlign>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox49">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -1652,7 +2273,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Practice Area</Value>
+                                  <Value>Department</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -1748,35 +2369,33 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
-                  </TablixCells>
-                </TablixRow>
-                <TablixRow>
-                  <Height>0.6cm</Height>
-                  <TablixCells>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Employee_Name2">
+                        <Textbox Name="Textbox47">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Employee_Name.Value</Value>
+                                  <Value>Employee Name</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Employee_Name</rd:DefaultName>
+                          <rd:DefaultName>Textbox44</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
+                            <BackgroundColor>#004f59</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1785,6 +2404,11 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
                     <TablixCell>
                       <CellContents>
                         <Textbox Name="PracticeArea3">
@@ -1794,7 +2418,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!PracticeArea.Value</Value>
+                                  <Value>=Fields!department.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                   </Style>
@@ -1881,6 +2505,38 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="employee_name2">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!employee_name.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>employee_name2</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
                   </TablixCells>
                 </TablixRow>
               </TablixRows>
@@ -1899,11 +2555,15 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                   <KeepWithGroup>After</KeepWithGroup>
                 </TablixMember>
                 <TablixMember>
+                  <KeepWithGroup>After</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
                   <Group Name="Details3" />
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>MonthlyOneToOneStatus</DataSetName>
+            <PageName>Completed</PageName>
             <Filters>
               <Filter>
                 <FilterExpression>=iif(Fields!OneToOneFlag.Value=1,1,0)</FilterExpression>
@@ -1913,7 +2573,7 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
                 </FilterValues>
               </Filter>
               <Filter>
-                <FilterExpression>=Fields!ManagementExclusions.Value</FilterExpression>
+                <FilterExpression>=Fields!management_exclusions.Value</FilterExpression>
                 <Operator>Equal</Operator>
                 <FilterValues>
                   <FilterValue DataType="Integer">0</FilterValue>
@@ -1922,39 +2582,30 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
             </Filters>
             <SortExpressions>
               <SortExpression>
-                <Value>=Fields!Employee_Name.Value</Value>
+                <Value>=Fields!department.Value</Value>
+              </SortExpression>
+              <SortExpression>
+                <Value>=Fields!Team.Value</Value>
+              </SortExpression>
+              <SortExpression>
+                <Value>=Fields!employee_name.Value</Value>
               </SortExpression>
             </SortExpressions>
-            <Top>14.27091cm</Top>
-            <Height>1.2cm</Height>
-            <Width>32.7677cm</Width>
-            <ZIndex>8</ZIndex>
+            <Top>13.16821cm</Top>
+            <Height>2.24979cm</Height>
+            <Width>23.95194cm</Width>
+            <ZIndex>4</ZIndex>
             <Style>
               <Border>
                 <Style>None</Style>
               </Border>
             </Style>
           </Tablix>
-          <Image Name="Image5">
-            <Source>Embedded</Source>
-            <Value>Completed_One_to_Ones</Value>
-            <Sizing>FitProportional</Sizing>
-            <Top>12.77091cm</Top>
-            <Left>0.02223cm</Left>
-            <Height>1.5cm</Height>
-            <Width>32.74548cm</Width>
-            <ZIndex>9</ZIndex>
-            <Style>
-              <Border>
-                <Style>None</Style>
-              </Border>
-            </Style>
-          </Image>
         </ReportItems>
-        <Height>6.09091in</Height>
+        <Height>6.32713in</Height>
         <Style />
       </Body>
-      <Width>13.89026in</Width>
+      <Width>9.4299in</Width>
       <Page>
         <PageHeight>29.7cm</PageHeight>
         <PageWidth>21cm</PageWidth>
@@ -1968,37 +2619,36 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
     </ReportSection>
   </ReportSections>
   <ReportParameters>
-    <ReportParameter Name="YearPeriod">
+    <ReportParameter Name="CalendarMonth">
       <DataType>String</DataType>
       <Prompt>Period</Prompt>
       <ValidValues>
         <DataSetReference>
           <DataSetName>YearPeriod</DataSetName>
-          <ValueField>YearPeriod_fin</ValueField>
+          <ValueField>cal_month</ValueField>
           <LabelField>PeriodLabel</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="BusinessLine">
+    <ReportParameter Name="Division">
       <DataType>String</DataType>
       <Prompt>Division</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>BusinessLine</DataSetName>
-          <ValueField>Businessline</ValueField>
-          <LabelField>Businessline</LabelField>
+          <DataSetName>Division</DataSetName>
+          <ValueField>Division</ValueField>
+          <LabelField>Division</LabelField>
         </DataSetReference>
       </ValidValues>
-      <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="PracticeArea">
+    <ReportParameter Name="Department">
       <DataType>String</DataType>
       <Prompt>Department</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>PracticeArea</DataSetName>
-          <ValueField>PracticeArea</ValueField>
-          <LabelField>PracticeArea</LabelField>
+          <DataSetName>Department</DataSetName>
+          <ValueField>department</ValueField>
+          <LabelField>department</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
@@ -2025,26 +2675,26 @@ WHERE businessline NOT IN ('Unknown')</CommandText>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>YearPeriod</ParameterName>
+          <ParameterName>CalendarMonth</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>BusinessLine</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
-          <ParameterName>PracticeArea</ParameterName>
+          <ParameterName>Division</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
+          <ParameterName>Department</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>Team</ParameterName>
         </CellDefinition>
       </CellDefinitions>
