@@ -1955,7 +1955,7 @@ FROM dbo.dim_fed_hierarchy_history
 INNER JOIN 
 dbo.fact_billable_time_activity
 ON fact_billable_time_activity.dim_fed_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
-INNER JOIN dbo.dim_gl_date ON dim_gl_date.dim_gl_date_key = fact_billable_time_activity.dim_gl_date_key
+INNER JOIN dbo.dim_gl_date ON dim_gl_date.dim_gl_date_key = fact_billable_time_activity.dim_orig_posting_date_key
 AND gl_fin_year = @FinYear
 AND gl_fin_month_no = @FinMonthNo
 WHERE  dim_fed_hierarchy_history.fed_code = @FEDCode
@@ -2612,17 +2612,14 @@ strtomember(@Month)
                                 <Drillthrough>
                                   <ReportName>MiniBAR Drilldown_ChargeableHours</ReportName>
                                   <Parameters>
-                                    <Parameter Name="FEDCode">
-                                      <Value>=Parameters!FEDCode.Value</Value>
-                                    </Parameter>
-                                    <Parameter Name="Month">
-                                      <Value>=Parameters!FinMonthNo.Value</Value>
-                                    </Parameter>
-                                    <Parameter Name="FinYear">
-                                      <Value>=Parameters!FinYear.Value</Value>
+                                    <Parameter Name="FedCode">
+                                      <Value>="[Dim Fed Hierarchy History].[Fed Code].&amp;["+Parameters!FEDCode.Value+"]"</Value>
                                     </Parameter>
                                     <Parameter Name="YTD">
                                       <Value>N</Value>
+                                    </Parameter>
+                                    <Parameter Name="Period">
+                                      <Value>="[Dim Transaction Date].[Hierarchy].[Fin Period].&amp;["+First(Fields!fin_period.Value, "SQLDatasetMDXParameter")+"]"</Value>
                                     </Parameter>
                                   </Parameters>
                                 </Drillthrough>
@@ -2707,17 +2704,14 @@ strtomember(@Month)
                                 <Drillthrough>
                                   <ReportName>MiniBAR Drilldown_ChargeableHours</ReportName>
                                   <Parameters>
-                                    <Parameter Name="FEDCode">
-                                      <Value>=Parameters!FEDCode.Value</Value>
-                                    </Parameter>
-                                    <Parameter Name="FinYear">
-                                      <Value>=Parameters!FinYear.Value</Value>
-                                    </Parameter>
-                                    <Parameter Name="Month">
-                                      <Value>=Parameters!FinMonthNo.Value</Value>
+                                    <Parameter Name="FedCode">
+                                      <Value>="[Dim Fed Hierarchy History].[Fed Code].&amp;["+Parameters!FEDCode.Value+"]"</Value>
                                     </Parameter>
                                     <Parameter Name="YTD">
                                       <Value>Y</Value>
+                                    </Parameter>
+                                    <Parameter Name="Period">
+                                      <Value>="[Dim Transaction Date].[Hierarchy].[Fin Period].&amp;["+First(Fields!fin_period.Value, "SQLDatasetMDXParameter")+"]"</Value>
                                     </Parameter>
                                   </Parameters>
                                 </Drillthrough>
@@ -6032,22 +6026,14 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
     </ReportSection>
   </ReportSections>
   <ReportParameters>
-    <ReportParameter Name="Month">
+    <ReportParameter Name="CurrentUsername">
       <DataType>String</DataType>
       <DefaultValue>
-        <DataSetReference>
-          <DataSetName>SQLDatasetDefault</DataSetName>
-          <ValueField>DAX</ValueField>
-        </DataSetReference>
+        <Values>
+          <Value>=MID(User!UserID,5,LEN(User!UserID)-4)</Value>
+        </Values>
       </DefaultValue>
-      <Prompt>Month</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>SQLDataset</DataSetName>
-          <ValueField>DAXPeriod</ValueField>
-          <LabelField>DAXPeriod</LabelField>
-        </DataSetReference>
-      </ValidValues>
+      <Prompt>CurrentUsername</Prompt>
     </ReportParameter>
     <ReportParameter Name="ManagedMembers">
       <DataType>String</DataType>
@@ -6065,16 +6051,6 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="CurrentUsername">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>=MID(User!UserID,5,LEN(User!UserID)-4)</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>CurrentUsername</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
     <ReportParameter Name="Username">
       <DataType>String</DataType>
       <DefaultValue>
@@ -6091,6 +6067,23 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
             <Label>=Parameters!ManagedMembers.Value</Label>
           </ParameterValue>
         </ParameterValues>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="Month">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>SQLDatasetDefault</DataSetName>
+          <ValueField>DAX</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Month</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>SQLDataset</DataSetName>
+          <ValueField>DAXPeriod</ValueField>
+          <LabelField>DAXPeriod</LabelField>
+        </DataSetReference>
       </ValidValues>
     </ReportParameter>
     <ReportParameter Name="FEDCode">
@@ -6206,7 +6199,7 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
+          <RowIndex>0</RowIndex>
           <ParameterName>CurrentUsername</ParameterName>
         </CellDefinition>
         <CellDefinition>
@@ -6215,13 +6208,13 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
           <ParameterName>ManagedMembers</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
+          <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Username</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>0</RowIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>Month</ParameterName>
         </CellDefinition>
         <CellDefinition>
