@@ -30,12 +30,18 @@ where replace(LTRIM(REPLACE(RTRIM(client_code), '0', ' ')), ' ', '0') + '-'
 
 
 
+
+
 select dim_matter_header_curr_key, sum(mins.bill_total_excl_vat) BOA_Total
-	into #BOA
-from dbo.fact_bill_detail mins
+	 into #BOA
+	-- select *
+from dbo.fact_bill_detail mins 
 where dim_bill_charge_type_key = 1
 and mins.bill_total &gt; 0
 and mins.dim_matter_header_curr_key = @matter_header_key
+--and matter_number = '00010529'
+--and client_code = 'A3003'
+and mins.dim_bill_key not in (select dim_bill_key from dbo.dim_bill where bill_reversed = 1)
 group by dim_matter_header_curr_key
 
 
@@ -47,11 +53,11 @@ select  mat.dim_matter_header_curr_key,
 
 	sum(mins.minutes_recorded) / 60 WIP_Hours, 
 	Total_Hours,
-	round(((sum(mins.minutes_recorded) / 60) / Total_Hours),4) Total_Hours_Calc,
+	((sum(mins.minutes_recorded) / 60) / Total_Hours) Total_Hours_Calc,
 	round((sum(mins.minutes_recorded) / 60) / Total_Hours * 100,2) Perc_Of_Total_Hours,
 	bill.bill_amount BOA_Already_Allocated,
 	BOA_Total,
-	BOA.BOA_Total * round(((sum(mins.minutes_recorded) / 60) / Total_Hours),4) Correct_BOA_Allocation
+	BOA.BOA_Total * ((sum(mins.minutes_recorded) / 60) / Total_Hours) Correct_BOA_Allocation
 
 
 from dbo.fact_billable_time_activity mins
@@ -78,9 +84,6 @@ where mins.isactive = 1
 and mat.dim_matter_header_curr_key = @matter_header_key
 group by fed.fed_code, bill.bill_amount, Total_Hours, BOA_Total, mat.dim_matter_header_curr_key, mat.matter_number,	mat.client_code
 order by 3
-
-
-
 </CommandText>
       </Query>
       <Fields>
@@ -2098,8 +2101,8 @@ order by 3
             </TablixRowHierarchy>
             <DataSetName>SQL_Query_Main</DataSetName>
             <Top>2.24578cm</Top>
-            <Height>7.57207cm</Height>
-            <Width>18.43958cm</Width>
+            <Height>7.57206cm</Height>
+            <Width>18.43959cm</Width>
             <ZIndex>4</ZIndex>
             <Style>
               <Border>
