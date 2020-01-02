@@ -17,6 +17,11 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>367d19ae-6ef6-45ae-be1d-42956f782cbf</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="Warehouse">
+      <DataSourceReference>Data Warehouse Server SQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>4a48ee18-b31d-47ab-b93e-cb7837669616</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="DefaultProperties">
@@ -2452,47 +2457,110 @@ WHERE  name ='Sabre_Trial_Report.png'</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="DS_SabreDetails">
+    <DataSet Name="DS_Details">
       <Query>
-        <DataSourceName>CaseDetails</DataSourceName>
+        <DataSourceName>Warehouse</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="Start">
+          <QueryParameter Name="@ClientCode">
+            <Value>=Parameters!ClientCode.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Start">
             <Value>=Parameters!Start.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="End">
+          <QueryParameter Name="@End">
             <Value>=Parameters!End.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>EVALUATE (
-CALCULATETABLE (
-SUMMARIZE (
-fact_dimension_main,
-dim_client[client_code], 
-dim_client[client_name], 
-dim_detail_outcome[outcome_of_case], 
-dim_fed_hierarchy_history_matter_owner[matter_owner_displayname], 
-dim_client_involvement[insurerclient_reference],
-dim_matter_header_current[matter_description], 
-dim_matter_header_current[matter_number],
-dim_court_involvement[court_name],
-dim_detail_court[date_of_trial],
-dim_detail_court[trial_window_range],
-dim_detail_court[date_end_of_trial_window],
-dim_detail_court[date_of_first_day_of_trial_window],
-dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date], 
-dim_detail_core_details[date_subsequent_sla_report_sent]
-),
-dim_matter_header_current[reporting_exclusions] = 0,
-PATHCONTAINS("W15564",dim_client[client_code]),
-dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date] = BLANK(),
-dim_detail_court[date_of_trial] &gt;= value(@Start),
-dim_detail_court[date_of_trial] &lt; value(@End),
-dim_detail_outcome[date_claim_concluded] = BLANK()
-)
-)
-ORDER BY
-dim_client[client_code],
-dim_matter_header_current[matter_number]</CommandText>
+        <CommandText>DROP TABLE IF EXISTS #TasksDueDate
+--DECLARE  @ClientCode AS CHAR(20)  SET @ClientCode =  'W15564' 
+--DECLARE @Start AS DATETIME SET @Start = GETDATE()
+--DECLARE @End AS DATETIME SET @End = GETDATE() +365
+
+SELECT 
+      ROW_NUMBER() OVER (PARTITION BY t.client_code, t.matter_number ORDER BY t.dim_task_due_date_key DESC) RN 
+      , t.[client_code]
+      ,t.[matter_number] AS MatterNumber
+	  ,t.task_code
+	  ,dimt.task_desccription
+	  ,CONVERT(CHAR(10), t.[dim_task_due_date_key], 120) AS TasksDueDate
+
+	  INTO #TasksDueDate
+
+  FROM [red_dw].[dbo].[fact_tasks] t 
+  JOIN [red_dw].[dbo].[dim_tasks] dimt ON t.dim_tasks_key = dimt.dim_tasks_key
+
+  WHERE 
+     (t.task_code IN ('TRAA0348', 'NHSA0183')  -- Task Codes TRAA0348 REM: Trial due today - [CASE MAN] ,     REM: Disposal hearing due today [CASE MAN]   
+	 OR dimt.task_desccription IN ('Trial date - today' ,  'Trial window - today')   )
+     
+     AND t.client_code =  @ClientCode          
+
+	
+
+	 SELECT 
+	-- 
+	 ddc.[client_code]
+	,c.client_name
+	,ddo.outcome_of_case
+	,dfhh.display_name                                              AS [matter_owner_displayname]
+	,dci.insurerclient_reference 
+	,dmhc.matter_description
+	,ddc.matter_number
+	,dcinv.court_name
+	,COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate)       AS [date_of_trial]
+    ,ddcourt.[trial_window_range]
+    ,ddcourt.[date_end_of_trial_window]
+    ,ddcourt.[date_of_first_day_of_trial_window]
+	,dccmd.calendar_date                                             AS matter_closed_case_management_calendar_date
+	,ddo.[date_claim_concluded]
+	,dcd.[date_subsequent_sla_report_sent]
+
+  FROM [dbo].[dim_detail_court] ddc 
+  JOIN dbo.dim_client c ON ddc.client_code = c.client_code 
+  LEFT JOIN dbo.dim_detail_outcome ddo ON ddo.client_code = ddc.client_code and ddo.matter_number = ddc.matter_number 
+  JOIN dbo.fact_dimension_main fdm ON fdm.dim_detail_court_key = ddc.dim_detail_court_key
+  LEFT JOIN dim_fed_hierarchy_history dfhh ON dfhh.dim_fed_hierarchy_history_key = fdm.dim_fed_hierarchy_history_key
+  LEFT JOIN [dbo].[dim_client_involvement] dci ON dci.client_code = c.client_code AND dci.matter_number = ddc.matter_number
+  LEFT JOIN dbo.dim_matter_header_current dmhc ON dmhc.dim_matter_header_curr_key = fdm.dim_matter_header_curr_key 
+  LEFT JOIN dbo.dim_court_involvement  dcinv ON dcinv.dim_court_involvement_key = fdm.dim_court_involvement_key
+  LEFT JOIN dim_detail_court ddcourt ON ddcourt.dim_detail_court_key = ddc.dim_detail_court_key
+  LEFT JOIN dbo.dim_closed_case_management_date dccmd ON dccmd.dim_closed_case_management_date_key = fdm.dim_closed_case_management_date_key
+  LEFT JOIN dbo.dim_detail_core_details  dcd ON dcd.dim_detail_core_detail_key = fdm.dim_detail_core_detail_key 
+  LEFT JOIN #TasksDueDate TasksDue ON TasksDue.client_code = ddc.client_code AND  ddc.matter_number = TasksDue.MatterNumber  AND TasksDue.RN = 1 
+
+  WHERE c.client_code = @ClientCode
+
+  AND dmhc.reporting_exclusions = 0 -- Reporting Exclusions 
+
+  AND ISNULL(dccmd.calendar_date, '1753-01-01 00:00:00.000')   = '1753-01-01 00:00:00.000' -- Not to include Closed Cases
+
+  AND ddo.[date_claim_concluded] IS NULL 
+
+  AND COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate) &gt;= @Start
+
+  AND COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate) &lt;  @End
+
+  ORDER BY c.client_code, ddc.matter_number
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	 
+	
+
+
+  </CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -2694,249 +2762,67 @@ dim_matter_header_current[matter_number]</Statement>
       </Query>
       <Fields>
         <Field Name="client_code">
-          <DataField>dim_client[client_code]</DataField>
+          <DataField>client_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="client_name">
-          <DataField>dim_client[client_name]</DataField>
+          <DataField>client_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="outcome_of_case">
-          <DataField>dim_detail_outcome[outcome_of_case]</DataField>
+          <DataField>outcome_of_case</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="matter_owner">
-          <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_displayname]</DataField>
+        <Field Name="matter_owner_displayname">
+          <DataField>matter_owner_displayname</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="insurer_reference">
-          <DataField>dim_client_involvement[insurerclient_reference]</DataField>
+        <Field Name="insurerclient_reference">
+          <DataField>insurerclient_reference</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="matter_description">
-          <DataField>dim_matter_header_current[matter_description]</DataField>
+          <DataField>matter_description</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="matter_number">
-          <DataField>dim_matter_header_current[matter_number]</DataField>
+          <DataField>matter_number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="court_name">
-          <DataField>dim_court_involvement[court_name]</DataField>
+          <DataField>court_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="date_of_trial">
-          <DataField>dim_detail_court[date_of_trial]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <DataField>date_of_trial</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="trial_window_range">
-          <DataField>dim_detail_court[trial_window_range]</DataField>
+          <DataField>trial_window_range</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="end_of_trial_window">
-          <DataField>dim_detail_court[date_end_of_trial_window]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="date_end_of_trial_window">
+          <DataField>date_end_of_trial_window</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
-        <Field Name="first_day_of_trial_window">
-          <DataField>dim_detail_court[date_of_first_day_of_trial_window]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="date_of_first_day_of_trial_window">
+          <DataField>date_of_first_day_of_trial_window</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
-        <Field Name="date_closed">
-          <DataField>dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="matter_closed_case_management_calendar_date">
+          <DataField>matter_closed_case_management_calendar_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="detail_lookup">
           <Value>=Fields!client_code.Value+"-"+Fields!matter_number.Value</Value>
         </Field>
-        <Field Name="Date_of_subsequent_report">
-          <DataField>dim_detail_core_details[date_subsequent_sla_report_sent]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="date_claim_concluded">
+          <DataField>date_claim_concluded</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="DS_SabreTasks">
-      <Query>
-        <DataSourceName>Tasks</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="Start">
-            <Value>=Parameters!Start.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="End">
-            <Value>=Parameters!End.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>EVALUATE(
-	CALCULATETABLE(
-		SUMMARIZE(
-		fact_tasks,
-		dim_matter_header_current[client_code],
-		dim_matter_header_current[matter_number],
-		dim_tasks[task_code],
-		dim_tasks[task_description],
-		dim_task_date[task_date],
-		dim_task_due_date[task_due_date]
-		),
-		PATHCONTAINS("TRAA0348|NHSA0183",dim_tasks[task_code]),
-		PATHCONTAINS("S00016|00468431|W15564",dim_matter_header_current[client_code]),
-		dim_task_due_date[task_due_date] &gt;=value(@Start),
-		dim_task_due_date[task_due_date] &lt;value(@End),
-		dim_matter_header_current[date_closed_case_management] = BLANK()
-		)
-		)</CommandText>
-        <rd:DesignerState>
-          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
-            <CommandType>DMX</CommandType>
-            <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification">
-              <Select>
-                <Items>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[client_code]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[client_code]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[matter_number]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[matter_number]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_tasks[task_code]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_tasks[task_code]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_tasks[task_description]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_tasks[task_description]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_task_date[task_date]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_task_date[task_date]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_task_due_date[task_due_date]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_task_due_date[task_due_date]</ItemCaption>
-                  </Item>
-                </Items>
-              </Select>
-              <AutoExecute>false</AutoExecute>
-              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
-&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;SelectTablesControlState&gt;
-    &lt;Tables /&gt;
-  &lt;/SelectTablesControlState&gt;
-  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
-  &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;EVALUATE(
-	CALCULATETABLE(
-		SUMMARIZE(
-		fact_tasks,
-		dim_matter_header_current[client_code],
-		dim_matter_header_current[matter_number],
-		dim_tasks[task_code],
-		dim_tasks[task_description],
-		dim_task_date[task_date],
-		dim_task_due_date[task_due_date]
-		),
-		PATHCONTAINS("TRAA0348|NHSA0183",dim_tasks[task_code]),
-		PATHCONTAINS("S00016|00468431|W15564",dim_matter_header_current[client_code]),
-		dim_task_due_date[task_due_date] &amp;gt;=value(@Start),
-		dim_task_due_date[task_due_date] &amp;lt;value(@End),
-		dim_matter_header_current[date_closed_case_management] = BLANK()
-		)
-		)&lt;/QueryText&gt;
-  &lt;DatabaseId /&gt;
-  &lt;MiningStructureId /&gt;
-  &lt;MiningModelId /&gt;
-  &lt;ColumnMappings /&gt;
-  &lt;GridRows /&gt;
-&lt;/DataminingQueryBuilderState&gt;</Data>
-            </QuerySpecification>
-            <Query>
-              <Statement>EVALUATE(
-	CALCULATETABLE(
-		SUMMARIZE(
-		fact_tasks,
-		dim_matter_header_current[client_code],
-		dim_matter_header_current[matter_number],
-		dim_tasks[task_code],
-		dim_tasks[task_description],
-		dim_task_date[task_date],
-		dim_task_due_date[task_due_date]
-		),
-		PATHCONTAINS("TRAA0348|NHSA0183",dim_tasks[task_code]),
-		PATHCONTAINS("S00016|00468431|W15564",dim_matter_header_current[client_code]),
-		dim_task_due_date[task_due_date] &gt;=value(@Start),
-		dim_task_due_date[task_due_date] &lt;value(@End),
-		dim_matter_header_current[date_closed_case_management] = BLANK()
-		)
-		)</Statement>
-              <ParameterDefinitions>
-                <ParameterDefinition>
-                  <Name>Start</Name>
-                  <DefaultValues>
-                    <DefaultValue>01/01/2016</DefaultValue>
-                  </DefaultValues>
-                  <Caption>Start</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>End</Name>
-                  <DefaultValues>
-                    <DefaultValue>31/10/2016</DefaultValue>
-                  </DefaultValues>
-                  <Caption>End</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-              </ParameterDefinitions>
-            </Query>
-          </QueryDefinition>
-        </rd:DesignerState>
-      </Query>
-      <Fields>
-        <Field Name="client_code">
-          <DataField>dim_matter_header_current[client_code]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="matter_number">
-          <DataField>dim_matter_header_current[matter_number]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="task_code">
-          <DataField>dim_tasks[task_code]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="task_description">
-          <DataField>dim_tasks[task_description]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="task_date">
-          <DataField>dim_task_date[task_date]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="task_due_date">
-          <DataField>dim_task_due_date[task_due_date]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="task_lookup">
-          <Value>=Fields!client_code.Value+"-"+Fields!matter_number.Value</Value>
+        <Field Name="date_subsequent_sla_report_sent">
+          <DataField>date_subsequent_sla_report_sent</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -3761,14 +3647,14 @@ dim_matter_header_current[matter_number]</Statement>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="matter_owner">
+                            <Textbox Name="matter_owner_displayname">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!matter_owner.Value</Value>
+                                      <Value>=Fields!matter_owner_displayname.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3787,7 +3673,7 @@ dim_matter_header_current[matter_number]</Statement>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>matter_owner</rd:DefaultName>
+                              <rd:DefaultName>matter_owner_displayname</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3828,14 +3714,14 @@ dim_matter_header_current[matter_number]</Statement>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="insurer_reference">
+                            <Textbox Name="insurerclient_reference">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!insurer_reference.Value</Value>
+                                      <Value>=Fields!insurerclient_reference.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3854,7 +3740,7 @@ dim_matter_header_current[matter_number]</Statement>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>insurer_reference</rd:DefaultName>
+                              <rd:DefaultName>insurerclient_reference</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3963,14 +3849,14 @@ dim_matter_header_current[matter_number]</Statement>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Date_of_subsequent_report">
+                            <Textbox Name="date_subsequent_sla_report_sent">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Date_of_subsequent_report.Value</Value>
+                                      <Value>=Fields!date_subsequent_sla_report_sent.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3990,7 +3876,7 @@ dim_matter_header_current[matter_number]</Statement>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Date_of_subsequent_report</rd:DefaultName>
+                              <rd:DefaultName>date_subsequent_sla_report_sent</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4690,7 +4576,12 @@ dim_matter_header_current[matter_number]</Statement>
                 </TablixRowHierarchy>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
-                <DataSetName>DS_SabreDetails</DataSetName>
+                <DataSetName>DS_Details</DataSetName>
+                <SortExpressions>
+                  <SortExpression>
+                    <Value>=Fields!date_of_trial.Value</Value>
+                  </SortExpression>
+                </SortExpressions>
                 <Top>0.22049cm</Top>
                 <Height>1.01041in</Height>
                 <Width>12.48611in</Width>
@@ -4751,7 +4642,7 @@ dim_matter_header_current[matter_number]</Statement>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>14.60069in</Width>
+      <Width>14.61458in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -4935,8 +4826,8 @@ dim_matter_header_current[matter_number]</Statement>
                   </Action>
                 </Actions>
               </ActionInfo>
-              <Top>0.125in</Top>
-              <Left>1.8in</Left>
+              <Top>0.11111in</Top>
+              <Left>1.81389in</Left>
               <Height>0.64235in</Height>
               <Width>12.80069in</Width>
               <ZIndex>2</ZIndex>
@@ -5333,11 +5224,29 @@ dim_matter_header_current[matter_number]</Statement>
       </DefaultValue>
       <Prompt>End Date</Prompt>
     </ReportParameter>
+    <ReportParameter Name="ClientCode">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>W15564</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Client Code</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>W15564</Value>
+            <Label>Client Code</Label>
+          </ParameterValue>
+        </ParameterValues>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5353,6 +5262,11 @@ dim_matter_header_current[matter_number]</Statement>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>End</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>ClientCode</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
