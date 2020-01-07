@@ -32,6 +32,8 @@
         <CommandText>
 
 
+
+
 declare @fedcode_table table (fedcode int)
 
 if left(@FEDCode, 1) = '('
@@ -51,37 +53,6 @@ if left(@FEDCode, 1) = '('
 
 
 
-;
-/*
-with all_assesments_missed as 
-		(
-		select distinct a.client_user_identifier,  c.fed_code, c.display_name Display_Name, c.name, 
-		c.hierarchylevel2 Business_Line, c.hierarchylevel3 Practice_Area, c.hierarchylevel4 Team,
-		g.course_name, 
-		case when g.category is null and g.subcategory = 'IT Training' then 'IT Training'
-			 when g.category is null then g.subcategory
-			 else g.category end category,
-		g.subcategory,
-		'NoShow' history_status, null course_start_date_time, null course_end_date_time,
-		0 duration_mins, 0 score,	0 tries
-		from dbo.dim_lms_user_course a
-		inner join dbo.dim_employee e on e.dim_employee_key = a.dim_employee_key
-		inner join dbo.dim_fed_hierarchy_current c on c.employeeid = e.employeeid and c.activeud = 1	
-		inner join dbo.dim_fed_hierarchy_current d on d.hierarchylevel4 = c.hierarchylevel4 and d.activeud = 1	
-		inner join dbo.dim_employee f on f.employeeid = d.employeeid
-		inner join dbo.dim_lms_user_course g on g.dim_employee_key = f.dim_employee_key
-		inner join dbo.fact_lms_user_course gg on gg.dim_lms_user_course_key = g.dim_lms_user_course_key and gg.score is not null
-		left outer join dbo.dim_lms_user_course h on h.dim_lms_courses_key = g.dim_lms_courses_key and h.dim_employee_key = e.dim_employee_key and h.latest_attempt = 1 
-		where a.latest_attempt = 1
-		and h.dim_lms_user_course_key is null
-		--and c.fed_code = '6237'		
-		and iif(score is not null, 'Assessment', 'Course') in (@Type)
-		and 'NoShow' in (@Status)
-		and g.dim_lms_courses_key in (@Courses)
-		and c.dim_fed_hierarchy_current_key in (select fedcode from @fedcode_table)
-		)
-
-*/
 
 select a.dim_lms_user_course_key,
 a.client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, 
@@ -114,29 +85,33 @@ and c.dim_fed_hierarchy_current_key in (select fedcode from @fedcode_table)
 --and c.fed_code = '6237'
 and c.activeud = 1
 
-/*
-union all
 
-select all_assesments_missed.client_user_identifier
-     , all_assesments_missed.fed_code
-     , all_assesments_missed.Display_Name
-     , all_assesments_missed.name
-     , all_assesments_missed.Business_Line
-     , all_assesments_missed.Practice_Area
-     , all_assesments_missed.Team
-     , all_assesments_missed.course_name
-     , all_assesments_missed.category
-     , all_assesments_missed.subcategory
-	 , all_assesments_missed.history_status
-     , all_assesments_missed.course_start_date_time
-     , all_assesments_missed.course_end_date_time
-     , all_assesments_missed.duration_mins
-     , all_assesments_missed.score
-     , all_assesments_missed.tries
-from all_assesments_missed 
-order by a.course_start_date_time desc
+UNION ALL
 
-*/</CommandText>
+SELECT DISTINCT 
+	NULL dim_lms_user_course_key, client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, 
+	c.hierarchylevel2 Business_Line, c.hierarchylevel3 Practice_Area, c.hierarchylevel4 Team,
+	x.course_name, x.category, x.subcategory, 
+	'NoShow' history_status, NULL, NULL, NULL, NULL, 0
+
+FROM dbo.dim_lms_user_course a
+inner join dbo.dim_employee e on e.dim_employee_key = a.dim_employee_key
+inner join dbo.dim_fed_hierarchy_current c on c.employeeid = e.employeeid
+CROSS APPLY (SELECT course_name, 
+					CASE when category is null and subcategory = 'IT Training' then 'IT Training'
+					 when category is null then isnull(subcategory,'Unknown')
+					 else category end category,
+					 ISNULL(subcategory,'Unknown') subcategory,
+					 dim_lms_courses_key
+			FROM dbo.dim_lms_courses 
+			WHERE dim_lms_courses_key IN (470,206,212)) x
+WHERE a.dim_employee_key NOT IN (SELECT dim_employee_key 
+								FROM dbo.dim_lms_user_course
+								WHERE dim_lms_courses_key IN (470,206,212)
+								AND dim_lms_courses_key = x.dim_lms_courses_key)
+--AND client_user_identifier = 'zmcali'
+and e.leftdate is NULL
+and c.activeud = 1</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>MDX</CommandType>
