@@ -2462,6 +2462,15 @@ WHERE  name ='Plot_Sales.png'</CommandText>
           <QueryParameter Name="MatterNumber">
             <Value>=JOIN(Parameters!MatterNumber.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="Tenure">
+            <Value>=Parameters!Tenure.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="Scheme">
+            <Value>=Parameters!Scheme.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="PurchaserSols">
+            <Value>=Parameters!PurchaserSols.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>Evaluate(
 CALCULATETABLE(
@@ -2520,7 +2529,13 @@ fact_dimension_main
 )
 , PATHCONTAINS(@ClientNo, dim_client[client_code])
 , PATHCONTAINS(@MatterNumber, dim_matter_header_current[matter_number])
---, PATHCONTAINS(@Tenure, dim_detail_property[tenure])
+
+, dim_detail_property[tenure] = if(@Tenure = blank(), dim_detail_property[tenure] , @Tenure )
+
+, dim_detail_plot_details[type_of_scheme] = if(@Scheme = blank(), dim_detail_plot_details[type_of_scheme] , @Scheme )
+
+, dim_client_involvement[clientcontact_name] = if(@PurchaserSols = blank(), dim_client_involvement[clientcontact_name] , @PurchaserSols )
+
 , Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
 , dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
 , dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
@@ -2829,7 +2844,13 @@ fact_dimension_main
 )
 , PATHCONTAINS(@ClientNo, dim_client[client_code])
 , PATHCONTAINS(@MatterNumber, dim_matter_header_current[matter_number])
---, PATHCONTAINS(@Tenure, dim_detail_property[tenure])
+
+, dim_detail_property[tenure] = if(@Tenure = blank(), dim_detail_property[tenure] , @Tenure )
+
+, dim_detail_plot_details[type_of_scheme] = if(@Scheme = blank(), dim_detail_plot_details[type_of_scheme] , @Scheme )
+
+, dim_client_involvement[clientcontact_name] = if(@PurchaserSols = blank(), dim_client_involvement[clientcontact_name] , @PurchaserSols )
+
 , Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
 , dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
 , dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
@@ -2901,7 +2922,13 @@ fact_dimension_main
 )
 , PATHCONTAINS(@ClientNo, dim_client[client_code])
 , PATHCONTAINS(@MatterNumber, dim_matter_header_current[matter_number])
---, PATHCONTAINS(@Tenure, dim_detail_property[tenure])
+
+, dim_detail_property[tenure] = if(@Tenure = blank(), dim_detail_property[tenure] , @Tenure )
+
+, dim_detail_plot_details[type_of_scheme] = if(@Scheme = blank(), dim_detail_plot_details[type_of_scheme] , @Scheme )
+
+, dim_client_involvement[clientcontact_name] = if(@PurchaserSols = blank(), dim_client_involvement[clientcontact_name] , @PurchaserSols )
+
 , Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
 , dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
 , dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
@@ -2927,6 +2954,42 @@ fact_dimension_main
                     <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>MatterNumber</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Tenure</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Tenure</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Scheme</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Scheme</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>PurchaserSols</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>PurchaserSols</Caption>
                   <ParameterValuesQuery>
                     <ParameterizedStatement>
                       <ReferencedParameters />
@@ -3508,6 +3571,260 @@ fact_dimension_main
       <Fields>
         <Field Name="dim_detail_property_tenure_">
           <DataField>dim_detail_property[tenure]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Params_Scheme">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <CommandText>/* Scheme Paramater look up 
+ BDW Trading Limited – Client Ref W15353  
+ Persimmon Homes Limited – Client ref 190593P 
+ Eccleston Homes Limited – Client Ref 848629 
+ Seven Capital (NBP) Limited -  Client Ref W17629 
+ Macbryde Homes Ltd- Client Ref 153838M 
+ Thomas Jones &amp; Sons (Liverpool) Limited - Client Ref 117776T 
+
+
+*/
+
+
+
+Evaluate(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+, dim_detail_plot_details[type_of_scheme]
+
+)
+
+, Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
+, dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
+, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
+, dim_matter_header_current[reporting_exclusions]=0
+)
+)</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_detail_plot_details[type_of_scheme]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_detail_plot_details[type_of_scheme]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;/* Scheme Paramater look up 
+ BDW Trading Limited – Client Ref W15353  
+ Persimmon Homes Limited – Client ref 190593P 
+ Eccleston Homes Limited – Client Ref 848629 
+ Seven Capital (NBP) Limited -  Client Ref W17629 
+ Macbryde Homes Ltd- Client Ref 153838M 
+ Thomas Jones &amp;amp; Sons (Liverpool) Limited - Client Ref 117776T 
+
+
+*/
+
+
+
+Evaluate(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+, dim_detail_plot_details[type_of_scheme]
+
+)
+
+, Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
+, dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
+, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
+, dim_matter_header_current[reporting_exclusions]=0
+)
+)&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>/* Scheme Paramater look up 
+ BDW Trading Limited – Client Ref W15353  
+ Persimmon Homes Limited – Client ref 190593P 
+ Eccleston Homes Limited – Client Ref 848629 
+ Seven Capital (NBP) Limited -  Client Ref W17629 
+ Macbryde Homes Ltd- Client Ref 153838M 
+ Thomas Jones &amp; Sons (Liverpool) Limited - Client Ref 117776T 
+
+
+*/
+
+
+
+Evaluate(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+, dim_detail_plot_details[type_of_scheme]
+
+)
+
+, Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
+, dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
+, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
+, dim_matter_header_current[reporting_exclusions]=0
+)
+)</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_detail_plot_details_type_of_scheme_">
+          <DataField>dim_detail_plot_details[type_of_scheme]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Params_PurchasersSolicitor">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <CommandText>/* Purchaser Solicitors Paramater look up 
+ BDW Trading Limited – Client Ref W15353  
+ Persimmon Homes Limited – Client ref 190593P 
+ Eccleston Homes Limited – Client Ref 848629 
+ Seven Capital (NBP) Limited -  Client Ref W17629 
+ Macbryde Homes Ltd- Client Ref 153838M 
+ Thomas Jones &amp; Sons (Liverpool) Limited - Client Ref 117776T 
+
+
+*/
+
+
+
+Evaluate(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+, dim_client_involvement[clientcontact_name]
+
+)
+
+, Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
+, dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
+, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
+, dim_matter_header_current[reporting_exclusions]=0
+)
+)</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_client_involvement[clientcontact_name]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_client_involvement[clientcontact_name]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;/* Purchaser Solicitors Paramater look up 
+ BDW Trading Limited – Client Ref W15353  
+ Persimmon Homes Limited – Client ref 190593P 
+ Eccleston Homes Limited – Client Ref 848629 
+ Seven Capital (NBP) Limited -  Client Ref W17629 
+ Macbryde Homes Ltd- Client Ref 153838M 
+ Thomas Jones &amp;amp; Sons (Liverpool) Limited - Client Ref 117776T 
+
+
+*/
+
+
+
+Evaluate(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+, dim_client_involvement[clientcontact_name]
+
+)
+
+, Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
+, dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
+, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
+, dim_matter_header_current[reporting_exclusions]=0
+)
+)&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>/* Purchaser Solicitors Paramater look up 
+ BDW Trading Limited – Client Ref W15353  
+ Persimmon Homes Limited – Client ref 190593P 
+ Eccleston Homes Limited – Client Ref 848629 
+ Seven Capital (NBP) Limited -  Client Ref W17629 
+ Macbryde Homes Ltd- Client Ref 153838M 
+ Thomas Jones &amp; Sons (Liverpool) Limited - Client Ref 117776T 
+
+
+*/
+
+
+
+Evaluate(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+, dim_client_involvement[clientcontact_name]
+
+)
+
+, Pathcontains("61955B|165769B|00648125|W15353|174502M|177451B|118361B|161818D|177450B|117776T|113768B|190593P|00101439|00785070", dim_client[client_code])
+, dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date]=BLANK()
+, dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]="Real Estate"
+, dim_matter_header_current[reporting_exclusions]=0
+)
+)</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_client_involvement_clientcontact_name_">
+          <DataField>dim_client_involvement[clientcontact_name]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -8150,40 +8467,97 @@ fact_dimension_main
     <ReportParameter Name="Tenure">
       <DataType>String</DataType>
       <Nullable>true</Nullable>
-      <AllowBlank>true</AllowBlank>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Params_Tenure</DataSetName>
+          <ValueField>dim_detail_property_tenure_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
       <Prompt>Tenure</Prompt>
-      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Params_Tenure</DataSetName>
+          <ValueField>dim_detail_property_tenure_</ValueField>
+          <LabelField>dim_detail_property_tenure_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="Scheme">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Params_Scheme</DataSetName>
+          <ValueField>dim_detail_plot_details_type_of_scheme_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Scheme</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Params_Scheme</DataSetName>
+          <ValueField>dim_detail_plot_details_type_of_scheme_</ValueField>
+          <LabelField>dim_detail_plot_details_type_of_scheme_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="PurchaserSols">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Params_PurchasersSolicitor</DataSetName>
+          <ValueField>dim_client_involvement_clientcontact_name_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>PurchaserSols</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Params_PurchasersSolicitor</DataSetName>
+          <ValueField>dim_client_involvement_clientcontact_name_</ValueField>
+          <LabelField>dim_client_involvement_clientcontact_name_</LabelField>
+        </DataSetReference>
+      </ValidValues>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
-          <ParameterName>GroupId</ParameterName>
+          <ParameterName>ClientNo</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>Development</ParameterName>
+          <ParameterName>MatterNumber</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>MatterNumber</ParameterName>
+          <ParameterName>Development</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>ClientNo</ParameterName>
+          <ParameterName>GroupId</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>Tenure</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>Scheme</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>PurchaserSols</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
