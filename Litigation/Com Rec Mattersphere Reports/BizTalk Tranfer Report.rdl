@@ -2467,19 +2467,26 @@ WHERE  name ='1st Central.png'</CommandText>
           <QueryParameter Name="@EndDate">
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@PaymentType">
+            <Value>=Parameters!PaymentType.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT curClient AS [Amount]
 ,RTRIM(clNo) AS [Client]
 ,RTRIM(fileNo) AS [Matter]
 ,txtPayorPaye AS [PayorPayee]
+,brName
 
 FROM MS_TEST.dbo.udCRLedgerSL
 INNER JOIN MS_TEST.config.dbFile
  ON dbFile.fileID = udCRLedgerSL.fileID
 INNER JOIN MS_TEST.config.dbClient
  ON dbClient.clID = dbFile.clID
+LEFT OUTER JOIN MS_TEST.dbo.dbBranch
+ ON dbBranch.brID = dbFile.brID
 WHERE CONVERT(DATE,dtePosted,103) BETWEEN @StartDate AND @EndDate
-AND cboCatDesc='5'</CommandText>
+AND cboCatDesc='5'
+AND cboPayType=@PaymentType</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -2497,6 +2504,26 @@ AND cboCatDesc='5'</CommandText>
         </Field>
         <Field Name="Matter">
           <DataField>Matter</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="brName">
+          <DataField>brName</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="DataSet1">
+      <Query>
+        <DataSourceName>MSTEST</DataSourceName>
+        <CommandText>SELECT cdCode,cdDesc FROM MS_TEST.dbo.dbCodeLookup WHERE cdType='PAYTYPECR'</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="cdCode">
+          <DataField>cdCode</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="cdDesc">
+          <DataField>cdDesc</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -3221,7 +3248,6 @@ AND cboCatDesc='5'</CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -3295,7 +3321,13 @@ AND cboCatDesc='5'</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>=IIF(Fields!Client.Value="H1001","03814319"
+,IIF(Fields!Client.Value="M1001","73310701"
+,IIF(Fields!Client.Value="W15367","73917703"
+,IIF(Fields!brName.Value="Liverpool","13440907"
+,IIF(Fields!brName.Value="Liverpool","11217016"
+
+,"")))))</Value>
                                   <Style>
                                     <Language>en-GB</Language>
                                   </Style>
@@ -3452,6 +3484,17 @@ AND cboCatDesc='5'</CommandText>
       <DataType>DateTime</DataType>
       <Prompt>End Date</Prompt>
     </ReportParameter>
+    <ReportParameter Name="PaymentType">
+      <DataType>String</DataType>
+      <Prompt>Payment Type</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>DataSet1</DataSetName>
+          <ValueField>cdCode</ValueField>
+          <LabelField>cdDesc</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -3472,6 +3515,11 @@ AND cboCatDesc='5'</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>EndDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>PaymentType</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
