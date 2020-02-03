@@ -2456,158 +2456,15 @@ WHERE  name ='MS_Alerts_Report.png'</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@FeeEarner">
-            <Value>=Parameters!FeeEarner.Value</Value>
+          <QueryParameter Name="@FedCode">
+            <Value>=Parameters!FedCode.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Level">
+            <Value>=Parameters!Level.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>USE Reporting
-
---DECLARE @FeeEarner AS NVARCHAR(256) SET @FeeEarner = '3122'
-
-/*
-	Created a table to deal with the calculated columns
-	for readability with the length of them and the amount of times some are used
-*/
-
-DROP TABLE IF EXISTS #finacial_calcs
-
-SELECT	
-	h_curr.master_client_code																								AS client_code
-	, h_curr.master_matter_number																							AS matter_number
-	, ISNULL(fin_sum.defence_costs_billed, 0) + ISNULL(fin_sum.wip, 0)														AS ff_revenue_billed
-	, ISNULL(fin_sum.fixed_fee_amount, 0) - (ISNULL(fin_sum.defence_costs_billed, 0) + ISNULL(fin_sum.wip, 0))				AS outstanding_ff
-	, ISNULL(fin_sum.total_amount_billed, 0) + ISNULL(fin_sum.wip, 0) + ISNULL(fin_sum.disbursement_balance, 0)				AS total_billed_unbilled
-	, ISNULL(fin_sum.defence_costs_reserve, 0) - 
-		(ISNULL(fin_sum.total_amount_billed, 0) + ISNULL(fin_sum.wip, 0) + ISNULL(fin_sum.disbursement_balance, 0))			AS os_def_reserve
-	, ISNULL(fin_sum.commercial_costs_estimate, 0) -
-		(ISNULL(fin_sum.total_amount_billed, 0) + ISNULL(fin_sum.wip, 0) + ISNULL(fin_sum.disbursement_balance, 0))			AS os_costs_est
-INTO #finacial_calcs
-FROM red_dw.dbo.dim_matter_header_current h_curr 
-	LEFT OUTER JOIN red_dw.dbo.fact_finance_summary fin_sum
-		ON fin_sum.client_code = h_curr.client_code AND fin_sum.matter_number = h_curr.matter_number
-WHERE h_curr.date_closed_practice_management IS NULL
-	AND h_curr.reporting_exclusions &lt;&gt; 1
-
-CREATE INDEX INX_1 ON #finacial_calcs (matter_number) INCLUDE (client_code)
-
-
-
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-SELECT 
-	h_current.master_client_code															AS [Client Code]
-	, h_current.master_matter_number														AS [Matter Number]
-	, h_current.matter_description															AS [Matter Description]
-	, h_current.matter_owner_full_name														AS [Matter Owner]
-	, hierarchy_hist.hierarchylevel4														AS [Team]
-	, hierarchy_hist.hierarchylevel3														AS [Department]
-	, hierarchy_hist.hierarchylevel2														AS [Business Line]
-	, hierarchy_hist.worksforname															AS [Fee Earner Team Manager]
-	, hierarchy_hist.windowsusername														AS [Windows Username]
-	, worktype.work_type_name																AS [Worktype]
-	, core_details.present_position															AS [Present Position] 
-	, h_current.fee_arrangement																AS [Fee Arrangement]
-	, CASE 
-		WHEN RTRIM(h_current.fee_arrangement) = 'Fixed Fee/Fee Quote/Capped Fee' THEN 
-			CAST(ISNULL(fin_sum.fixed_fee_amount, 0) AS VARCHAR(20))
-		ELSE
-			'N/A'
-	  END																					AS [Fixed Fee Amount]
-	, CASE	
-		WHEN RTRIM(h_current.fee_arrangement) = 'Fixed Fee/Fee Quote/Capped Fee' THEN
-			CAST(ISNULL(fin_calcs.ff_revenue_billed, 0)	AS VARCHAR(20))
-		ELSE
-			'N/A'
-	  END																					AS [Total of Revenue Billed (net of VAT) +  WIP]
-	, CASE 
-		WHEN RTRIM(h_current.fee_arrangement) = 'Fixed Fee/Fee Quote/Capped Fee' THEN
-			CAST(ISNULL(fin_calcs.outstanding_ff, 0) AS VARCHAR(20))
-		ELSE 
-			'N/A'
-	  END																					AS [Outstanding fixed fee amount]
-	, CASE
-		WHEN RTRIM(h_current.fee_arrangement) = 'Fixed Fee/Fee Quote/Capped Fee' THEN
-			CASE 
-				WHEN fin_sum.fixed_fee_amount IS NULL OR fin_sum.fixed_fee_amount = 0 THEN
-					'Red'
-				WHEN fin_calcs.ff_revenue_billed &gt; (fin_sum.fixed_fee_amount * 0.9) THEN
-					'Red'
-				WHEN fin_calcs.ff_revenue_billed &gt; (fin_sum.fixed_fee_amount * 0.75) THEN
-					'Amber'
-				ELSE
-					'Green'
-			END	
-		ELSE
-			'N/A'
-	  END																					AS [Fixed Fee RAG Status]
-	, ISNULL(fin_sum.defence_costs_reserve, 0)												AS [Defence Costs Reserve]
-	--, ISNULL(fin_sum.commercial_costs_estimate, 0)										AS [Current Costs Estimate]
-	, ISNULL(fin_calcs.total_billed_unbilled, 0)											AS [Total of Total Billed + WIP + Unbilled Disbursements]
-	, ISNULL(fin_calcs.os_def_reserve, 0)													AS [Outstanding defence reserve amount]
-	,CASE 
-		WHEN fin_sum.defence_costs_reserve IS NULL OR fin_sum.defence_costs_reserve = 0 THEN
-			'Red'
-		WHEN fin_calcs.total_billed_unbilled &gt; (fin_sum.defence_costs_reserve * 0.9) THEN
-			'Red'
-		WHEN fin_calcs.total_billed_unbilled &gt; (fin_sum.defence_costs_reserve * 0.75) THEN
-			'Amber'
-		ELSE
-			'Green'
-	  END																					AS [Defence Costs Reserve RAG Status]
-	--, ISNULL(fin_calcs.os_costs_est, 0)													AS [Outstanding costs estimate amount]
-	--,CASE 
-	--	WHEN fin_sum.commercial_costs_estimate IS NULL OR fin_sum.commercial_costs_estimate = 0 THEN
-	--		'Red'
-	--	WHEN fin_calcs.total_billed_unbilled &gt; (fin_sum.commercial_costs_estimate * 0.9) THEN
-	--		'Red'
-	--	WHEN fin_calcs.total_billed_unbilled &gt; (fin_sum.commercial_costs_estimate * 0.75) THEN
-	--		'Amber'
-	--	ELSE
-	--		'Green'
-	--  END																					AS [Current Costs Estimate RAG Status]
-	, ISNULL(fin_sum.defence_costs_billed, 0)												AS [Revenue Billed (net of VAT)]
-	, ISNULL(fin_sum.disbursements_billed, 0)												AS [Disbursements Billed (excl VAT)]
-	, ISNULL(fin_sum.vat_billed, 0)															AS [VAT]
-	, ISNULL(fin_sum.total_amount_billed, 0)												AS [Total Billed]
-	--, ISNULL(fact_bill_detail_summary.bill_total, 0)										AS [Test Billed Total] -- test for composite bills
-	, ISNULL(fin_sum.wip, 0)																AS [WIP]
-	, ISNULL(fin_sum.disbursement_balance, 0)												AS [Unbilled Disbursements]
-	--, fin_sum.total_amount_bill_non_comp AS [Composite billing]
-	--, fin_sum.vat_non_comp AS [Composite billing VAT]
-	--, outcome.outcome_of_case	AS [Outcome]
---select *
-FROM red_dw.dbo.dim_matter_header_current																							AS h_current
-	INNER JOIN red_dw.dbo.fact_dimension_main																						AS fact_dim_main
-		ON fact_dim_main.dim_matter_header_curr_key = h_current.dim_matter_header_curr_key
-	LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history																			AS hierarchy_hist
-		ON hierarchy_hist.dim_fed_hierarchy_history_key = fact_dim_main.dim_fed_hierarchy_history_key 
-			AND hierarchy_hist.latest_hierarchy_flag = 'Y' AND hierarchy_hist.windowsusername IS NOT NULL
-	LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype																					AS worktype
-		ON worktype.dim_matter_worktype_key = h_current.dim_matter_worktype_key
-	LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details																				AS core_details
-		ON core_details.dim_detail_core_detail_key = fact_dim_main.dim_detail_core_detail_key
-	LEFT OUTER JOIN red_dw.dbo.dim_detail_client																					AS detail_client
-		ON detail_client.dim_detail_client_key = fact_dim_main.dim_detail_client_key
-	LEFT OUTER JOIN red_dw.dbo.fact_finance_summary																					AS fin_sum
-		ON fin_sum.master_fact_key = fact_dim_main.master_fact_key
-	LEFT OUTER JOIN #finacial_calcs																									AS fin_calcs
-		ON fin_calcs.client_code = h_current.master_client_code AND fin_calcs.matter_number = h_current.master_matter_number
-	LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome																					AS outcome
-		ON outcome.dim_detail_outcome_key = fact_dim_main.dim_detail_outcome_key
-	--LEFT OUTER JOIN red_dw.dbo.fact_bill_detail_summary fact_bill_detail_summary
-		--ON fact_bill_detail_summary.master_fact_key = fact_dim_main.master_fact_key
-WHERE 
-	h_current.date_closed_practice_management IS NULL
-	AND h_current.reporting_exclusions &lt;&gt; 1
-	AND hierarchy_hist.hierarchylevel2 IN ('Legal Ops - Claims', 'Legal Ops - LTA')
-	--AND RTRIM(worktype.work_type_name) &lt;&gt; 'Claims Handling' --this excludes outsource cases (mainly Zurich matters, under 200 non Z matters)
-	AND (outcome.outcome_of_case IS NULL OR RTRIM(outcome.outcome_of_case) &lt;&gt; 'Exclude from reports')
-	AND hierarchy_hist.fed_code = @FeeEarner
-	AND (h_current.fee_arrangement IS NULL OR RTRIM(h_current.fee_arrangement) IN ('Fixed Fee/Fee Quote/Capped Fee', 'Hourly Rate', 'Hourly rate'))</CommandText>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>MSAlerts</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Code">
@@ -2716,7 +2573,7 @@ WHERE
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="Dynamic_Hierarchy_Security1">
+    <DataSet Name="param_level">
       <Query>
         <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
         <QueryParameters>
@@ -2725,64 +2582,28 @@ WHERE
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>dbo.Dynamic_Hierarchy_Security1</CommandText>
+        <CommandText>AreaManaged_Level</CommandText>
       </Query>
       <Fields>
-        <Field Name="RNK">
-          <DataField>RNK</DataField>
-          <rd:TypeName>System.Int64</rd:TypeName>
-        </Field>
-        <Field Name="LevelID">
-          <DataField>LevelID</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Level">
           <DataField>Level</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="SecurityLevel">
-          <DataField>SecurityLevel</DataField>
+        <Field Name="mdx">
+          <DataField>mdx</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="CubeMember">
-          <DataField>CubeMember</DataField>
+        <Field Name="sql">
+          <DataField>sql</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="CubeMember2">
-          <DataField>CubeMember2</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="CubeMemberBSC">
-          <DataField>CubeMemberBSC</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="FedCodes">
-          <DataField>FedCodes</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="DAXString">
-          <DataField>DAXString</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Teams">
-          <DataField>Teams</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="PracticeAreas">
-          <DataField>PracticeAreas</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="BusinessLines">
-          <DataField>BusinessLines</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="HierarchyCode">
-          <DataField>HierarchyCode</DataField>
+        <Field Name="default">
+          <DataField>default</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="Dynamic_Hierarchy_Security_fee">
+    <DataSet Name="param_FedCode">
       <Query>
         <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
         <QueryParameters>
@@ -2791,65 +2612,29 @@ WHERE
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>Dynamic_Hierarchy_Security1</CommandText>
+        <CommandText>AreaManaged_Level</CommandText>
       </Query>
       <Fields>
-        <Field Name="RNK">
-          <DataField>RNK</DataField>
-          <rd:TypeName>System.Int64</rd:TypeName>
-        </Field>
-        <Field Name="LevelID">
-          <DataField>LevelID</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Level">
           <DataField>Level</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="SecurityLevel">
-          <DataField>SecurityLevel</DataField>
+        <Field Name="mdx">
+          <DataField>mdx</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="CubeMember">
-          <DataField>CubeMember</DataField>
+        <Field Name="sql">
+          <DataField>sql</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="CubeMember2">
-          <DataField>CubeMember2</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="CubeMemberBSC">
-          <DataField>CubeMemberBSC</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="FedCodes">
-          <DataField>FedCodes</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="DAXString">
-          <DataField>DAXString</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Teams">
-          <DataField>Teams</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="PracticeAreas">
-          <DataField>PracticeAreas</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="BusinessLines">
-          <DataField>BusinessLines</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="HierarchyCode">
-          <DataField>HierarchyCode</DataField>
+        <Field Name="default">
+          <DataField>default</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
       <Filters>
         <Filter>
-          <FilterExpression>=Fields!SecurityLevel.Value</FilterExpression>
+          <FilterExpression>=Fields!Level.Value</FilterExpression>
           <Operator>Equal</Operator>
           <FilterValues>
             <FilterValue>=Parameters!Level.Value</FilterValue>
@@ -7836,39 +7621,39 @@ WHERE
         </Values>
       </DefaultValue>
       <Prompt>Username</Prompt>
+      <Hidden>true</Hidden>
     </ReportParameter>
     <ReportParameter Name="Level">
       <DataType>String</DataType>
       <DefaultValue>
-        <DataSetReference>
-          <DataSetName>Dynamic_Hierarchy_Security1</DataSetName>
-          <ValueField>SecurityLevel</ValueField>
-        </DataSetReference>
+        <Values>
+          <Value>Individual</Value>
+        </Values>
       </DefaultValue>
       <Prompt>Level</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>Dynamic_Hierarchy_Security1</DataSetName>
-          <ValueField>SecurityLevel</ValueField>
-          <LabelField>SecurityLevel</LabelField>
+          <DataSetName>param_level</DataSetName>
+          <ValueField>Level</ValueField>
+          <LabelField>Level</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="FeeEarner">
+    <ReportParameter Name="FedCode">
       <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
-          <DataSetName>Dynamic_Hierarchy_Security_fee</DataSetName>
-          <ValueField>FedCodes</ValueField>
+          <DataSetName>param_FedCode</DataSetName>
+          <ValueField>sql</ValueField>
         </DataSetReference>
       </DefaultValue>
-      <Prompt>FeeEarner</Prompt>
+      <Prompt>Fed Code</Prompt>
       <Hidden>true</Hidden>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>Dynamic_Hierarchy_Security_fee</DataSetName>
-          <ValueField>FedCodes</ValueField>
-          <LabelField>FedCodes</LabelField>
+          <DataSetName>param_FedCode</DataSetName>
+          <ValueField>sql</ValueField>
+          <LabelField>sql</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
@@ -7876,7 +7661,7 @@ WHERE
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>5</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -7896,7 +7681,7 @@ WHERE
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>3</RowIndex>
-          <ParameterName>FeeEarner</ParameterName>
+          <ParameterName>FedCode</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
