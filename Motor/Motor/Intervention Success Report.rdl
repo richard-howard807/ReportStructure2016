@@ -2472,7 +2472,17 @@ SELECT RTRIM(dim_matter_header_current.client_code)+'-'+dim_matter_header_curren
 		OR LOWER(outcome_of_case) LIKE '%discontinued%' 
 		OR LOWER(outcome_of_case) LIKE '%struck out%'
 		THEN 'Successful' ELSE 'Unsuccessful' END AS [Success outcome]
-	, NULL AS [Current Stage]
+	, CASE WHEN DefenceDueMIN.calendar_date&gt;=GETDATE() THEN 'Pre-Defence'
+			WHEN DefenceDueMAX.calendar_date&lt;GETDATE() AND DirectionsQuestionnaireMAX.calendar_date&gt;=GETDATE() THEN 'Pre-DQ'
+			WHEN DirectionsQuestionnaireMIN.calendar_date&lt;GETDATE() AND DATEDIFF(DAY,CASE WHEN date_of_first_day_of_trial_window &lt; date_of_trial THEN date_of_first_day_of_trial_window 
+				WHEN date_of_trial &lt; date_of_first_day_of_trial_window THEN date_of_trial
+				WHEN date_of_first_day_of_trial_window IS NULL THEN date_of_trial
+				ELSE date_of_first_day_of_trial_window END,GETDATE())&gt;=28 THEN 'Post-DQ'
+			WHEN DATEDIFF(DAY,CASE WHEN date_of_first_day_of_trial_window &lt; date_of_trial THEN date_of_first_day_of_trial_window 
+				WHEN date_of_trial &lt; date_of_first_day_of_trial_window THEN date_of_trial
+				WHEN date_of_first_day_of_trial_window IS NULL THEN date_of_trial
+				ELSE date_of_first_day_of_trial_window END,GETDATE())&lt;28 THEN 'Hearing Date' 
+				END AS [Current Stage]
 	, date_of_first_day_of_trial_window
 	, date_of_trial
 	, CASE WHEN date_of_first_day_of_trial_window &lt; date_of_trial THEN date_of_first_day_of_trial_window 
@@ -2496,6 +2506,71 @@ LEFT OUTER JOIN red_dw.dbo.dim_claimant_thirdparty_involvement
 ON dim_claimant_thirdparty_involvement.dim_claimant_thirdpart_key = fact_dimension_main.dim_claimant_thirdpart_key
 LEFT OUTER JOIN red_dw.dbo.dim_detail_court
 ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+
+LEFT OUTER JOIN (SELECT master_fact_key, dim_tasks.client_code, dim_tasks.matter_number, MIN(task_due_date.calendar_date) calendar_date
+FROM red_dw.dbo.dim_tasks
+LEFT OUTER JOIN red_dw.dbo.fact_tasks ON fact_tasks.dim_tasks_key = dim_tasks.dim_tasks_key
+LEFT OUTER JOIN red_dw.dbo.dim_date AS task_due_date ON dim_task_due_date_key=dim_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_tasks.dim_matter_header_curr_key
+WHERE LOWER(task_desccription) LIKE '%defence due%'
+AND master_client_code='A3003'
+AND ISNULL(task_amended_deleted_flag,'')&lt;&gt;'d'
+AND task_type_description='Key Date'
+AND task_due_date.calendar_date&gt;GETDATE()
+GROUP BY master_fact_key,
+         dim_tasks.client_code,
+         dim_tasks.matter_number
+) AS [DefenceDueMIN] ON DefenceDueMIN.client_code=fact_dimension_main.client_code
+AND DefenceDueMIN.matter_number = fact_dimension_main.matter_number
+
+LEFT OUTER JOIN (SELECT master_fact_key, dim_tasks.client_code, dim_tasks.matter_number, MAX(task_due_date.calendar_date) calendar_date
+FROM red_dw.dbo.dim_tasks
+LEFT OUTER JOIN red_dw.dbo.fact_tasks ON fact_tasks.dim_tasks_key = dim_tasks.dim_tasks_key
+LEFT OUTER JOIN red_dw.dbo.dim_date AS task_due_date ON dim_task_due_date_key=dim_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_tasks.dim_matter_header_curr_key
+WHERE LOWER(task_desccription) LIKE '%defence due%'
+AND master_client_code='A3003'
+AND ISNULL(task_amended_deleted_flag,'')&lt;&gt;'d'
+AND task_type_description='Key Date'
+AND task_due_date.calendar_date&lt;=GETDATE()
+GROUP BY master_fact_key,
+         dim_tasks.client_code,
+         dim_tasks.matter_number
+) AS [DefenceDueMAX] ON DefenceDueMAX.client_code=fact_dimension_main.client_code
+AND DefenceDueMAX.matter_number = fact_dimension_main.matter_number
+
+LEFT OUTER JOIN (SELECT master_fact_key, dim_tasks.client_code, dim_tasks.matter_number, MIN(directionsques.calendar_date) calendar_date
+FROM red_dw.dbo.dim_tasks
+LEFT OUTER JOIN red_dw.dbo.fact_tasks ON fact_tasks.dim_tasks_key = dim_tasks.dim_tasks_key
+LEFT OUTER JOIN red_dw.dbo.dim_date AS directionsques ON dim_task_due_date_key=dim_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_tasks.dim_matter_header_curr_key
+WHERE LOWER(task_desccription) LIKE '%directions questionnaire%'
+AND master_client_code='A3003'
+AND ISNULL(task_amended_deleted_flag,'')&lt;&gt;'d'
+AND task_type_description='Key Date'
+AND directionsques.calendar_date&gt;GETDATE()
+GROUP BY master_fact_key,
+         dim_tasks.client_code,
+         dim_tasks.matter_number
+) AS [DirectionsQuestionnaireMIN] ON DirectionsQuestionnaireMIN.client_code=fact_dimension_main.client_code
+AND DirectionsQuestionnaireMIN.matter_number = fact_dimension_main.matter_number
+
+LEFT OUTER JOIN (SELECT master_fact_key, dim_tasks.client_code, dim_tasks.matter_number, MAX(directionsques.calendar_date) calendar_date
+FROM red_dw.dbo.dim_tasks
+LEFT OUTER JOIN red_dw.dbo.fact_tasks ON fact_tasks.dim_tasks_key = dim_tasks.dim_tasks_key
+LEFT OUTER JOIN red_dw.dbo.dim_date AS directionsques ON dim_task_due_date_key=dim_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_tasks.dim_matter_header_curr_key
+WHERE LOWER(task_desccription) LIKE '%directions questionnaire%'
+AND master_client_code='A3003'
+AND ISNULL(task_amended_deleted_flag,'')&lt;&gt;'d'
+AND task_type_description='Key Date'
+AND directionsques.calendar_date&lt;=GETDATE()
+GROUP BY master_fact_key,
+         dim_tasks.client_code,
+         dim_tasks.matter_number
+) AS [DirectionsQuestionnaireMAX] ON DirectionsQuestionnaireMAX.client_code=fact_dimension_main.client_code
+AND DirectionsQuestionnaireMAX.matter_number = fact_dimension_main.matter_number
+
 
 WHERE dim_matter_header_current.master_client_code='A3003'
 AND claim_for_hire='Yes'
@@ -2572,7 +2647,7 @@ AND claim_for_hire='Yes'
         </Field>
         <Field Name="Current_Stage">
           <DataField>Current Stage</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="date_of_first_day_of_trial_window">
           <DataField>date_of_first_day_of_trial_window</DataField>
@@ -4463,14 +4538,14 @@ AND claim_for_hire='Yes'
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox21">
+                            <Textbox Name="Textbox42">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!SMS_sent_with_copley_yes_no.Value)</Value>
+                                      <Value />
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4489,7 +4564,7 @@ AND claim_for_hire='Yes'
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox21</rd:DefaultName>
+                              <rd:DefaultName>Textbox42</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4530,14 +4605,14 @@ AND claim_for_hire='Yes'
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox24">
+                            <Textbox Name="Textbox43">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Sum(Fields!Did_we_have_a_call_recording__Y_N.Value)</Value>
+                                      <Value />
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4556,7 +4631,7 @@ AND claim_for_hire='Yes'
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox24</rd:DefaultName>
+                              <rd:DefaultName>Textbox43</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4934,7 +5009,6 @@ AND claim_for_hire='Yes'
               </Tablix>
             </ReportItems>
             <Top>0.3175cm</Top>
-            <Left>0cm</Left>
             <Height>1.02777in</Height>
             <Width>14.27639in</Width>
             <Style>
@@ -6468,14 +6542,14 @@ AND claim_for_hire='Yes'
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox43">
+                        <Textbox Name="Textbox3">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!Did_we_have_a_call_recording__Y_N.Value)</Value>
+                                  <Value />
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6494,7 +6568,7 @@ AND claim_for_hire='Yes'
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <rd:DefaultName>Textbox3</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -6736,14 +6810,14 @@ AND claim_for_hire='Yes'
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox75">
+                        <Textbox Name="Textbox2">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!Significant_comments.Value)</Value>
+                                  <Value />
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6762,7 +6836,7 @@ AND claim_for_hire='Yes'
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox75</rd:DefaultName>
+                          <rd:DefaultName>Textbox2</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -8395,14 +8469,14 @@ AND claim_for_hire='Yes'
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox50">
+                        <Textbox Name="Textbox40">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!Did_we_have_a_call_recording__Y_N.Value)</Value>
+                                  <Value />
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -8421,7 +8495,7 @@ AND claim_for_hire='Yes'
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <rd:DefaultName>Textbox40</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -8663,14 +8737,14 @@ AND claim_for_hire='Yes'
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox112">
+                        <Textbox Name="Textbox1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!Current_Stage.Value)</Value>
+                                  <Value />
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataFooter_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -8689,7 +8763,7 @@ AND claim_for_hire='Yes'
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox112</rd:DefaultName>
+                          <rd:DefaultName>Textbox1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataFooter_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -8914,7 +8988,6 @@ AND claim_for_hire='Yes'
               </ReportItems>
               <KeepTogether>true</KeepTogether>
               <Top>0.78124in</Top>
-              <Left>0cm</Left>
               <Height>0.24208in</Height>
               <Width>14.27639in</Width>
               <Visibility>
@@ -8963,7 +9036,6 @@ AND claim_for_hire='Yes'
                 </Actions>
               </ActionInfo>
               <Top>0.125in</Top>
-              <Left>0cm</Left>
               <Height>0.65624in</Height>
               <Width>1.7in</Width>
               <ZIndex>1</ZIndex>
@@ -9103,7 +9175,6 @@ AND claim_for_hire='Yes'
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Left>0cm</Left>
               <Height>0.25in</Height>
               <Width>14.27639in</Width>
               <Visibility>
@@ -9256,7 +9327,6 @@ AND claim_for_hire='Yes'
                 </Paragraph>
               </Paragraphs>
               <Top>0.55556in</Top>
-              <Left>0cm</Left>
               <Height>0.36938in</Height>
               <Width>14.27639in</Width>
               <ZIndex>1</ZIndex>
@@ -9311,7 +9381,6 @@ AND claim_for_hire='Yes'
                 </Actions>
               </ActionInfo>
               <Top>0.22974in</Top>
-              <Left>0cm</Left>
               <Height>0.25638in</Height>
               <Width>14.27639in</Width>
               <ZIndex>2</ZIndex>
