@@ -55,6 +55,9 @@
           <QueryParameter Name="Department">
             <Value>=JOIN(Parameters!Department.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="Division">
+            <Value>=Parameters!Division.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>evaluate (
 	filter ( 
@@ -103,6 +106,7 @@ Matters[MasterFactKey]
 			pathcontains(@BillType, dimBillType[BillTypeDesc]),
 			dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team),
 			PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea]),
+			PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine]),
 			Bills[FeeValue] &gt;= if(value(@FeeValue) = 0, -1000000, value(@FeeValue))
 							),
 		switch(true(), 
@@ -346,6 +350,7 @@ Matters[MasterFactKey]
 			pathcontains(@BillType, dimBillType[BillTypeDesc]),
 			dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team),
 			PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea]),
+			PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine]),
 			Bills[FeeValue] &amp;gt;= if(value(@FeeValue) = 0, -1000000, value(@FeeValue))
 							),
 		switch(true(), 
@@ -412,6 +417,7 @@ Matters[MasterFactKey]
 			pathcontains(@BillType, dimBillType[BillTypeDesc]),
 			dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team),
 			PATHCONTAINS(@Department, dimMatterFEDHierarchy[MatterPracticeArea]),
+			PATHCONTAINS(@Division, dimMatterFEDHierarchy[MatterBusinessLine]),
 			Bills[FeeValue] &gt;= if(value(@FeeValue) = 0, -1000000, value(@FeeValue))
 							),
 		switch(true(), 
@@ -586,6 +592,18 @@ dimDateBillDate[BillDateDate]</Statement>
                     <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Department</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Division</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Division</Caption>
                   <ParameterValuesQuery>
                     <ParameterizedStatement>
                       <ReferencedParameters />
@@ -1033,23 +1051,28 @@ dimMatterFEDHierarchy[MatterTeam]</Statement>
     <DataSet Name="param_department">
       <Query>
         <DataSourceName>SVR_LIV_DWH_03_BILLS</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="Division">
+            <Value>=JOIN(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>evaluate (
 CALCULATETABLE(
 	summarize (
 				dimMatterFEDHierarchy,
 				dimMatterFEDHierarchy[MatterPracticeArea]
 				),
-				dimMatterFEDHierarchy[MatterPracticeArea] &lt;&gt; blank()
+				pathcontains(@Division,dimMatterFEDHierarchy[MatterBusinessLine] )
 			)
 			)
 
 order by
 dimMatterFEDHierarchy[MatterPracticeArea]</CommandText>
         <rd:DesignerState>
-          <QueryDefinition xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
             <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <QuerySpecification xsi:type="DMXQuerySpecification">
               <Select>
                 <Items>
                   <Item>
@@ -1060,6 +1083,7 @@ dimMatterFEDHierarchy[MatterPracticeArea]</CommandText>
                   </Item>
                 </Items>
               </Select>
+              <AutoExecute>false</AutoExecute>
               <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
   &lt;SelectTablesControlState&gt;
@@ -1073,7 +1097,7 @@ CALCULATETABLE(
 				dimMatterFEDHierarchy,
 				dimMatterFEDHierarchy[MatterPracticeArea]
 				),
-				dimMatterFEDHierarchy[MatterPracticeArea] &amp;lt;&amp;gt; blank()
+				pathcontains(@Division,dimMatterFEDHierarchy[MatterBusinessLine] )
 			)
 			)
 
@@ -1093,13 +1117,26 @@ CALCULATETABLE(
 				dimMatterFEDHierarchy,
 				dimMatterFEDHierarchy[MatterPracticeArea]
 				),
-				dimMatterFEDHierarchy[MatterPracticeArea] &lt;&gt; blank()
+				pathcontains(@Division,dimMatterFEDHierarchy[MatterBusinessLine] )
 			)
 			)
 
 order by
 dimMatterFEDHierarchy[MatterPracticeArea]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>Division</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Division</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -1107,6 +1144,91 @@ dimMatterFEDHierarchy[MatterPracticeArea]</Statement>
       <Fields>
         <Field Name="dimMatterFEDHierarchy_MatterPracticeArea_">
           <DataField>dimMatterFEDHierarchy[MatterPracticeArea]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_division">
+      <Query>
+        <DataSourceName>SVR_LIV_DWH_03_BILLS</DataSourceName>
+        <CommandText>evaluate (
+CALCULATETABLE(
+	summarize (
+				dimMatterFEDHierarchy,
+				dimMatterFEDHierarchy[MatterBusinessLine]
+				),
+				dimMatterFEDHierarchy[MatterBusinessLine] &lt;&gt; blank()
+,Matters[reporting_exclusions]=0
+			)
+			)
+
+order by
+dimMatterFEDHierarchy[MatterBusinessLine]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dimMatterFEDHierarchy[MatterBusinessLine]</ColumnName>
+                    </ID>
+                    <ItemCaption>dimMatterFEDHierarchy[MatterBusinessLine]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;evaluate (
+CALCULATETABLE(
+	summarize (
+				dimMatterFEDHierarchy,
+				dimMatterFEDHierarchy[MatterBusinessLine]
+				),
+				dimMatterFEDHierarchy[MatterBusinessLine] &amp;lt;&amp;gt; blank()
+,Matters[reporting_exclusions]=0
+			)
+			)
+
+order by
+dimMatterFEDHierarchy[MatterBusinessLine]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>evaluate (
+CALCULATETABLE(
+	summarize (
+				dimMatterFEDHierarchy,
+				dimMatterFEDHierarchy[MatterBusinessLine]
+				),
+				dimMatterFEDHierarchy[MatterBusinessLine] &lt;&gt; blank()
+,Matters[reporting_exclusions]=0
+			)
+			)
+
+order by
+dimMatterFEDHierarchy[MatterBusinessLine]</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dimMatterFEDHierarchy_MatterBusinessLine_">
+          <DataField>dimMatterFEDHierarchy[MatterBusinessLine]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4205,11 +4327,21 @@ dimMatterFEDHierarchy[MatterPracticeArea]</Statement>
     </ReportParameter>
     <ReportParameter Name="ClientCode">
       <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>00000711</Value>
+        </Values>
+      </DefaultValue>
       <AllowBlank>true</AllowBlank>
       <Prompt>Client Code</Prompt>
     </ReportParameter>
     <ReportParameter Name="MatterNumber">
       <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>00000004</Value>
+        </Values>
+      </DefaultValue>
       <AllowBlank>true</AllowBlank>
       <Prompt>Matter Number</Prompt>
     </ReportParameter>
@@ -4317,6 +4449,24 @@ dimMatterFEDHierarchy[MatterPracticeArea]</Statement>
       <AllowBlank>true</AllowBlank>
       <Prompt>Fee Earner Code</Prompt>
     </ReportParameter>
+    <ReportParameter Name="Division">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_division</DataSetName>
+          <ValueField>dimMatterFEDHierarchy_MatterBusinessLine_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Division</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_division</DataSetName>
+          <ValueField>dimMatterFEDHierarchy_MatterBusinessLine_</ValueField>
+          <LabelField>dimMatterFEDHierarchy_MatterBusinessLine_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
     <ReportParameter Name="Department">
       <DataType>String</DataType>
       <DefaultValue>
@@ -4357,7 +4507,7 @@ dimMatterFEDHierarchy[MatterPracticeArea]</Statement>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>7</NumberOfRows>
+      <NumberOfRows>8</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4422,11 +4572,16 @@ dimMatterFEDHierarchy[MatterPracticeArea]</Statement>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>6</RowIndex>
-          <ParameterName>Department</ParameterName>
+          <ParameterName>Division</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>6</RowIndex>
+          <ParameterName>Department</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>7</RowIndex>
           <ParameterName>Team</ParameterName>
         </CellDefinition>
       </CellDefinitions>
