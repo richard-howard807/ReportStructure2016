@@ -2447,16 +2447,264 @@ WHERE  name ='NHSBT.png'</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="SProcNHSBloodAndTransportPropertyCases">
+    <DataSet Name="NHSBloodAndTransportPropertyCases">
       <Query>
         <DataSourceName>Reporting</DataSourceName>
-        <CommandType>StoredProcedure</CommandType>
-        <CommandText>nhs.blood_and_transport_property_cases</CommandText>
+        <QueryParameters>
+          <QueryParameter Name="@ReminderStartDate">
+            <Value>=Parameters!ReminderStartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@ReminderEndDate">
+            <Value>=Parameters!ReminderEndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>
+--TESTING
+--DECLARE @ReminderStartDate AS DATE = GETDATE() - 300
+--DECLARE @ReminderEndDate AS DATE = GETDATE()
+
+
+IF OBJECT_ID('tempdb..#Results') IS NOT NULL DROP TABLE #Results
+
+SELECT *,ROW_NUMBER() OVER (ORDER BY ref) AS RowNo
+INTO #Results
+FROM 
+
+(SELECT header.master_client_code + '-' + header.master_matter_number [Ref],
+       header.matter_description,
+       header.matter_owner_full_name,
+       worktype.work_type_name,
+       worktype.work_type_group,
+       header.date_opened_case_management,
+       REPLACE(REPLACE(PROPERTY.break_1,' months',''), ' Months','') [notice_period], -- needs updating via api to be numbers so we don't need to do the below calculation to extract the number
+       DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 12) * -1, PROPERTY.break_date) [reminder 1yr],
+       DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 6) * -1, PROPERTY.break_date) [reminder 6 mnth],
+       DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 3) * -1, PROPERTY.break_date) [reminder 3 mnth],
+       DATEADD(d, -7, (DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date))) [reminder 1 week]
+
+	   , CASE WHEN DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 12) * -1, PROPERTY.break_date) &lt; GETDATE() THEN NULL ELSE DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 12) * -1, PROPERTY.break_date) END AS [Date1]
+       , CASE WHEN DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 6) * -1, PROPERTY.break_date) &lt; GETDATE() THEN NULL ELSE DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 6) * -1, PROPERTY.break_date) END AS [Date2]
+       , CASE WHEN DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 3) * -1, PROPERTY.break_date) &lt; GETDATE() THEN NULL ELSE DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 3) * -1, PROPERTY.break_date) END AS [Date3]
+       , CASE WHEN DATEADD(d, -7, (DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date))) &lt; GETDATE() THEN NULL ELSE DATEADD(d, -7, (DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date))) END AS [Date4],
+
+
+       DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date) [notice],
+       PROPERTY.break_date,
+       PROPERTY.term_end_date,
+       DATEADD(m,-6, PROPERTY.term_end_date) [reminder_term_end_6mnth],
+	   DATEADD(d,-7, PROPERTY.term_end_date) [reminder_term_end_1week],
+
+	 
+	   PROPERTY.lease_expiry_date,
+       PROPERTY.rent_review_dates,
+       PROPERTY.completion_date,
+       PROPERTY.[address],
+	   CASE WHEN PV.cboVacatedProp = 'Y' THEN 'Yes'
+			WHEN PV.cboVacatedProp = 'N' THEN 'No'
+			ELSE 'Not Specified' END [vacated_property],
+	   CASE WHEN PROPERTY.break_date IS NOT NULL AND PROPERTY.break_date &gt; GETDATE() THEN 1 ELSE 0 END [Internal]
+
+	
+	FROM red_dw.dbo.fact_dimension_main main
+    INNER JOIN red_dw.dbo.dim_matter_header_current header
+        ON header.dim_matter_header_curr_key = main.dim_matter_header_curr_key
+    INNER JOIN red_dw.dbo.dim_matter_worktype worktype
+        ON worktype.dim_matter_worktype_key = header.dim_matter_worktype_key
+    INNER JOIN red_dw.dbo.dim_detail_property PROPERTY
+        ON PROPERTY.dim_detail_property_key = main.dim_detail_property_key
+    LEFT OUTER JOIN red_dw.dbo.fact_finance_summary fin
+        ON fin.master_fact_key = main.master_fact_key
+    LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details core
+        ON core.dim_detail_core_detail_key = main.dim_detail_core_detail_key
+    LEFT OUTER JOIN MS_Prod.dbo.udMIPropertyView PV
+        ON header.ms_fileid = PV.fileID
+    LEFT OUTER JOIN MS_Prod.dbo.udMIProcessTXT mi
+        ON header.ms_fileid = mi.fileID
+WHERE header.client_code = '00707938'
+      AND worktype.work_type_name = 'Property View'
+      AND header.reporting_exclusions = 0
+
+	
+
+	   --AND PROPERTY.break_date IS NOT NULL
+    --  AND PROPERTY.break_date &gt; GETDATE()
+
+UNION ALL
+
+
+SELECT header.master_client_code + '-' + header.master_matter_number [Ref],
+       header.matter_description,
+       header.matter_owner_full_name,
+       worktype.work_type_name,
+       worktype.work_type_group,
+       header.date_opened_case_management,
+       REPLACE(REPLACE(PROPERTY.break_1,' months',''), ' Months','') [notice_period], -- needs updating via api to be numbers so we don't need to do the below calculation to extract the number
+   
+	   DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 12) * -1, PROPERTY.break_date2) [2_rem_1yr],
+       DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 6) * -1, PROPERTY.break_date2) [2_rem_6_mnth],
+       DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 3) * -1, PROPERTY.break_date2) [2_rem_3_mnth],
+        DATEADD(d, -7, (DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date2)))  [2_rem_1_week],
+		CASE WHEN DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 12) * -1, PROPERTY.break_date2) &lt; GETDATE() THEN NULL ELSE DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 12) * -1, PROPERTY.break_date2) END AS [2Date1]
+	  , CASE WHEN DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 6) * -1, PROPERTY.break_date2) &lt; GETDATE() THEN NULL ELSE DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 6) * -1, PROPERTY.break_date2) END AS [2Date2]
+	  , CASE WHEN DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 3) * -1, PROPERTY.break_date2) &lt; GETDATE() THEN NULL ELSE DATEADD(m, (TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) + 3) * -1, PROPERTY.break_date2) END AS [2Date3]
+      , CASE WHEN DATEADD(d, -7, (DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date2))) &lt; GETDATE() THEN NULL ELSE DATEADD(d, -7, (DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date2))) END AS [2Date4],
+       DATEADD(m, TRY_CAST(TRIM(LEFT(PROPERTY.break_1, 2)) AS INT) * -1, PROPERTY.break_date2) [2_notice],
+       PROPERTY.break_date2,
+       PROPERTY.term_end_date,
+	   DATEADD(m,-6, PROPERTY.term_end_date) [reminder_term_end_6mnth],
+	   DATEADD(d,-7, PROPERTY.term_end_date) [reminder_term_end_1week],
+
+       PROPERTY.lease_expiry_date,
+       PROPERTY.rent_review_dates,
+       PROPERTY.completion_date,
+       PROPERTY.[address],
+	    CASE WHEN PV.cboVacatedProp = 'Y' THEN 'Yes'
+			WHEN PV.cboVacatedProp = 'N' THEN 'No'
+			ELSE 'Not Specified' END [vacated_property],
+	   CASE WHEN PROPERTY.break_date2 IS NOT NULL AND PROPERTY.break_date2 &gt; GETDATE() THEN 1 ELSE 0 END [Internal]
+	
+
+FROM red_dw.dbo.fact_dimension_main main
+    INNER JOIN red_dw.dbo.dim_matter_header_current header
+        ON header.dim_matter_header_curr_key = main.dim_matter_header_curr_key
+    INNER JOIN red_dw.dbo.dim_matter_worktype worktype
+        ON worktype.dim_matter_worktype_key = header.dim_matter_worktype_key
+    INNER JOIN red_dw.dbo.dim_detail_property PROPERTY
+        ON PROPERTY.dim_detail_property_key = main.dim_detail_property_key
+    LEFT OUTER JOIN red_dw.dbo.fact_finance_summary fin
+        ON fin.master_fact_key = main.master_fact_key
+    LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details core
+        ON core.dim_detail_core_detail_key = main.dim_detail_core_detail_key
+    LEFT OUTER JOIN MS_Prod.dbo.udMIPropertyView PV
+        ON header.ms_fileid = PV.fileID
+    LEFT OUTER JOIN MS_Prod.dbo.udMIProcessTXT mi
+        ON header.ms_fileid = mi.fileID
+WHERE header.client_code = '00707938'
+      AND worktype.work_type_name = 'Property View'
+      AND header.reporting_exclusions = 0
+
+	 	 
+
+	  --AND PROPERTY.break_date2 IS NOT NULL
+   --   AND PROPERTY.break_date2 &gt; GETDATE()
+   ) AS Data
+
+
+
+IF @ReminderStartDate IS NULL
+
+SELECT  a.Ref,
+a.RowNo,
+		matter_description,
+       matter_owner_full_name,
+       work_type_name,
+       work_type_group,
+       date_opened_case_management,
+       notice_period,
+       [reminder 1yr],
+       [reminder 6 mnth],
+       [reminder 3 mnth],
+       [reminder 1 week],
+       Date1,
+       Date2,
+       Date3,
+       Date4,
+       notice,
+       break_date,
+       term_end_date,
+       reminder_term_end_6mnth,
+       reminder_term_end_1week,
+       lease_expiry_date,
+       rent_review_dates,
+       completion_date,
+       address,
+       vacated_property,
+       Internal,
+ EarliestDates.EarliestDate
+ 
+FROM #Results AS a
+LEFT OUTER JOIN
+(
+SELECT Ref,Dates.RowNo,  MIN(EarliestDate) AS [EarliestDate]
+FROM #Results
+UNPIVOT
+(
+	EarliestDate
+	FOR Dates IN (Date1, Date2, Date3, Date4)
+) AS Dates
+GROUP BY Dates.Ref,Dates.RowNo
+) AS EarliestDates
+ON EarliestDates.Ref = a.Ref AND EarliestDates.RowNo = a.RowNo
+
+
+
+-- WHERE a.Ref='707938-1106'
+
+ORDER BY EarliestDates.EarliestDate ASC
+
+ELSE
+
+SELECT  a.Ref,
+a.RowNo,
+		matter_description,
+       matter_owner_full_name,
+       work_type_name,
+       work_type_group,
+       date_opened_case_management,
+       notice_period,
+       [reminder 1yr],
+       [reminder 6 mnth],
+       [reminder 3 mnth],
+       [reminder 1 week],
+       Date1,
+       Date2,
+       Date3,
+       Date4,
+       notice,
+       break_date,
+       term_end_date,
+       reminder_term_end_6mnth,
+       reminder_term_end_1week,
+       lease_expiry_date,
+       rent_review_dates,
+       completion_date,
+       address,
+       vacated_property,
+       Internal,
+ EarliestDates.EarliestDate
+ 
+FROM #Results AS a
+LEFT OUTER JOIN
+(
+SELECT Ref,Dates.RowNo,  MIN(EarliestDate) AS [EarliestDate]
+FROM #Results
+UNPIVOT
+(
+	EarliestDate
+	FOR Dates IN (Date1, Date2, Date3, Date4)
+) AS Dates
+GROUP BY Dates.Ref,Dates.RowNo
+) AS EarliestDates
+ON EarliestDates.Ref = a.Ref AND EarliestDates.RowNo = a.RowNo
+
+WHERE break_date BETWEEN COALESCE(@ReminderStartDate, break_date) AND COALESCE(@ReminderEndDate, break_date)  -- Added as per Ticket 48964
+
+-- WHERE a.Ref='707938-1106'
+
+ORDER BY EarliestDates.EarliestDate ASC
+
+
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Ref">
           <DataField>Ref</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="RowNo">
+          <DataField>RowNo</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
         </Field>
         <Field Name="matter_description">
           <DataField>matter_description</DataField>
@@ -2502,6 +2750,10 @@ WHERE  name ='NHSBT.png'</CommandText>
           <DataField>notice</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
+        <Field Name="Date1">
+          <DataField>Date1</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
         <Field Name="break_date">
           <DataField>break_date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
@@ -2510,12 +2762,24 @@ WHERE  name ='NHSBT.png'</CommandText>
           <DataField>term_end_date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
+        <Field Name="Date2">
+          <DataField>Date2</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="Date3">
+          <DataField>Date3</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
         <Field Name="reminder_term_end_6mnth">
           <DataField>reminder_term_end_6mnth</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="reminder_term_end_1week">
           <DataField>reminder_term_end_1week</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="Date4">
+          <DataField>Date4</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="lease_expiry_date">
@@ -2541,6 +2805,10 @@ WHERE  name ='NHSBT.png'</CommandText>
         <Field Name="Internal">
           <DataField>Internal</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="EarliestDate">
+          <DataField>EarliestDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -7152,7 +7420,7 @@ WHERE  name ='NHSBT.png'</CommandText>
             </TablixRowHierarchy>
             <FixedColumnHeaders>true</FixedColumnHeaders>
             <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
-            <DataSetName>SProcNHSBloodAndTransportPropertyCases</DataSetName>
+            <DataSetName>NHSBloodAndTransportPropertyCases</DataSetName>
             <Filters>
               <Filter>
                 <FilterExpression>=IIF(Parameters!Internal.Value=1,1,Fields!Internal.Value)</FilterExpression>
@@ -7420,11 +7688,21 @@ WHERE  name ='NHSBT.png'</CommandText>
         </ParameterValues>
       </ValidValues>
     </ReportParameter>
+    <ReportParameter Name="ReminderStartDate">
+      <DataType>DateTime</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Reminder Start Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="ReminderEndDate">
+      <DataType>DateTime</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Reminder End Date</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -7435,6 +7713,16 @@ WHERE  name ='NHSBT.png'</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Internal</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>ReminderStartDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>ReminderEndDate</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
