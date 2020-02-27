@@ -12,20 +12,41 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>8ee5f6c3-ebe3-48cc-afe9-862685a526c5</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="Warehouse">
+      <DataSourceReference>Data Warehouse Server SQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>df268782-aeaa-47c0-8609-318e5a0a2ec3</rd:DataSourceID>
+    </DataSource>
+    <DataSource Name="Reporting">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>70875509-3ac4-43af-8b40-f0efa6cf194a</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
-    <DataSet Name="UnbiiledDisbursements">
+    <DataSet Name="UnbilledDisbursements">
       <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@fedcode">
-            <Value>=Parameters!FEDCode.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>--DECLARE @fedcode AS NVARCHAR(20)  = 6244
+        <DataSourceName>Reporting</DataSourceName>
+        <CommandText>
+/*
+===================================================
+===================================================
+Author:				Max Taylor
+Created Date:		2020-01-27
+Description:		Unbilled Disbursements Drillthrough
+Current Version:	Update to new version 
+Added Elapsed Days
+====================================================
+====================================================
+*/
+  
 
+DECLARE @Month AS varchar(10) = 'Feb-20' -- Test 
+DECLARE @FEDCode AS VARCHAR(10) = '594'
+
+IF @Month &lt;&gt;   CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
+  
 SELECT 
-
     Client
    ,Matter
    ,[Display Name]
@@ -33,6 +54,89 @@ SELECT
    ,matter_description
    ,client_name 
   , [Days_Banding] 
+  ,[Elapsed_Days] 
+   ,SUM(DisbAmount) AS DisbAmount 
+FROM   
+(  
+SELECT a.client_code AS  Client  
+,a.matter_number AS  Matter 
+,c.client_name 
+,total_unbilled_disbursements AS ChargeRate  
+,total_unbilled_disbursements AS DisbAmount  
+,total_unbilled_disbursements_vat AS [Tax Value]  
+,hierarchylevel2hist AS [Business Line]  
+,hierarchylevel3hist As [Practice Area]  
+,hierarchylevel4hist AS [Team]  
+,display_name As [Display Name]  
+,display_name AS AccountsUser  
+,unbilled_hard_disbursements AS HardCost  
+,unbilled_soft_disbursements AS SoftCost  
+,a.workdate AS DisbDate  
+,DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) AS [Elapsed_Days] 
+
+,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN '31 - 90 days'  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 'Greater than 90 Days' END  AS [Days_Banding]  
+  
+,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN -1  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN 2  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 30 END AS [Dim Days Banding Key]  
+,b.*  
+,dim_matter_header_current.matter_description
+,dim_fed_hierarchy_history.fed_code
+FROM    red_dw.dbo.fact_disbursements_detail_monthly AS a  
+INNER JOIN red_dw.dbo.dim_transaction_date As b  
+ ON a.dim_transaction_date_key=b.dim_transaction_date_key  
+  
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)  
+ ON a.client_code=dim_matter_header_current.client_code  
+ AND a.matter_number=dim_matter_header_current.matter_number 
+ 
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK)   
+ ON dim_matter_header_current.fee_earner_code=fed_code collate database_default AND dss_current_flag='Y'  
+
+INNER JOIN red_dw.dbo.dim_client c 
+ ON c.client_code = dim_matter_header_current.client_code
+   
+ WHERE dim_bill_key=0  
+
+AND total_unbilled_disbursements &lt;&gt; 0  
+--AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
+AND b.transaction_fin_month_name + '-' +  right(b.transaction_cal_year, 2)  =  @Month  
+
+AND @Month &lt;&gt; CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10)) -- used to exclude current Month Year from Snapshot 
+
+AND  dim_fed_hierarchy_history.fed_code = @FEDCode
+
+) AS AllData  
+
+GROUP BY 
+
+ Client
+   ,Matter
+   ,[Display Name]
+   ,[fed_code]
+   ,matter_description
+   ,client_name 
+  , [Days_Banding] 
+  ,[Elapsed_Days] 
+
+  
+HAVING SUM(DisbAmount)&lt;&gt;0  
+
+/* Used to pull in Current MonthYear as logic for Current is incorrect when looking at snapshot table*/
+
+ELSE 
+
+SELECT 
+   Client
+   ,Matter
+   ,[Display Name]
+   ,[fed_code]
+   ,matter_description
+   ,client_name 
+  , [Days_Banding] 
+  ,[Elapsed_Days]
    ,SUM(DisbAmount) AS DisbAmount 
  FROM   
 (  
@@ -51,6 +155,8 @@ SELECT a.client_code AS  Client
 ,unbilled_soft_disbursements AS SoftCost  
 ,a.workdate AS DisbDate  
 
+,DATEDIFF(DAY,a.workdate,GETDATE()) AS [Elapsed_Days] 
+
 ,CASE WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
  WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 31 AND 90     THEN '31 - 90 days'  
  WHEN DATEDIFF(DAY,a.workdate,GETDATE()) &gt; 90                  THEN 'Greater than 90 Days' 
@@ -65,7 +171,6 @@ SELECT a.client_code AS  Client
 ,dim_fed_hierarchy_history.fed_code
 
 FROM       red_dw.dbo.fact_disbursements_detail AS a  
---INNER JOIN red_dw.dbo.dim_transaction_date As b  ON a.dim_transaction_date_key=b.dim_transaction_date_key  
 INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK) ON a.client_code=dim_matter_header_current.client_code  AND a.matter_number=dim_matter_header_current.matter_number   
 INNER JOIN red_dw.dbo.dim_client c ON c.client_code = dim_matter_header_current.client_code
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history  WITH(NOLOCK)  ON dim_matter_header_current.fee_earner_code= fed_code collate database_default AND dss_current_flag='Y'  
@@ -73,113 +178,44 @@ INNER JOIN red_dw.dbo.dim_fed_hierarchy_history  WITH(NOLOCK)  ON dim_matter_hea
 WHERE  1 = 1 
 AND    dim_bill_key=0  
 AND    total_unbilled_disbursements &lt;&gt; 0  
+
 --AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
-AND  dim_fed_hierarchy_history.fed_code =  @fedcode
 
--- AND b.transaction_fin_month_name + '-' +  right(B.transaction_cal_year, 2)  = @Month
+AND @Month =   CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
 
---AND transaction_calendar_date =  DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
-
+AND  dim_fed_hierarchy_history.fed_code = @FEDCode
 
 ) AS AllData  
+
 GROUP BY 
 
-  Client
- ,Matter
- ,[Display Name]
- ,[fed_code]
- ,matter_description
- ,client_name 
-,[Days_Banding] 
+ Client
+   ,Matter
+   ,[Display Name]
+   ,[fed_code]
+   ,matter_description
+   ,client_name 
+  , [Days_Banding]
+  , [Elapsed_Days]
+
   
-HAVING SUM(DisbAmount)&lt;&gt;0  
-
-/* Original Query pre 8/01/2020*/
-
---SELECT 
-
---    Client
---   ,Matter
---   ,[Display Name]
---   ,[fed_code]
---   ,matter_description
---   ,client_name 
---  , [Days_Banding] 
---   ,SUM(DisbAmount) AS DisbAmount 
--- FROM   
---(  
---SELECT a.client_code AS  Client  
---,c.client_name 
---,a.matter_number AS  Matter  
---,total_unbilled_disbursements AS ChargeRate  
---,total_unbilled_disbursements AS DisbAmount  
---,total_unbilled_disbursements_vat AS [Tax Value]  
---,hierarchylevel2hist AS [Business Line]  
---,hierarchylevel3hist As [Practice Area]  
---,hierarchylevel4hist AS [Team]  
---,display_name As [Display Name]  
---,display_name AS AccountsUser  
---,unbilled_hard_disbursements AS HardCost  
---,unbilled_soft_disbursements AS SoftCost  
---,a.workdate AS DisbDate  
---,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
---WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN '31 - 90 days'  
---WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 'Greater than 90 Days' END  AS [Days_Banding]  
-  
---,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN -1  
---WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN 2  
---WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 30 END AS [Dim Days Banding Key]  
---,b.*  
---,dim_matter_header_current.matter_description
---,dim_fed_hierarchy_history.fed_code
-
---FROM       red_dw.dbo.fact_disbursements_detail_monthly AS a  
---INNER JOIN red_dw.dbo.dim_transaction_date As b  ON a.dim_transaction_date_key=b.dim_transaction_date_key  
---INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK) ON a.client_code=dim_matter_header_current.client_code  AND a.matter_number=dim_matter_header_current.matter_number   
---INNER JOIN red_dw.dbo.dim_client c ON c.client_code = dim_matter_header_current.client_code
---INNER JOIN red_dw.dbo.dim_fed_hierarchy_history  WITH(NOLOCK)  ON dim_matter_header_current.fee_earner_code= fed_code collate database_default AND dss_current_flag='Y'  
-   
---WHERE  1 = 1 
---AND    dim_bill_key=0  
---AND    total_unbilled_disbursements &lt;&gt; 0  
-----AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
---AND  dim_fed_hierarchy_history.fed_code =  @fedcode
---AND b.transaction_fin_month_name + '-' +  right(B.transaction_cal_year, 2)  = @Month
-
-----AND transaction_calendar_date =  DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
-
-
---) AS AllData  
---GROUP BY 
-
---  Client
--- ,Matter
--- ,[Display Name]
--- ,[fed_code]
--- ,matter_description
--- ,client_name 
---,[Days_Banding] 
-  
---HAVING SUM(DisbAmount)&lt;&gt;0  
-  
-		
-		</CommandText>
+HAVING SUM(DisbAmount)&lt;&gt;0  </CommandText>
       </Query>
       <Fields>
-        <Field Name="fed_code">
-          <DataField>fed_code</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="Client">
           <DataField>Client</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Matter">
+          <DataField>Matter</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Display_Name">
           <DataField>Display Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Matter">
-          <DataField>Matter</DataField>
+        <Field Name="fed_code">
+          <DataField>fed_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="matter_description">
@@ -193,6 +229,10 @@ HAVING SUM(DisbAmount)&lt;&gt;0
         <Field Name="Days_Banding">
           <DataField>Days_Banding</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Elapsed_Days">
+          <DataField>Elapsed_Days</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="DisbAmount">
           <DataField>DisbAmount</DataField>
@@ -234,6 +274,9 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                 </TablixColumn>
                 <TablixColumn>
                   <Width>7.18312cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.5cm</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>3.74354cm</Width>
@@ -404,6 +447,41 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox24</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox8">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Elapsed Days</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox8</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -628,6 +706,39 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox9">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox9</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -635,7 +746,7 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!DisbAmount.Value, "UnbiiledDisbursements")</Value>
+                                  <Value>=Sum(Fields!DisbAmount.Value, "UnbilledDisbursements")</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -834,6 +945,39 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Elapsed_Days">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Elapsed_Days.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Elapsed_Days</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="lookup">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -880,6 +1024,7 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
@@ -895,10 +1040,10 @@ HAVING SUM(DisbAmount)&lt;&gt;0
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
-            <DataSetName>UnbiiledDisbursements</DataSetName>
+            <DataSetName>UnbilledDisbursements</DataSetName>
             <Top>2.04681cm</Top>
             <Height>1.8cm</Height>
-            <Width>21.89464cm</Width>
+            <Width>24.39464cm</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -1009,11 +1154,6 @@ HAVING SUM(DisbAmount)&lt;&gt;0
     </ReportParameter>
     <ReportParameter Name="Month">
       <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value />
-        </Values>
-      </DefaultValue>
       <AllowBlank>true</AllowBlank>
       <Prompt>Month</Prompt>
       <Hidden>true</Hidden>
