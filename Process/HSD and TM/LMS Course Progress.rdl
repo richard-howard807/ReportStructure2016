@@ -55,15 +55,31 @@ if left(@FEDCode, 1) = '('
 
 
 select a.dim_lms_user_course_key,
-a.client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, 
+a.client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, e.classification,
 	c.hierarchylevel2 Business_Line, c.hierarchylevel3 Practice_Area, c.hierarchylevel4 Team,
 	d.course_name, 
 	case when d.category is null and d.subcategory = 'IT Training' then 'IT Training'
 		 when d.category is null then isnull(d.subcategory,'Unknown')
 		 else d.category end category,
 	isnull(d.subcategory,'Unknown') subcategory,
-	a.history_status, a.course_start_date_time, a.course_end_date_time,
-	b.duration_mins, b.score,
+	CASE 
+		WHEN d.course_name = 'Intapp Assessment' AND e.classification &lt;&gt; 'Casehandler' THEN 
+			NULL
+		WHEN d.course_name = 'InterAction Assessment' AND e.classification NOT IN ('Casehandler', 'Support') THEN 
+			NULL
+		ELSE
+			a.history_status
+	END history_status,
+a.course_start_date_time, a.course_end_date_time,
+	b.duration_mins, 
+	CASE 
+		WHEN d.course_name = 'Intapp Assessment' AND e.classification &lt;&gt; 'Casehandler' THEN 
+			NULL
+		WHEN d.course_name = 'InterAction Assessment' AND e.classification NOT IN ('Casehandler', 'Support') THEN 
+			NULL
+		ELSE
+			b.score
+	END score,
 	tries.total_attempts
 -- select *
 from dbo.dim_lms_user_course a
@@ -90,7 +106,7 @@ UNION ALL
 
 -- users with no records as they haven't taken a LTC4 courses
 SELECT DISTINCT 
-	NULL dim_lms_user_course_key, client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, 
+	NULL dim_lms_user_course_key, client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, e.classification, 
 	c.hierarchylevel2 Business_Line, c.hierarchylevel3 Practice_Area, c.hierarchylevel4 Team,
 	x.course_name, x.category, x.subcategory, 
 	'NoShow' history_status, NULL, NULL, NULL, NULL, 0
@@ -441,6 +457,10 @@ strtomember(@Month)
           <DataField>name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="classification">
+          <DataField>classification</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Business_Line">
           <DataField>Business_Line</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -661,8 +681,8 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox40</rd:DefaultName>
-            <Top>11.89011cm</Top>
-            <Left>0.51328cm</Left>
+            <Top>14.16024cm</Top>
+            <Left>0.79218cm</Left>
             <Height>0.6cm</Height>
             <Width>20.5252cm</Width>
             <Style>
@@ -693,8 +713,8 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox40</rd:DefaultName>
-            <Top>12.63123cm</Top>
-            <Left>0.51328cm</Left>
+            <Top>14.90136cm</Top>
+            <Left>0.79218cm</Left>
             <Height>0.6cm</Height>
             <Width>20.5252cm</Width>
             <ZIndex>1</ZIndex>
@@ -844,7 +864,15 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(Sum(IIF(Fields!history_status.Value = "Failed", 1, 0)) &gt; 0, "Fails: " &amp; Sum(IIF(Fields!history_status.Value = "Failed", 1, 0)), "")</Value>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value="Passed",1,0))&gt;0,
+	IIf(Fields!course_name.Value="Intapp Assessment",
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf(Fields!classification.Value="Casehandler",1,0)))*100,2),
+	IIf(Fields!course_name.Value="InterAction Assessment",
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf((Fields!classification.Value="Casehandler")Or(Fields!classification.Value="Support"),1,0)))*100,2),
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Count(Fields!fed_code.Value))*100,2))),"")</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>9pt</FontSize>
@@ -874,6 +902,47 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox36">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)) &gt; 0,"Passed: " &amp; Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)), "")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox36</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Gray</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
                   <Height>0.25104in</Height>
                   <TablixCells>
                     <TablixCell>
@@ -885,7 +954,15 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(Sum(IIF(Fields!history_status.Value = "Failed", 1, 0)) &gt; 0, "Fails: " &amp; Sum(IIF(Fields!history_status.Value = "Failed", 1, 0)), "")</Value>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value="Passed",1,0))&gt;0,
+	IIf(Fields!course_name.Value="Intapp Assessment",
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf(Fields!classification.Value="Casehandler",1,0)))*100,2),
+	IIf(Fields!course_name.Value="InterAction Assessment",
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf((Fields!classification.Value="Casehandler")Or(Fields!classification.Value="Support"),1,0)))*100,2),
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Count(Fields!fed_code.Value))*100,2))),"")</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>9pt</FontSize>
@@ -915,6 +992,47 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox32">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)) &gt; 0,"Passed: " &amp; Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)), "")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox32</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Silver</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
                   <Height>0.25104in</Height>
                   <TablixCells>
                     <TablixCell>
@@ -926,7 +1044,15 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(Sum(IIF(Fields!history_status.Value = "Failed", 1, 0)) &gt; 0, "Fails: " &amp; Sum(IIF(Fields!history_status.Value = "Failed", 1, 0)), "")</Value>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value="Passed",1,0))&gt;0,
+	IIf(Fields!course_name.Value="Intapp Assessment",
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf(Fields!classification.Value="Casehandler",1,0)))*100,2),
+	IIf(Fields!course_name.Value="InterAction Assessment",
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf((Fields!classification.Value="Casehandler")Or(Fields!classification.Value="Support"),1,0)))*100,2),
+	"Passed % : " &amp; Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Count(Fields!fed_code.Value))*100,2))),"")</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>9pt</FontSize>
@@ -939,6 +1065,48 @@ and isnull(category,'Unknown') in (@Course_Category)</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox161</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>LightGrey</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox28">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)) &gt; 0,
+"Passed: " &amp; Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)), "")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox28</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -992,6 +1160,193 @@ Fields!history_status.Value = "Finished", "LightGreen",
 Fields!history_status.Value = "Waived", "LightGreen",
 Fields!history_status.Value = "Failed", "LightCoral",
 Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox5">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value="Passed",1,0))&gt;0,
+	IIf(Fields!course_name.Value="Intapp Assessment",
+	(Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf(Fields!classification.Value="Casehandler",1,0)))*100,
+	IIf(Fields!course_name.Value="InterAction Assessment",
+	(Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf((Fields!classification.Value="Casehandler")Or(Fields!classification.Value="Support"),1,0)))*100,
+	(Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Count(Fields!fed_code.Value))*100)),"")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Format>0.00;(0.00)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox5</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox18">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)) &gt; 0,
+Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)), "")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Format>0;(0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox18</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox64">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value="Passed",1,0))&gt;0,
+	IIf(Fields!course_name.Value="Intapp Assessment",
+	Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf(Fields!classification.Value="Casehandler",1,0)))*100,2),
+	IIf(Fields!course_name.Value="InterAction Assessment",
+	Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Sum(IIf((Fields!classification.Value="Casehandler")Or(Fields!classification.Value="Support"),1,0)))*100,2),
+	Round((Sum(IIf(Fields!history_status.Value="Passed",1,0))/
+	Count(Fields!fed_code.Value))*100,2))),"")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Format>0.00;(0.00)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox64</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Gray</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox52">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIf(Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)) &gt; 0,Sum(IIf(Fields!history_status.Value = "Passed", 1, 0)), "")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Format>0;(0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>Center</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox52</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Gray</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -1152,7 +1507,7 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                   <TablixMembers>
                     <TablixMember>
                       <TablixHeader>
-                        <Size>3.30184in</Size>
+                        <Size>3.37684in</Size>
                         <CellContents>
                           <Textbox Name="Business_Line">
                             <CanGrow>true</CanGrow>
@@ -1189,6 +1544,44 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                       </TablixHeader>
                     </TablixMember>
                     <TablixMember>
+                      <TablixHeader>
+                        <Size>3.37684in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox35">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value />
+                                    <Style>
+                                      <FontFamily>Lucida Sans Unicode</FontFamily>
+                                      <FontSize>9pt</FontSize>
+                                      <FontWeight>Bold</FontWeight>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox35</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>Solid</Style>
+                              </Border>
+                              <BackgroundColor>Gray</BackgroundColor>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                    <TablixMember>
                       <Group Name="PracticeArea">
                         <GroupExpressions>
                           <GroupExpression>=Fields!Practice_Area.Value</GroupExpression>
@@ -1202,7 +1595,7 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                       <TablixMembers>
                         <TablixMember>
                           <TablixHeader>
-                            <Size>3.30184in</Size>
+                            <Size>3.37684in</Size>
                             <CellContents>
                               <Textbox Name="Practice_Area1">
                                 <CanGrow>true</CanGrow>
@@ -1236,6 +1629,45 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                                   <PaddingBottom>2pt</PaddingBottom>
                                 </Style>
                               </Textbox>
+                              <rd:Selected>true</rd:Selected>
+                            </CellContents>
+                          </TablixHeader>
+                        </TablixMember>
+                        <TablixMember>
+                          <TablixHeader>
+                            <Size>3.37684in</Size>
+                            <CellContents>
+                              <Textbox Name="Textbox31">
+                                <CanGrow>true</CanGrow>
+                                <KeepTogether>true</KeepTogether>
+                                <Paragraphs>
+                                  <Paragraph>
+                                    <TextRuns>
+                                      <TextRun>
+                                        <Value />
+                                        <Style>
+                                          <FontFamily>Lucida Sans Unicode</FontFamily>
+                                          <FontSize>9pt</FontSize>
+                                          <FontWeight>Bold</FontWeight>
+                                        </Style>
+                                      </TextRun>
+                                    </TextRuns>
+                                    <Style />
+                                  </Paragraph>
+                                </Paragraphs>
+                                <rd:DefaultName>Textbox31</rd:DefaultName>
+                                <Style>
+                                  <Border>
+                                    <Color>LightGrey</Color>
+                                    <Style>Solid</Style>
+                                  </Border>
+                                  <BackgroundColor>Silver</BackgroundColor>
+                                  <PaddingLeft>2pt</PaddingLeft>
+                                  <PaddingRight>2pt</PaddingRight>
+                                  <PaddingTop>2pt</PaddingTop>
+                                  <PaddingBottom>2pt</PaddingBottom>
+                                </Style>
+                              </Textbox>
                             </CellContents>
                           </TablixHeader>
                         </TablixMember>
@@ -1253,7 +1685,7 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                           <TablixMembers>
                             <TablixMember>
                               <TablixHeader>
-                                <Size>3.30184in</Size>
+                                <Size>3.37684in</Size>
                                 <CellContents>
                                   <Textbox Name="Team1">
                                     <CanGrow>true</CanGrow>
@@ -1292,6 +1724,45 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                               <KeepWithGroup>After</KeepWithGroup>
                             </TablixMember>
                             <TablixMember>
+                              <TablixHeader>
+                                <Size>3.37684in</Size>
+                                <CellContents>
+                                  <Textbox Name="Textbox27">
+                                    <CanGrow>true</CanGrow>
+                                    <KeepTogether>true</KeepTogether>
+                                    <Paragraphs>
+                                      <Paragraph>
+                                        <TextRuns>
+                                          <TextRun>
+                                            <Value />
+                                            <Style>
+                                              <FontFamily>Lucida Sans Unicode</FontFamily>
+                                              <FontSize>9pt</FontSize>
+                                              <FontWeight>Bold</FontWeight>
+                                            </Style>
+                                          </TextRun>
+                                        </TextRuns>
+                                        <Style />
+                                      </Paragraph>
+                                    </Paragraphs>
+                                    <rd:DefaultName>Textbox27</rd:DefaultName>
+                                    <Style>
+                                      <Border>
+                                        <Color>LightGrey</Color>
+                                        <Style>Solid</Style>
+                                      </Border>
+                                      <BackgroundColor>LightGrey</BackgroundColor>
+                                      <PaddingLeft>2pt</PaddingLeft>
+                                      <PaddingRight>2pt</PaddingRight>
+                                      <PaddingTop>2pt</PaddingTop>
+                                      <PaddingBottom>2pt</PaddingBottom>
+                                    </Style>
+                                  </Textbox>
+                                </CellContents>
+                              </TablixHeader>
+                              <KeepWithGroup>After</KeepWithGroup>
+                            </TablixMember>
+                            <TablixMember>
                               <Group Name="Name">
                                 <GroupExpressions>
                                   <GroupExpression>=Fields!Display_Name.Value</GroupExpression>
@@ -1303,7 +1774,7 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                                 </SortExpression>
                               </SortExpressions>
                               <TablixHeader>
-                                <Size>3.30184in</Size>
+                                <Size>3.37684in</Size>
                                 <CellContents>
                                   <Textbox Name="Display_Name">
                                     <CanGrow>true</CanGrow>
@@ -1312,7 +1783,7 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                                       <Paragraph>
                                         <TextRuns>
                                           <TextRun>
-                                            <Value>=Fields!Display_Name.Value</Value>
+                                            <Value>=Fields!Display_Name.Value &amp; ": " &amp; Fields!classification.Value</Value>
                                             <Style>
                                               <FontFamily>Lucida Sans Unicode</FontFamily>
                                               <FontSize>9pt</FontSize>
@@ -1338,10 +1809,89 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                                   </Textbox>
                                 </CellContents>
                               </TablixHeader>
+                              <TablixMembers>
+                                <TablixMember />
+                              </TablixMembers>
                               <Visibility>
                                 <Hidden>true</Hidden>
                                 <ToggleItem>Team1</ToggleItem>
                               </Visibility>
+                            </TablixMember>
+                            <TablixMember>
+                              <TablixHeader>
+                                <Size>3.37684in</Size>
+                                <CellContents>
+                                  <Textbox Name="Textbox3">
+                                    <CanGrow>true</CanGrow>
+                                    <KeepTogether>true</KeepTogether>
+                                    <Paragraphs>
+                                      <Paragraph>
+                                        <TextRuns>
+                                          <TextRun>
+                                            <Value>Total (Eligible) Team Pass %</Value>
+                                            <Style>
+                                              <FontFamily>Lucida Sans Unicode</FontFamily>
+                                              <FontSize>9pt</FontSize>
+                                              <FontWeight>Normal</FontWeight>
+                                            </Style>
+                                          </TextRun>
+                                        </TextRuns>
+                                        <Style />
+                                      </Paragraph>
+                                    </Paragraphs>
+                                    <rd:DefaultName>Textbox3</rd:DefaultName>
+                                    <Style>
+                                      <Border>
+                                        <Color>LightGrey</Color>
+                                        <Style>Solid</Style>
+                                      </Border>
+                                      <PaddingLeft>2pt</PaddingLeft>
+                                      <PaddingRight>2pt</PaddingRight>
+                                      <PaddingTop>2pt</PaddingTop>
+                                      <PaddingBottom>2pt</PaddingBottom>
+                                    </Style>
+                                  </Textbox>
+                                </CellContents>
+                              </TablixHeader>
+                              <KeepWithGroup>Before</KeepWithGroup>
+                            </TablixMember>
+                            <TablixMember>
+                              <TablixHeader>
+                                <Size>3.37684in</Size>
+                                <CellContents>
+                                  <Textbox Name="Textbox17">
+                                    <CanGrow>true</CanGrow>
+                                    <KeepTogether>true</KeepTogether>
+                                    <Paragraphs>
+                                      <Paragraph>
+                                        <TextRuns>
+                                          <TextRun>
+                                            <Value>Total Team Pass</Value>
+                                            <Style>
+                                              <FontFamily>Lucida Sans Unicode</FontFamily>
+                                              <FontSize>9pt</FontSize>
+                                              <FontWeight>Normal</FontWeight>
+                                            </Style>
+                                          </TextRun>
+                                        </TextRuns>
+                                        <Style />
+                                      </Paragraph>
+                                    </Paragraphs>
+                                    <rd:DefaultName>Textbox17</rd:DefaultName>
+                                    <Style>
+                                      <Border>
+                                        <Color>LightGrey</Color>
+                                        <Style>Solid</Style>
+                                      </Border>
+                                      <PaddingLeft>2pt</PaddingLeft>
+                                      <PaddingRight>2pt</PaddingRight>
+                                      <PaddingTop>2pt</PaddingTop>
+                                      <PaddingBottom>2pt</PaddingBottom>
+                                    </Style>
+                                  </Textbox>
+                                </CellContents>
+                              </TablixHeader>
+                              <KeepWithGroup>Before</KeepWithGroup>
                             </TablixMember>
                           </TablixMembers>
                           <Visibility>
@@ -1357,13 +1907,91 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
                     </TablixMember>
                   </TablixMembers>
                 </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>3.37684in</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox63">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total Firm Pass %</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>9pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox63</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <BackgroundColor>Gray</BackgroundColor>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <TablixHeader>
+                    <Size>3.37684in</Size>
+                    <CellContents>
+                      <Textbox Name="Textbox51">
+                        <CanGrow>true</CanGrow>
+                        <KeepTogether>true</KeepTogether>
+                        <Paragraphs>
+                          <Paragraph>
+                            <TextRuns>
+                              <TextRun>
+                                <Value>Total Firm Pass</Value>
+                                <Style>
+                                  <FontFamily>Lucida Sans Unicode</FontFamily>
+                                  <FontSize>9pt</FontSize>
+                                  <FontWeight>Bold</FontWeight>
+                                </Style>
+                              </TextRun>
+                            </TextRuns>
+                            <Style />
+                          </Paragraph>
+                        </Paragraphs>
+                        <rd:DefaultName>Textbox51</rd:DefaultName>
+                        <Style>
+                          <Border>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
+                          </Border>
+                          <BackgroundColor>Gray</BackgroundColor>
+                          <PaddingLeft>2pt</PaddingLeft>
+                          <PaddingRight>2pt</PaddingRight>
+                          <PaddingTop>2pt</PaddingTop>
+                          <PaddingBottom>2pt</PaddingBottom>
+                        </Style>
+                      </Textbox>
+                    </CellContents>
+                  </TablixHeader>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>SQL_Dataset</DataSetName>
             <Top>1.10834in</Top>
             <Left>0.31188in</Left>
-            <Height>1.75624in</Height>
-            <Width>5.03101in</Width>
+            <Height>3.50624in</Height>
+            <Width>5.10601in</Width>
             <ZIndex>2</ZIndex>
             <Style>
               <Border>
@@ -1403,7 +2031,7 @@ Fields!history_status.Value = "NoShow", "Gainsboro")</BackgroundColor>
             </Style>
           </Image>
         </ReportItems>
-        <Height>5.26123in</Height>
+        <Height>6.23958in</Height>
         <Style />
       </Body>
       <Width>13.56493in</Width>
