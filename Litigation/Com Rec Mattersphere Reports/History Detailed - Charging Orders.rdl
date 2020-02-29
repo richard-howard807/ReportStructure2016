@@ -2455,15 +2455,12 @@ WHERE  name ='1st Central.png'</CommandText>
     <DataSet Name="HistoryDetails">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@StartDate">
-            <Value>=Parameters!StartDate.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@EndDate">
-            <Value>=Parameters!EndDate.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>SELECT   
+        <CommandText>DECLARE @StartDate AS DATE
+DECLARE @EndDate AS DATE
+SET @StartDate='2020-02-29'
+SET @EndDate='2020-02-29'
+
+SELECT   
           fee.name As CaseHandler
 		, Clients.HIM_AccountNumber As AccountNo
 		, SOLADM.ADM_NameOfDebtorOnLetter As Debtor
@@ -2483,34 +2480,33 @@ Where fee.[name] In(select 'Alan Davies' AS FEName union select 'Sophie Robertso
 union select 'Shaun Smyth' union SELECT 'Alison Sutton' union SELECT 'Lyndsey Jardine.' union SELECT 'Lyndsey Jardine'union SELECT 'Mark Burch' UNION select 'Sara Granby' UNION select 'Rebecca Nixon')
 AND fee.[name]&lt;&gt;'ROBOT3' 
 AND History.HTRY_DateInserted  Between @StartDate And @EndDate
-AND History.mt_int_code NOT IN (SELECT SourceSystemID FROM VFile_Streamlined.dbo.VFToMSMatters)
-
+AND History.HTRY_DateInserted &lt;'2020-02-29'
 UNION
 
-SELECT   COALESCE(name,usrFullName) As CaseHandler
+SELECT   usrFullName As CaseHandler
 	, 	COALESCE(txtClaimRef,txtAccNumber) As AccountNo
 		, txtShortName As Debtor
-		, dteInserted AS HTRY_DateInserted  
+		, [red_dw].[dbo].[datetimelocal](dteInserted) AS HTRY_DateInserted  
 		, NULL As TimeInserted	
 		, txtDescription As Description_	
-FROM [SVR-DEV-SQL-05].[MS_PROD].config.dbFile
-INNER JOIN [SVR-DEV-SQL-05].[MS_PROD].dbo.udCRHistoryNotesSL
+FROM [MS_PROD].config.dbFile
+INNER JOIN [MS_PROD].dbo.udCRHistoryNotesSL
  ON udCRHistoryNotesSL.fileID = dbFile.fileID
-INNER JOIN [SVR-DEV-SQL-05].[MS_PROD].dbo.udExtFile
+INNER JOIN [MS_PROD].dbo.udExtFile
  ON udExtFile.fileID = dbFile.fileID
-INNER JOIN [SVR-DEV-SQL-05].[MS_PROD].config.dbClient
+INNER JOIN [MS_PROD].config.dbClient
  ON dbClient.clID = dbFile.clID
-LEFT OUTER JOIN [SVR-DEV-SQL-05].[MS_PROD].dbo.udCRClientScreens
+LEFT OUTER JOIN [MS_PROD].dbo.udCRClientScreens
  ON udCRClientScreens.fileID = dbFile.fileID
-LEFT OUTER JOIN [SVR-DEV-SQL-05].[MS_PROD].dbo.udCRAccountInformation
+LEFT OUTER JOIN [MS_PROD].dbo.udCRAccountInformation
  ON udCRAccountInformation.fileID = dbFile.fileID
-LEFT OUTER JOIN [SVR-DEV-SQL-05].[MS_PROD].dbo.dbUser
+LEFT OUTER JOIN [MS_PROD].dbo.dbUser
  ON udCRHistoryNotesSL.userID=usrID
-LEFT OUTER JOIN VFile_Streamlined.dbo.fee
- ON txtUsrID=fee_earner
+
 
 WHERE  fileType='2038'
-AND dteInserted BETWEEN @StartDate And @EndDate</CommandText>
+AND [red_dw].[dbo].[datetimelocal](dteInserted) BETWEEN @StartDate And @EndDate
+AND [red_dw].[dbo].[datetimelocal](dteInserted)  &gt;'2020-02-29'</CommandText>
       </Query>
       <Fields>
         <Field Name="CaseHandler">
