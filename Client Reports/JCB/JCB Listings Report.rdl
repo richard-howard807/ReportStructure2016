@@ -94,6 +94,10 @@
 		,CASE WHEN RTRIM(dim_detail_core_details.present_position) IN ('Final bill sent - unpaid', 'To be closed/minor balances to be clear') 
 		      THEN 0 
 			  ELSE ISNULL(fact_finance_summary.[defence_costs_reserve], 0) -  ISNULL(total_amount_billed,0)  
+			  END AS [EL: Own Legal Costs Reserve Original]
+		,CASE WHEN RTRIM(dim_detail_core_details.present_position) IN ('Final bill sent - unpaid', 'To be closed/minor balances to be clear') 
+		      THEN 0 
+			  ELSE ISNULL(fact_finance_summary.[defence_costs_reserve], 0) -  (ISNULL(total_amount_billed,0)  -ISNULL(vat_billed,0))
 			  END AS [EL: Own Legal Costs Reserve]
 	, ISNULL(CASE WHEN dim_detail_outcome.[outcome_of_case] IS NOT NULL
        OR dim_detail_outcome.[date_claim_concluded] IS NOT NULL
@@ -241,6 +245,7 @@ ROW_NUMBER() OVER (PARTITION BY dim_matter_header_curr_key ORDER BY bill_date DE
 		AND ISNULL(outcome_of_case,'') &lt;&gt; 'Exclude from reports'
 		AND ISNULL(dim_detail_critical_mi.[claim_status], '') != 'Cancelled'
 
+		--AND dim_matter_header_current.client_code='J26479' AND dim_matter_header_current.matter_number='00001268'
 	
 
 		/* Taken out as required two tabs for open and closed*/
@@ -254,8 +259,6 @@ ROW_NUMBER() OVER (PARTITION BY dim_matter_header_curr_key ORDER BY bill_date DE
 
 
 ORDER BY dim_matter_header_current.client_code,dim_matter_header_current.matter_number
-
-
 
 
 
@@ -379,6 +382,10 @@ ORDER BY dim_matter_header_current.client_code,dim_matter_header_current.matter_
         <Field Name="Year_of_Account">
           <DataField>Year of Account</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="EL__Own_Legal_Costs_Reserve_Original">
+          <DataField>EL: Own Legal Costs Reserve Original</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="GeneralDamagesReserve">
           <DataField>GeneralDamagesReserve</DataField>
@@ -3729,7 +3736,6 @@ Fields!GeneralDamagesPayment.Value +
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
