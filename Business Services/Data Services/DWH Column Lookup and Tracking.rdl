@@ -2458,6 +2458,13 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
         <CommandText>Declare @Search nvarchar(100) = '%' + lower(@Searchstring) + '%'
 
 
+SELECT DISTINCT ws_wrk_task_log.wtl_obj_key
+	INTO #tasklog
+FROM red_dw.dbo.ws_wrk_task_log
+WHERE ws_wrk_task_log.wtl_completed &gt;= DATEADD(m,-2, GETDATE())
+
+
+
 SELECT  'DWH' source,
 		ws_fact_tab.ft_table_name Table_Name,
 		a.fc_col_name Column_Name, 
@@ -2509,12 +2516,13 @@ LEFT OUTER JOIN ReportMapping..dimension_mapped_fields_master ON LOWER(dimension
 															AND LOWER(dimension_mapped_fields_master.msphere_detail_table) = LOWER(ws_load_col.lc_src_table)
 LEFT OUTER JOIN ReportMapping..fact_mapped_fields_master ON LOWER(fact_mapped_fields_master.msphere_fieldname) = LOWER(ws_load_col.lc_src_column) 
 															AND LOWER(fact_mapped_fields_master.msphere_detail_table) = LOWER(ws_load_col.lc_src_table)
+INNER JOIN #tasklog ON #tasklog.wtl_obj_key = ws_load_tab.lt_obj_key
 WHERE (LOWER(lc_col_name) LIKE LOWER(@Search)
 	OR LOWER(lc_display_name) LIKE LOWER(@Search)
 	OR LOWER(COALESCE(dimension_mapped_fields_master.fieldname, fact_mapped_fields_master.fieldname)) LIKE LOWER(@Search))
-AND  ws_load_tab.lt_obj_key IN (SELECT ws_wrk_task_log.wtl_obj_key
-	FROM red_dw.dbo.ws_wrk_task_log
-	WHERE ws_wrk_task_log.wtl_completed &gt;= DATEADD(m,-2, GETDATE()))</CommandText>
+
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="source">
@@ -4241,7 +4249,6 @@ AND  ws_load_tab.lt_obj_key IN (SELECT ws_wrk_task_log.wtl_obj_key
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0cm</Top>
               <Height>0.25in</Height>
               <Width>17.91219in</Width>
               <Visibility>
