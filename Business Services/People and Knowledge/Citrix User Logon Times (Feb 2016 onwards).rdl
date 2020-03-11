@@ -22,9 +22,12 @@
           <QueryParameter Name="@Name">
             <Value>=Parameters!Name.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!Team.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>dbo.CitrixLogons_LogonAudit_new</CommandText>
+        <CommandText>CitrixLogons_LogonAudit</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -64,22 +67,49 @@
           <DataField>Domain</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="hierarchylevel4hist">
+          <DataField>hierarchylevel4hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="Users">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT RTRIM(red_dw.dbo.dim_employee.knownas) + ' ' + RTRIM(red_dw.dbo.dim_employee.surname) AS Name
-FROM red_dw.dbo.dim_employee
-WHERE (red_dw.dbo.dim_employee.leftdate IS NULL OR red_dw.dbo.dim_employee.leftdate &gt; GETDATE())
-	AND red_dw.dbo.dim_employee.dim_employee_key &gt; 0
-	AND red_dw.dbo.dim_employee.windowsusername IS NOT NULL
-ORDER BY Name</CommandText>
+        <QueryParameters>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!Team.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT name  FROM red_dw.dbo.dim_employee 
+	Inner JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_employee_key = dim_employee.dim_employee_key 
+	AND dss_current_flag='Y' AND activeud=1 --AND leaver=0
+	WHERE hierarchylevel4hist=@Team
+	AND dim_employee.dim_employee_key&lt;&gt;0
+order by name</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
         <Field Name="Name">
-          <DataField>Name</DataField>
+          <DataField>name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Team">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT hierarchylevel4hist
+FROM red_dw.dbo.dim_fed_hierarchy_history
+WHERE dss_current_flag='Y'
+AND activeud=1
+AND leaver=0
+AND hierarchylevel2hist IN ('Business Services','Legal Ops - Claims','Legal Ops - LTA')
+ORDER BY hierarchylevel4hist</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="hierarchylevel4hist">
+          <DataField>hierarchylevel4hist</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -1157,6 +1187,17 @@ ORDER BY Name</CommandText>
       <DataType>DateTime</DataType>
       <Prompt>End Date</Prompt>
     </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>hierarchylevel4hist</ValueField>
+          <LabelField>hierarchylevel4hist</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
     <ReportParameter Name="Name">
       <DataType>String</DataType>
       <Prompt>Name</Prompt>
@@ -1167,6 +1208,7 @@ ORDER BY Name</CommandText>
           <LabelField>Name</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
@@ -1186,6 +1228,11 @@ ORDER BY Name</CommandText>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Team</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Name</ParameterName>
         </CellDefinition>
