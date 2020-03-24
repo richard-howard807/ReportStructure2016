@@ -12,17 +12,22 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>71b84d16-8a17-43e0-abfc-ec5c45a6332b</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="reporting">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>b1d518e6-afb0-4334-888b-10e5e7dd00fa</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="SQL_Dataset">
       <Query>
-        <DataSourceName>SQL12</DataSourceName>
+        <DataSourceName>reporting</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@FEDCode">
-            <Value>=Parameters!FEDCode.Value</Value>
+          <QueryParameter Name="@FedCode">
+            <Value>=Parameters!FedCode.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@FEDCodes">
-            <Value>=Parameters!FEDCode.Value</Value>
+          <QueryParameter Name="@Level">
+            <Value>=Parameters!Level.Value</Value>
           </QueryParameter>
           <QueryParameter Name="@Type">
             <Value>=Parameters!Type.Value</Value>
@@ -34,114 +39,8 @@
             <Value>=Parameters!Courses.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
-
-
-declare @fedcode_table table (fedcode int)
-
-if left(@FEDCode, 1) = '('
-
-	begin 
-		insert into @fedcode_table
-		select dim_fed_hierarchy_history_key 		
-		from dbo.dim_fed_hierarchy_history
-
-	end
-	
-	else 
-
-		insert into @fedcode_table
-		select cast(val as int) dim_fed_hierarchy_history_key
-		from split_delimited_to_rows(@FEDCodes,',')
-
-
-
-;
-/*
-with all_assesments_missed as 
-		(
-		select distinct a.client_user_identifier,  c.fed_code, c.display_name Display_Name, c.name, 
-		c.hierarchylevel2 Business_Line, c.hierarchylevel3 Practice_Area, c.hierarchylevel4 Team,
-		g.course_name, 
-		case when g.category is null and g.subcategory = 'IT Training' then 'IT Training'
-			 when g.category is null then g.subcategory
-			 else g.category end category,
-		g.subcategory,
-		'NoShow' history_status, null course_start_date_time, null course_end_date_time,
-		0 duration_mins, 0 score,	0 tries
-		from dbo.dim_lms_user_course a
-		inner join dbo.dim_employee e on e.dim_employee_key = a.dim_employee_key
-		inner join dbo.dim_fed_hierarchy_current c on c.employeeid = e.employeeid and c.activeud = 1	
-		inner join dbo.dim_fed_hierarchy_current d on d.hierarchylevel4 = c.hierarchylevel4 and d.activeud = 1	
-		inner join dbo.dim_employee f on f.employeeid = d.employeeid
-		inner join dbo.dim_lms_user_course g on g.dim_employee_key = f.dim_employee_key
-		inner join dbo.fact_lms_user_course gg on gg.dim_lms_user_course_key = g.dim_lms_user_course_key and gg.score is not null
-		left outer join dbo.dim_lms_user_course h on h.dim_lms_courses_key = g.dim_lms_courses_key and h.dim_employee_key = e.dim_employee_key and h.latest_attempt = 1 
-		where a.latest_attempt = 1
-		and h.dim_lms_user_course_key is null
-		--and c.fed_code = '6237'		
-		and iif(score is not null, 'Assessment', 'Course') in (@Type)
-		and 'NoShow' in (@Status)
-		and g.dim_lms_courses_key in (@Courses)
-		and c.dim_fed_hierarchy_current_key in (select fedcode from @fedcode_table)
-		)
-
-*/
-
-select a.dim_lms_user_course_key,
-a.client_user_identifier, c.fed_code, c.display_name Display_Name, c.name, 
-	c.hierarchylevel2 Business_Line, c.hierarchylevel3 Practice_Area, c.hierarchylevel4 Team,
-	d.course_name, 
-	case when d.category is null and d.subcategory = 'IT Training' then 'IT Training'
-		 when d.category is null then isnull(d.subcategory,'Unknown')
-		 else d.category end category,
-	isnull(d.subcategory,'Unknown') subcategory,
-	a.history_status, a.course_start_date_time, a.course_end_date_time,
-	b.duration_mins, b.score,
-	tries.total_attempts
--- select *
-from dbo.dim_lms_user_course a
-inner join dbo.fact_lms_user_course b on a.dim_lms_user_course_key = b.dim_lms_user_course_key
-inner join dbo.dim_employee e on e.dim_employee_key = a.dim_employee_key
-inner join dbo.dim_fed_hierarchy_current c on c.employeeid = e.employeeid
-inner join dbo.dim_lms_courses d on d.dim_lms_courses_key = a.dim_lms_courses_key
-left outer join
-	(select dim_lms_courses_key, dim_employee_key, count(dim_lms_courses_key) total_attempts 
-	from dbo.dim_lms_user_course
-	group by dim_lms_courses_key, dim_employee_key) tries on tries.dim_lms_courses_key = a.dim_lms_courses_key 
-								  and tries.dim_employee_key = a.dim_employee_key
-where  a.latest_attempt = 1
-and e.leftdate is null
-and iif(score is not null, 'Assessment', 'Course') in (@Type)
-and history_status in (@Status)
-and d.dim_lms_courses_key in (@Courses)
-and c.dim_fed_hierarchy_current_key in (select fedcode from @fedcode_table)
---and c.fed_code = '6237'
-and c.activeud = 1
-
-/*
-union all
-
-select all_assesments_missed.client_user_identifier
-     , all_assesments_missed.fed_code
-     , all_assesments_missed.Display_Name
-     , all_assesments_missed.name
-     , all_assesments_missed.Business_Line
-     , all_assesments_missed.Practice_Area
-     , all_assesments_missed.Team
-     , all_assesments_missed.course_name
-     , all_assesments_missed.category
-     , all_assesments_missed.subcategory
-	 , all_assesments_missed.history_status
-     , all_assesments_missed.course_start_date_time
-     , all_assesments_missed.course_end_date_time
-     , all_assesments_missed.duration_mins
-     , all_assesments_missed.score
-     , all_assesments_missed.tries
-from all_assesments_missed 
-order by a.course_start_date_time desc
-
-*/</CommandText>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>LMScourseprogress</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>MDX</CommandType>
@@ -1437,7 +1336,6 @@ Fields!history_status.Value = "NoShow", "LightCoral")</BackgroundColor>
                                       <PaddingBottom>2pt</PaddingBottom>
                                     </Style>
                                   </Textbox>
-                                  <rd:Selected>true</rd:Selected>
                                 </CellContents>
                               </TablixHeader>
                               <TablixMembers>
@@ -1854,7 +1752,7 @@ Fields!history_status.Value = "NoShow", "LightCoral")</BackgroundColor>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="FEDCode">
+    <ReportParameter Name="FedCode">
       <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
@@ -1926,7 +1824,7 @@ Fields!history_status.Value = "NoShow", "LightCoral")</BackgroundColor>
       <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="Courses">
-      <DataType>String</DataType>
+      <DataType>Integer</DataType>
       <DefaultValue>
         <Values>
           <Value>470</Value>
@@ -1980,7 +1878,7 @@ Fields!history_status.Value = "NoShow", "LightCoral")</BackgroundColor>
         <CellDefinition>
           <ColumnIndex>2</ColumnIndex>
           <RowIndex>0</RowIndex>
-          <ParameterName>FEDCode</ParameterName>
+          <ParameterName>FedCode</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
