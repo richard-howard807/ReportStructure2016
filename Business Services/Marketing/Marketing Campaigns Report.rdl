@@ -2479,12 +2479,12 @@ she ideally needs to be able to filter the whole report to show revenue within a
 */
 
 
---TEST
+---TEST
 --DECLARE @DateFrom DATE = '2019-03-01',
 -- @DateTo DATE = '2020-03-01',
 -- @Campaign VARCHAR(MAX) = 'Construction'
 
-
+SELECT ListValue  INTO #Campaign FROM Reporting.dbo.[udt_TallySplit]('|', @Campaign)
 
 SELECT 
 CASE
@@ -2522,6 +2522,70 @@ FROM red_dw.dbo.fact_bill_activity
 WHERE bill_date &gt;= @DateFrom AND bill_date &lt;= @DateTo
 GROUP BY master_fact_key) fact_bill_activity ON fact_bill_activity.master_fact_key = fact_dimension_main.master_fact_key
 
+INNER JOIN #Campaign AS Campaign ON Campaign.ListValue COLLATE DATABASE_DEFAULT = CASE
+WHEN is_this_part_of_a_campaign IS NOT NULL THEN is_this_part_of_a_campaign
+WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber'
+WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
+WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
+ELSE is_this_part_of_a_campaign 
+END 
+
+WHERE (date_opened_case_management &gt;= @DateFrom AND date_opened_case_management &lt;= @DateTo)
+
+AND dim_matter_header_current.reporting_exclusions = 0
+
+
+
+--AND CASE
+--WHEN is_this_part_of_a_campaign IS NOT NULL THEN is_this_part_of_a_campaign
+--WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber'
+--WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
+--WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
+--ELSE is_this_part_of_a_campaign END IN (@Campaign) 
+
+
+ORDER BY dim_client.client_code, dim_matter_header_current.matter_number
+
+
+
+--SELECT ListValue  INTO #Campaign FROM Reporting.dbo.[udt_TallySplit]('|', @Campaign)
+
+--SELECT 
+--CASE
+--WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber'
+--WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
+--WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
+--ELSE is_this_part_of_a_campaign
+--END Campaign,
+--dim_client.client_code,
+--dim_client.client_name,
+--dim_matter_header_current.matter_number,
+--matter_description,
+--name,
+--worksforname,
+--work_type_name,
+--date_opened_case_management,
+--date_closed_case_management,
+--bill_amount,
+--injury_type,
+--brief_description_of_injury,
+--is_this_part_of_a_campaign,
+--wip
+--FROM red_Dw.dbo.fact_dimension_main
+--LEFT join red_Dw.dbo.dim_client ON dim_client.dim_client_key = fact_dimension_main.dim_client_key
+--LEFT JOIN red_Dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+--LEFT JOIN red_Dw.dbo.dim_matter_worktype ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
+--LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history ON  dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+--LEFT JOIN red_Dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+--LEFT OUTER JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+
+--INNER JOIN 
+--(
+--SELECT master_fact_key, SUM(bill_amount) bill_amount
+--FROM red_dw.dbo.fact_bill_activity
+--WHERE bill_date &gt;= @DateFrom AND bill_date &lt;= @DateTo
+--GROUP BY master_fact_key) fact_bill_activity ON fact_bill_activity.master_fact_key = fact_dimension_main.master_fact_key
+
 --INNER JOIN #Campaign AS Campaign ON Campaign.ListValue COLLATE DATABASE_DEFAULT = CASE
 --WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber'
 --WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
@@ -2529,24 +2593,8 @@ GROUP BY master_fact_key) fact_bill_activity ON fact_bill_activity.master_fact_k
 --ELSE is_this_part_of_a_campaign
 --END COLLATE DATABASE_DEFAULT
 
-WHERE (date_opened_case_management &gt;= @DateFrom AND date_opened_case_management &lt;= @DateTo)
 
-AND dim_matter_header_current.reporting_exclusions = 0
-
-AND CASE
-WHEN is_this_part_of_a_campaign IS NOT NULL THEN is_this_part_of_a_campaign
-WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber'
-WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
-WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
-ELSE is_this_part_of_a_campaign END = @Campaign
-
-
-ORDER BY dim_client.client_code, dim_matter_header_current.matter_number
-
-
-
-
-</CommandText>
+--ORDER BY dim_client.client_code, dim_matter_header_current.matter_number</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
