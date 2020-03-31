@@ -2458,14 +2458,14 @@ WHERE  name ='DWHDoc.png'</CommandText>
         <CommandText>
 SELECT DISTINCT ft_obj_key, ft_table_name
 from red_dw.dbo.ws_fact_tab
-WHERE ft_doc_9 LIKE '%*documented*%'
+WHERE lower(cast(ft_doc_9 as varchar(100))) LIKE '%*documented*%'
 AND 'Fact' in (@Type)
 
 union all
 
 select DISTINCT dt_obj_key, dt_table_name
 from  red_dw.dbo.ws_dim_tab 
-where dt_doc_9 LIKE '%*documented*%'
+where lower(cast(dt_doc_9 as varchar(100))) LIKE '%*documented*%'
 AND 'Dimension' in (@Type)</CommandText>
       </Query>
       <Fields>
@@ -2743,6 +2743,51 @@ AND dt_obj_key IN (@Table)</CommandText>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="SQL_Dim_Dim_Matrix">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Table">
+            <Value>=Parameters!Table.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>
+SELECT 'Dim' type, dt_table_name, fact.table_name, column_name
+-- select *
+FROM red_dw.dbo.ws_dim_col
+INNER JOIN red_dw.dbo.ws_dim_tab ON ws_dim_col.dc_obj_key = ws_dim_tab.dt_obj_key
+inner JOIN	(SELECT dt_table_name table_name, dc_col_name column_name
+			FROM red_dw.dbo.ws_dim_col
+			INNER JOIN red_dw.dbo.ws_dim_tab ON ws_dim_col.dc_obj_key = ws_dim_tab.dt_obj_key
+			WHERE 1=1
+			-- and fc_col_name = 'dim_client_key'
+			AND dt_table_name IN (	SELECT wtl_name
+									FROM red_dw.dbo.ws_wrk_task_log
+									WHERE wtl_started &gt; DATEADD(m, -2, GETDATE()) )) fact ON fact.column_name = ws_dim_col.dc_col_name AND fact.table_name &lt;&gt; dt_table_name
+WHERE 1=1
+AND dc_data_type LIKE '%identity%'
+--AND dt_obj_key IN (1259) 
+AND dt_obj_key IN (@Table)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="type">
+          <DataField>type</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dt_table_name">
+          <DataField>dt_table_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="table_name">
+          <DataField>table_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="column_name">
+          <DataField>column_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -2782,16 +2827,11 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>0.89202cm</Top>
                                   <Left>1.67892in</Left>
                                   <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
+                                  <Width>5.56423in</Width>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -2816,19 +2856,14 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>0.89202cm</Top>
-                                  <Left>0.18992cm</Left>
+                                  <Left>0.0841cm</Left>
                                   <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>1</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -2852,20 +2887,15 @@ AND dt_obj_key IN (@Table)</CommandText>
                                     </Paragraph>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>5.68096cm</Top>
-                                  <Left>0.18992cm</Left>
-                                  <Height>0.50694in</Height>
+                                  <Top>5.68097cm</Top>
+                                  <Left>0.0792cm</Left>
+                                  <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>2</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -2889,19 +2919,15 @@ AND dt_obj_key IN (@Table)</CommandText>
                                     </Paragraph>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>4.19049cm</Top>
-                                  <Left>0.07477in</Left>
-                                  <Height>0.50694in</Height>
+                                  <Top>4.19048cm</Top>
+                                  <Left>0.03118in</Left>
+                                  <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>3</ZIndex>
                                   <Style>
                                     <Border>
-                                      <Style>Solid</Style>
-                                      <Width>0.3pt</Width>
+                                      <Style>None</Style>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -2926,19 +2952,14 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>1.5623cm</Top>
-                                  <Left>0.18992cm</Left>
-                                  <Height>0.22222in</Height>
+                                  <Left>0.0841cm</Left>
+                                  <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>4</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -2962,18 +2983,13 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <rd:DefaultName>tbl_comments1</rd:DefaultName>
                                   <Top>0.61508in</Top>
                                   <Left>1.67892in</Left>
-                                  <Height>0.22222in</Height>
+                                  <Height>0.25in</Height>
                                   <Width>15.70382in</Width>
                                   <ZIndex>5</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -2998,16 +3014,12 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>1.6498in</Top>
                                   <Left>1.67698in</Left>
                                   <Height>0.50694in</Height>
-                                  <Width>15.70382in</Width>
+                                  <Width>15.71774in</Width>
                                   <ZIndex>6</ZIndex>
                                   <Style>
                                     <Border>
-                                      <Style>Solid</Style>
-                                      <Width>0.3pt</Width>
+                                      <Style>None</Style>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3032,17 +3044,12 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>2.2366in</Top>
                                   <Left>1.67698in</Left>
                                   <Height>0.50694in</Height>
-                                  <Width>15.70382in</Width>
+                                  <Width>15.71774in</Width>
                                   <ZIndex>7</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3067,19 +3074,14 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>7.07443cm</Top>
-                                  <Left>0.18992cm</Left>
-                                  <Height>0.50694in</Height>
+                                  <Left>0.0792cm</Left>
+                                  <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>8</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3104,17 +3106,12 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>2.78521in</Top>
                                   <Left>1.67698in</Left>
                                   <Height>0.50694in</Height>
-                                  <Width>15.70382in</Width>
+                                  <Width>15.71774in</Width>
                                   <ZIndex>9</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3137,18 +3134,13 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <rd:DefaultName>tbl_comments1</rd:DefaultName>
                                   <Top>0.87897in</Top>
                                   <Left>1.67698in</Left>
-                                  <Height>0.20833in</Height>
+                                  <Height>0.25in</Height>
                                   <Width>15.70382in</Width>
                                   <ZIndex>10</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3173,19 +3165,14 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>2.23258cm</Top>
-                                  <Left>0.18992cm</Left>
-                                  <Height>0.20833in</Height>
+                                  <Left>0.07918cm</Left>
+                                  <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>11</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3210,19 +3197,14 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>2.84993cm</Top>
-                                  <Left>0.07477in</Left>
+                                  <Left>0.03118in</Left>
                                   <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>12</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3251,17 +3233,12 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>1.12202in</Top>
                                   <Left>1.67698in</Left>
                                   <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
+                                  <Width>5.56421in</Width>
                                   <ZIndex>13</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3286,7 +3263,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>8.50759cm</Top>
-                                  <Left>0.18992cm</Left>
+                                  <Left>0.0792cm</Left>
                                   <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
                                   <ZIndex>14</ZIndex>
@@ -3368,6 +3345,104 @@ AND dt_obj_key IN (@Table)</CommandText>
                                     <PaddingBottom>2pt</PaddingBottom>
                                   </Style>
                                 </Textbox>
+                                <Line Name="Line1">
+                                  <Top>0.60119in</Top>
+                                  <Left>0.23448in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>17</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line2">
+                                  <Top>0.87897in</Top>
+                                  <Left>0.23254in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>18</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line3">
+                                  <Top>1.12897in</Top>
+                                  <Left>0.23254in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>19</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line4">
+                                  <Top>1.38591in</Top>
+                                  <Left>0.23254in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>20</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line6">
+                                  <Top>2.15674in</Top>
+                                  <Left>0.23254in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>21</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line7">
+                                  <Top>2.78521in</Top>
+                                  <Left>0.23448in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>22</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
+                                <Line Name="Line8">
+                                  <Top>3.33382in</Top>
+                                  <Left>0.23254in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>23</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
                                 <Textbox Name="Textbox33">
                                   <CanGrow>true</CanGrow>
                                   <KeepTogether>true</KeepTogether>
@@ -3386,19 +3461,14 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   </Paragraphs>
                                   <rd:DefaultName>Textbox22</rd:DefaultName>
                                   <Top>3.59077cm</Top>
-                                  <Left>0.07477in</Left>
+                                  <Left>0.03118in</Left>
                                   <Height>0.25in</Height>
                                   <Width>1.60415in</Width>
-                                  <ZIndex>17</ZIndex>
+                                  <ZIndex>24</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
@@ -3425,23 +3495,32 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>1.41369in</Top>
                                   <Left>1.67698in</Left>
                                   <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
-                                  <ZIndex>18</ZIndex>
+                                  <Width>5.56421in</Width>
+                                  <ZIndex>25</ZIndex>
                                   <Style>
                                     <Border>
                                       <Style>None</Style>
-                                      <Width>0.3pt</Width>
                                     </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
                                     <PaddingLeft>2pt</PaddingLeft>
                                     <PaddingRight>2pt</PaddingRight>
                                     <PaddingTop>2pt</PaddingTop>
                                     <PaddingBottom>2pt</PaddingBottom>
                                   </Style>
                                 </Textbox>
+                                <Line Name="Line5">
+                                  <Top>1.67758in</Top>
+                                  <Left>0.23254in</Left>
+                                  <Height>0in</Height>
+                                  <Width>16.62052in</Width>
+                                  <ZIndex>26</ZIndex>
+                                  <Style>
+                                    <Border>
+                                      <Color>#004f59</Color>
+                                      <Style>Solid</Style>
+                                      <Width>0.5pt</Width>
+                                    </Border>
+                                  </Style>
+                                </Line>
                                 <Textbox Name="Textbox35">
                                   <CanGrow>true</CanGrow>
                                   <KeepTogether>true</KeepTogether>
@@ -3449,7 +3528,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                     <Paragraph>
                                       <TextRuns>
                                         <TextRun>
-                                          <Value>= "Table Overview"</Value>
+                                          <Value>= "Table Overview - " &amp; Fields!table_name.Value</Value>
                                           <Style>
                                             <FontSize>16pt</FontSize>
                                             <FontWeight>Bold</FontWeight>
@@ -3467,7 +3546,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Left>1.13394cm</Left>
                                   <Height>0.29564in</Height>
                                   <Width>6.78082in</Width>
-                                  <ZIndex>19</ZIndex>
+                                  <ZIndex>27</ZIndex>
                                   <Bookmark>=Fields!table_name.Value &amp; " - Overview"</Bookmark>
                                   <Style>
                                     <Border>
@@ -3506,7 +3585,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Top>4.11669in</Top>
                                   <Height>1.02198in</Height>
                                   <Width>17.3993in</Width>
-                                  <ZIndex>20</ZIndex>
+                                  <ZIndex>28</ZIndex>
                                   <DocumentMapLabel>Keys</DocumentMapLabel>
                                   <Bookmark>=Fields!table_name.Value &amp; " - Keys"</Bookmark>
                                   <Style>
@@ -3543,7 +3622,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Left>0.03984cm</Left>
                                   <Height>1in</Height>
                                   <Width>17.36072in</Width>
-                                  <ZIndex>21</ZIndex>
+                                  <ZIndex>29</ZIndex>
                                   <DocumentMapLabel>Attributes</DocumentMapLabel>
                                   <Bookmark>=Fields!table_name.Value &amp; " - Attributes"</Bookmark>
                                   <Style>
@@ -3580,7 +3659,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                   <Left>0.10964cm</Left>
                                   <Height>1in</Height>
                                   <Width>17.36072in</Width>
-                                  <ZIndex>22</ZIndex>
+                                  <ZIndex>30</ZIndex>
                                   <DocumentMapLabel>Jobs</DocumentMapLabel>
                                   <Bookmark>=Fields!table_name.Value &amp; " - Jobs"</Bookmark>
                                   <Style>
@@ -3599,7 +3678,6 @@ AND dt_obj_key IN (@Table)</CommandText>
                                 </Border>
                               </Style>
                             </Rectangle>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -3638,7 +3716,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                 </Style>
               </Tablix>
             </ReportItems>
-            <Top>12.09591cm</Top>
+            <Top>19.08091cm</Top>
             <Left>0.02952cm</Left>
             <Height>11.15552in</Height>
             <Width>17.88953in</Width>
@@ -3705,7 +3783,7 @@ AND dt_obj_key IN (@Table)</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value> Dimension &amp; Fact Matrix</Value>
+                                      <Value>Dimension &amp; Fact Matrix</Value>
                                       <Style />
                                     </TextRun>
                                   </TextRuns>
@@ -3723,6 +3801,48 @@ AND dt_obj_key IN (@Table)</CommandText>
                               <Visibility>
                                 <Hidden>=iif(len(First(Fields!type.Value, "SQL_Dim_Fact_Matrix"))&gt;0,False,True)</Hidden>
                               </Visibility>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox7">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Dimension Matrix</Value>
+                                      <Style />
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox7</rd:DefaultName>
+                              <ActionInfo>
+                                <Actions>
+                                  <Action>
+                                    <BookmarkLink>Dimension Matrix</BookmarkLink>
+                                  </Action>
+                                </Actions>
+                              </ActionInfo>
                               <Style>
                                 <Border>
                                   <Color>LightGrey</Color>
@@ -3870,6 +3990,42 @@ AND dt_obj_key IN (@Table)</CommandText>
                       <KeepWithGroup>After</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
+                      <TablixHeader>
+                        <Size>2.40825in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox6">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value />
+                                    <Style />
+                                  </TextRun>
+                                </TextRuns>
+                                <Style>
+                                  <TextAlign>Right</TextAlign>
+                                </Style>
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox6</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                      <KeepWithGroup>After</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
                       <Group Name="object_key">
                         <GroupExpressions>
                           <GroupExpression>=Fields!object_key.Value</GroupExpression>
@@ -3927,9 +4083,8 @@ AND dt_obj_key IN (@Table)</CommandText>
                   </TablixMembers>
                 </TablixRowHierarchy>
                 <DataSetName>SQL_Bookmarks</DataSetName>
-                <Top>0.14884in</Top>
                 <Left>0.40894in</Left>
-                <Height>0.99306in</Height>
+                <Height>1.24306in</Height>
                 <Width>8.93735in</Width>
                 <Style>
                   <Border>
@@ -3944,7 +4099,7 @@ AND dt_obj_key IN (@Table)</CommandText>
             <KeepTogether>true</KeepTogether>
             <Top>0.06944in</Top>
             <Left>0.04104in</Left>
-            <Height>1.19246in</Height>
+            <Height>1.26892in</Height>
             <Width>14.06944in</Width>
             <ZIndex>1</ZIndex>
             <Style>
@@ -4293,8 +4448,8 @@ AND dt_obj_key IN (@Table)</CommandText>
                   </Paragraph>
                 </Paragraphs>
                 <rd:DefaultName>Textbox22</rd:DefaultName>
-                <Top>0.37796cm</Top>
-                <Left>1.14295cm</Left>
+                <Top>0.34269cm</Top>
+                <Left>1.18672cm</Left>
                 <Height>0.29564in</Height>
                 <Width>6.78082in</Width>
                 <ZIndex>1</ZIndex>
@@ -4328,8 +4483,383 @@ AND dt_obj_key IN (@Table)</CommandText>
               </Border>
             </Style>
           </Rectangle>
+          <Rectangle Name="Rectangle4">
+            <ReportItems>
+              <Tablix Name="tblData3">
+                <TablixBody>
+                  <TablixColumns>
+                    <TablixColumn>
+                      <Width>2.2275in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>0.23622in</Width>
+                    </TablixColumn>
+                  </TablixColumns>
+                  <TablixRows>
+                    <TablixRow>
+                      <Height>2.20139in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox70">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style>
+                                        <FontSize>16pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>#004f59</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox68</rd:DefaultName>
+                              <Visibility>
+                                <Hidden>true</Hidden>
+                              </Visibility>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>Solid</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>20pt</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="ft_table_name2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!table_name.Value</Value>
+                                      <Style>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>#004f59</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Left</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>ft_table_name</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>Solid</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>1pt</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>Rotate270</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="dt_table_name2">
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!dt_table_name.Value</Value>
+                                      <Style>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>#004f59</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Right</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>dt_table_name1</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>Solid</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="dc_col_name2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=iif(len(Fields!column_name.Value) &gt; 0, "X", "")</Value>
+                                      <Style>
+                                        <FontWeight>Bold</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>Center</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>dc_col_name</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>Solid</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>3pt</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                  </TablixRows>
+                </TablixBody>
+                <TablixColumnHierarchy>
+                  <TablixMembers>
+                    <TablixMember />
+                    <TablixMember>
+                      <Group Name="ft_table_name2">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!table_name.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!table_name.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixColumnHierarchy>
+                <TablixRowHierarchy>
+                  <TablixMembers>
+                    <TablixMember>
+                      <KeepWithGroup>After</KeepWithGroup>
+                    </TablixMember>
+                    <TablixMember>
+                      <Group Name="dt_table_name2">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!dt_table_name.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!dt_table_name.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                      <TablixMembers>
+                        <TablixMember />
+                      </TablixMembers>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixRowHierarchy>
+                <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
+                <DataSetName>SQL_Dim_Dim_Matrix</DataSetName>
+                <PageName>Table Keys</PageName>
+                <Top>1.27cm</Top>
+                <Left>0.3175cm</Left>
+                <Height>2.45139in</Height>
+                <Width>2.46372in</Width>
+                <Style>
+                  <Border>
+                    <Style>None</Style>
+                  </Border>
+                  <PaddingLeft>=First(Fields!tblData_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                  <PaddingRight>=First(Fields!tblData_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                  <PaddingTop>=First(Fields!tblData_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                  <PaddingBottom>=First(Fields!tblData_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                </Style>
+              </Tablix>
+              <Textbox Name="Textbox37">
+                <CanGrow>true</CanGrow>
+                <KeepTogether>true</KeepTogether>
+                <Paragraphs>
+                  <Paragraph>
+                    <TextRuns>
+                      <TextRun>
+                        <Value>="Dimension Matrix"</Value>
+                        <Style>
+                          <FontSize>16pt</FontSize>
+                          <FontWeight>Bold</FontWeight>
+                          <Color>#004f59</Color>
+                        </Style>
+                      </TextRun>
+                    </TextRuns>
+                    <Style>
+                      <TextAlign>Left</TextAlign>
+                    </Style>
+                  </Paragraph>
+                </Paragraphs>
+                <rd:DefaultName>Textbox22</rd:DefaultName>
+                <Top>0.34269cm</Top>
+                <Left>1.18672cm</Left>
+                <Height>0.29564in</Height>
+                <Width>6.78082in</Width>
+                <ZIndex>1</ZIndex>
+                <Style>
+                  <Border>
+                    <Style>None</Style>
+                  </Border>
+                  <PaddingLeft>2pt</PaddingLeft>
+                  <PaddingRight>2pt</PaddingRight>
+                  <PaddingTop>2pt</PaddingTop>
+                  <PaddingBottom>2pt</PaddingBottom>
+                </Style>
+              </Textbox>
+            </ReportItems>
+            <PageBreak>
+              <BreakLocation>End</BreakLocation>
+            </PageBreak>
+            <KeepTogether>true</KeepTogether>
+            <Top>4.44253in</Top>
+            <Height>2.99306in</Height>
+            <Width>17.48861in</Width>
+            <ZIndex>3</ZIndex>
+            <Visibility>
+              <Hidden>=iif(len(First(Fields!type.Value, "SQL_Dim_Dim_Matrix")) &gt; 0, False, True)</Hidden>
+            </Visibility>
+            <DocumentMapLabel>="Dimension Matrix"</DocumentMapLabel>
+            <Bookmark>="Dimension Matrix"</Bookmark>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Rectangle>
         </ReportItems>
-        <Height>15.91769in</Height>
+        <Height>18.66769in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
