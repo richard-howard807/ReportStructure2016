@@ -32,6 +32,11 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>f648a701-047f-485e-be02-0d8c3dc48fe9</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="Reporting">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>ab47a275-bddd-4b80-acba-3ab1e39fa149</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="DAXDatasetAgedWIP">
@@ -682,9 +687,9 @@ fin_period</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT CASE WHEN f.activeud = 'True' THEN 1 ELSE 0 END AS activeud, f.fed_code, '[Dim Fed Hierarchy History].[Fed Code].[' + f.fed_code + ']' AS 'MDXFEDCode'
-FROM            dim_fed_hierarchy_history AS f LEFT OUTER JOIN
-                         load_cascade_employee AS e ON e.employeeid = f.employeeid
-WHERE       LOWER(ltrim(e.windowsusername)) =  LOWER(LTRIM(@Username)) AND (f.dss_current_flag = 'Y')
+FROM            dim_fed_hierarchy_history AS f --LEFT OUTER JOIN
+                         --load_cascade_employee AS e ON e.employeeid = f.employeeid
+WHERE       LOWER(ltrim(f.windowsusername)) =  LOWER(LTRIM(@Username)) AND (f.dss_current_flag = 'Y')
 ORDER BY activeud DESC, f.fed_code DESC</CommandText>
       </Query>
       <Fields>
@@ -1263,11 +1268,11 @@ name,
 from
 red_dw.dbo.dim_fed_hierarchy_history f
 
-left join red_dw.dbo.load_cascade_employee e
-	on e.employeeid = f.employeeid
+--left join red_dw.dbo.load_cascade_employee e
+	--on e.employeeid = f.employeeid
 
 where
-lower(ltrim(e.windowsusername)) = lower(ltrim(@Username))
+lower(ltrim(f.windowsusername)) = lower(ltrim(@Username))
 
 order by dss_update_time desc</CommandText>
       </Query>
@@ -2141,6 +2146,327 @@ strtomember(@Month)
         <Field Name="Original_Value">
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[Original Value]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="UnbilledDisbBanding">
+      <Query>
+        <DataSourceName>Reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Month">
+            <Value>=Parameters!Month.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@FEDCode">
+            <Value>=Parameters!FEDCode.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>/*
+===================================================
+===================================================
+Author:				Max Taylor
+Created Date:		2020-01-27
+Description:		Unbilled Disbursements Drillthrough
+Current Version:	Update to new version 
+====================================================
+====================================================
+*/
+  
+
+--DECLARE @Month AS varchar(10) = 'Feb-20' -- Test 
+--DECLARE @FEDCode AS VARCHAR(10) = '594'
+
+
+IF @Month &lt;&gt;  CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
+
+SELECT 
+ AllData.fed_code
+,[Days_Banding]  
+,SUM(DisbAmount) AS [Wip Value]  
+FROM   
+(  
+SELECT a.client_code AS  Client  
+,a.matter_number AS  Matter  
+,total_unbilled_disbursements AS ChargeRate  
+,total_unbilled_disbursements AS DisbAmount  
+,total_unbilled_disbursements_vat AS [Tax Value]  
+,hierarchylevel2hist AS [Business Line]  
+,hierarchylevel3hist As [Practice Area]  
+,hierarchylevel4hist AS [Team]  
+,display_name As [Display Name]  
+,display_name AS AccountsUser  
+,unbilled_hard_disbursements AS HardCost  
+,unbilled_soft_disbursements AS SoftCost  
+,a.workdate AS DisbDate  
+,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN '31 - 90 days'  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 'Greater than 90 Days' END  AS [Days_Banding]  
+  
+,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN -1  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN 2  
+WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 30 END AS [Dim Days Banding Key]  
+,b.*  
+,dim_fed_hierarchy_history.fed_code
+FROM    red_dw.dbo.fact_disbursements_detail_monthly AS a  
+INNER JOIN red_dw.dbo.dim_transaction_date As b  
+ ON a.dim_transaction_date_key=b.dim_transaction_date_key  
+  
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)  
+ ON a.client_code=dim_matter_header_current.client_code  
+ AND a.matter_number=dim_matter_header_current.matter_number 
+ 
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK)   
+ ON dim_matter_header_current.fee_earner_code=fed_code collate database_default AND dss_current_flag='Y'  
+   
+ WHERE dim_bill_key=0  
+
+AND total_unbilled_disbursements &lt;&gt; 0  
+--AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
+AND b.transaction_fin_month_name + '-' +  right(b.transaction_cal_year, 2)  =  @Month  
+
+--AND b.transaction_fin_month &lt;&gt; CAST(YEAR(GETDATE()) AS VARCHAR(10)) + CASE WHEN MONTH(GETDATE()) IN (10,11,12) THEN CAST(MONTH(GETDATE()) AS VARCHAR(10)) ELSE ('0' + CAST(MONTH(GETDATE()) AS VARCHAR(10))) END-- used to exclude current Month Year from Snapshot
+--AND @Month &lt;&gt; CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
+
+AND  dim_fed_hierarchy_history.fed_code = @FEDCode
+
+) AS AllData  
+
+GROUP BY 
+
+ AllData.fed_code
+,[Days_Banding]  
+
+  
+HAVING SUM(DisbAmount)&lt;&gt;0  
+
+/* Used to pull in Current MonthYear as logic for Current is incorrect when looking at snapshot table*/
+
+ELSE
+
+SELECT 
+
+AllData.fed_code
+,[Days_Banding]  
+,SUM(DisbAmount) AS [Wip Value]  
+ FROM   
+(  
+SELECT a.client_code AS  Client  
+,c.client_name 
+,a.matter_number AS  Matter  
+,total_unbilled_disbursements AS ChargeRate  
+,total_unbilled_disbursements AS DisbAmount  
+,total_unbilled_disbursements_vat AS [Tax Value]  
+,hierarchylevel2hist AS [Business Line]  
+,hierarchylevel3hist As [Practice Area]  
+,hierarchylevel4hist AS [Team]  
+,display_name As [Display Name]  
+,display_name AS AccountsUser  
+,unbilled_hard_disbursements AS HardCost  
+,unbilled_soft_disbursements AS SoftCost  
+,a.workdate AS DisbDate  
+
+,CASE WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
+ WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 31 AND 90     THEN '31 - 90 days'  
+ WHEN DATEDIFF(DAY,a.workdate,GETDATE()) &gt; 90                  THEN 'Greater than 90 Days' 
+ END  AS [Days_Banding]  
+  
+,CASE WHEN DATEDIFF(DAY,a.workdate, GETDATE()) BETWEEN 0 AND 30 THEN -1  
+ WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 31 AND 90 THEN 2  
+ WHEN DATEDIFF(DAY,a.workdate,GETDATE()) &gt; 90 THEN 30 
+ END AS [Dim Days Banding Key]  
+
+,dim_matter_header_current.matter_description
+,dim_fed_hierarchy_history.fed_code
+
+FROM       red_dw.dbo.fact_disbursements_detail AS a  
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK) ON a.client_code=dim_matter_header_current.client_code  AND a.matter_number=dim_matter_header_current.matter_number   
+INNER JOIN red_dw.dbo.dim_client c ON c.client_code = dim_matter_header_current.client_code
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history  WITH(NOLOCK)  ON dim_matter_header_current.fee_earner_code= fed_code collate database_default AND dss_current_flag='Y'  
+   
+WHERE  1 = 1 
+AND    dim_bill_key=0  
+AND    total_unbilled_disbursements &lt;&gt; 0  
+
+--AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
+
+--AND @Month =   CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
+
+AND  dim_fed_hierarchy_history.fed_code = @FEDCode
+
+
+
+
+) AS AllData  
+
+
+
+GROUP BY 
+
+ AllData.fed_code
+,[Days_Banding]  
+
+  
+HAVING SUM(DisbAmount)&lt;&gt;0  
+
+
+
+
+/*
+===================================================
+===================================================
+Author:				Max Taylor
+Created Date:		2020-01-27
+Description:		Unbilled Disbursements Drillthrough
+Current Version:	Update to new version 
+====================================================
+====================================================
+*/
+  
+
+--DECLARE @Month AS varchar(10) = 'Feb-20' -- Test 
+--DECLARE @FEDCode AS VARCHAR(10) = '594'
+
+  
+--SELECT 
+-- AllData.fed_code
+--,[Days_Banding]  
+--,SUM(DisbAmount) AS [Wip Value]  
+--FROM   
+--(  
+--SELECT a.client_code AS  Client  
+--,a.matter_number AS  Matter  
+--,total_unbilled_disbursements AS ChargeRate  
+--,total_unbilled_disbursements AS DisbAmount  
+--,total_unbilled_disbursements_vat AS [Tax Value]  
+--,hierarchylevel2hist AS [Business Line]  
+--,hierarchylevel3hist As [Practice Area]  
+--,hierarchylevel4hist AS [Team]  
+--,display_name As [Display Name]  
+--,display_name AS AccountsUser  
+--,unbilled_hard_disbursements AS HardCost  
+--,unbilled_soft_disbursements AS SoftCost  
+--,a.workdate AS DisbDate  
+--,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
+--WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN '31 - 90 days'  
+--WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 'Greater than 90 Days' END  AS [Days_Banding]  
+  
+--,CASE WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 0 AND 30 THEN -1  
+--WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) BETWEEN 31 AND 90 THEN 2  
+--WHEN DATEDIFF(DAY,a.workdate,EOMONTH(transaction_calendar_date)) &gt; 90 THEN 30 END AS [Dim Days Banding Key]  
+--,b.*  
+--,dim_fed_hierarchy_history.fed_code
+--FROM    red_dw.dbo.fact_disbursements_detail_monthly AS a  
+--INNER JOIN red_dw.dbo.dim_transaction_date As b  
+-- ON a.dim_transaction_date_key=b.dim_transaction_date_key  
+  
+--INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)  
+-- ON a.client_code=dim_matter_header_current.client_code  
+-- AND a.matter_number=dim_matter_header_current.matter_number 
+ 
+--INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK)   
+-- ON dim_matter_header_current.fee_earner_code=fed_code collate database_default AND dss_current_flag='Y'  
+   
+-- WHERE dim_bill_key=0  
+
+--AND total_unbilled_disbursements &lt;&gt; 0  
+----AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
+--AND b.transaction_fin_month_name + '-' +  right(B.transaction_cal_year, 2)  =  @Month  
+
+----AND b.transaction_fin_month &lt;&gt; CAST(YEAR(GETDATE()) AS VARCHAR(10)) + CASE WHEN MONTH(GETDATE()) IN (10,11,12) THEN CAST(MONTH(GETDATE()) AS VARCHAR(10)) ELSE ('0' + CAST(MONTH(GETDATE()) AS VARCHAR(10))) END-- used to exclude current Month Year from Snapshot
+--AND @Month &lt;&gt; CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
+
+--AND  dim_fed_hierarchy_history.fed_code = @FEDCode
+
+--) AS AllData  
+
+--GROUP BY 
+
+--AllData.fed_code
+--,[Days_Banding]  
+
+  
+--HAVING SUM(DisbAmount)&lt;&gt;0  
+
+--/* Used to pull in Current MonthYear as logic for Current is incorrect when looking at snapshot table*/
+
+--UNION 
+
+--SELECT 
+
+--AllData.fed_code
+--,[Days_Banding]  
+--,SUM(DisbAmount) AS [Wip Value]  
+-- FROM   
+--(  
+--SELECT a.client_code AS  Client  
+--,c.client_name 
+--,a.matter_number AS  Matter  
+--,total_unbilled_disbursements AS ChargeRate  
+--,total_unbilled_disbursements AS DisbAmount  
+--,total_unbilled_disbursements_vat AS [Tax Value]  
+--,hierarchylevel2hist AS [Business Line]  
+--,hierarchylevel3hist As [Practice Area]  
+--,hierarchylevel4hist AS [Team]  
+--,display_name As [Display Name]  
+--,display_name AS AccountsUser  
+--,unbilled_hard_disbursements AS HardCost  
+--,unbilled_soft_disbursements AS SoftCost  
+--,a.workdate AS DisbDate  
+
+--,CASE WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 0 AND 30 THEN '0 - 30 Days'  
+-- WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 31 AND 90     THEN '31 - 90 days'  
+-- WHEN DATEDIFF(DAY,a.workdate,GETDATE()) &gt; 90                  THEN 'Greater than 90 Days' 
+-- END  AS [Days_Banding]  
+  
+--,CASE WHEN DATEDIFF(DAY,a.workdate, GETDATE()) BETWEEN 0 AND 30 THEN -1  
+-- WHEN DATEDIFF(DAY,a.workdate,GETDATE()) BETWEEN 31 AND 90 THEN 2  
+-- WHEN DATEDIFF(DAY,a.workdate,GETDATE()) &gt; 90 THEN 30 
+-- END AS [Dim Days Banding Key]  
+
+--,dim_matter_header_current.matter_description
+--,dim_fed_hierarchy_history.fed_code
+
+--FROM       red_dw.dbo.fact_disbursements_detail AS a  
+--INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK) ON a.client_code=dim_matter_header_current.client_code  AND a.matter_number=dim_matter_header_current.matter_number   
+--INNER JOIN red_dw.dbo.dim_client c ON c.client_code = dim_matter_header_current.client_code
+--INNER JOIN red_dw.dbo.dim_fed_hierarchy_history  WITH(NOLOCK)  ON dim_matter_header_current.fee_earner_code= fed_code collate database_default AND dss_current_flag='Y'  
+   
+--WHERE  1 = 1 
+--AND    dim_bill_key=0  
+--AND    total_unbilled_disbursements &lt;&gt; 0  
+
+----AND reporting_exclusions=0 -- Requested by steve Scullion to remove  
+
+--AND @Month =   CAST(LEFT(DATENAME(mm,GETDATE()), 3) AS VARCHAR(10))  + '-' +  CAST(right(YEAR(GETDATE()), 2) AS VARCHAR(10))
+
+--AND  dim_fed_hierarchy_history.fed_code = @FEDCode
+
+
+
+
+--) AS AllData  
+
+
+
+--GROUP BY 
+
+-- AllData.fed_code
+--,[Days_Banding]  
+
+  
+--HAVING SUM(DisbAmount)&lt;&gt;0  </CommandText>
+      </Query>
+      <Fields>
+        <Field Name="fed_code">
+          <DataField>fed_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Days_Banding">
+          <DataField>Days_Banding</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Wip_Value">
+          <DataField>Wip Value</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -4065,7 +4391,7 @@ strtomember(@Month)
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox40</rd:DefaultName>
-            <Top>24.07863cm</Top>
+            <Top>25.03995cm</Top>
             <Left>0.06289cm</Left>
             <Height>0.6cm</Height>
             <Width>21.29584cm</Width>
@@ -4098,9 +4424,9 @@ strtomember(@Month)
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox40</rd:DefaultName>
-            <Top>24.85502cm</Top>
+            <Top>25.67523cm</Top>
             <Left>0.06289cm</Left>
-            <Height>0.6cm</Height>
+            <Height>0.52062cm</Height>
             <Width>21.29584cm</Width>
             <ZIndex>2</ZIndex>
             <Style>
@@ -4117,7 +4443,7 @@ strtomember(@Month)
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>2.79104cm</Width>
+                  <Width>3.71708cm</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>2.2383cm</Width>
@@ -4366,6 +4692,140 @@ strtomember(@Month)
                     </TablixCell>
                   </TablixCells>
                 </TablixRow>
+                <TablixRow>
+                  <Height>0.6cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox5">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Unbilled Disbursements</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <TextDecoration>Underline</TextDecoration>
+                                    <Color>Blue</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox5</rd:DefaultName>
+                          <ActionInfo>
+                            <Actions>
+                              <Action>
+                                <Drillthrough>
+                                  <ReportName>MiniBAR Drilldown_Unbilled Disbursements</ReportName>
+                                  <Parameters>
+                                    <Parameter Name="FEDCode">
+                                      <Value>=Parameters!FEDCode.Value</Value>
+                                    </Parameter>
+                                    <Parameter Name="Month">
+                                      <Value>=Parameters!Month.Value</Value>
+                                    </Parameter>
+                                  </Parameters>
+                                </Drillthrough>
+                              </Action>
+                            </Actions>
+                          </ActionInfo>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox7">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=IIF(Lookup(Fields!dimDaysBanding_TransactionAgeBanding_.Value, 
+Fields!Days_Banding.Value, Fields!Wip_Value.Value, "UnbilledDisbBanding")
+= Nothing, 0, 
+Lookup(Fields!dimDaysBanding_TransactionAgeBanding_.Value, 
+Fields!Days_Banding.Value,
+Fields!Wip_Value.Value, "UnbilledDisbBanding")
+)</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>'£'#,0;('£'#,0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox7</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox9">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=iif(Sum(Fields!Wip_Value.Value, "UnbilledDisbBanding") = nothing, 0, Sum(Fields!Wip_Value.Value, "UnbilledDisbBanding") )</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Format>'£'#,0;('£'#,0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox9</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
               </TablixRows>
             </TablixBody>
             <TablixColumnHierarchy>
@@ -4388,13 +4848,14 @@ strtomember(@Month)
               <TablixMembers>
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>DAXDatasetAgedWIP</DataSetName>
             <Top>13.59504cm</Top>
             <Left>0.06289cm</Left>
-            <Height>1.2cm</Height>
-            <Width>7.22863cm</Width>
+            <Height>1.8cm</Height>
+            <Width>8.15467cm</Width>
             <ZIndex>3</ZIndex>
             <Style>
               <Border>
@@ -4680,7 +5141,7 @@ strtomember(@Month)
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>DAXDatasetAgedDebt</DataSetName>
-            <Top>14.91608cm</Top>
+            <Top>16.01852cm</Top>
             <Left>0.06289cm</Left>
             <Height>1.2cm</Height>
             <Width>7.22863cm</Width>
@@ -4945,7 +5406,7 @@ strtomember(@Month)
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>MDX_BillReceipts</DataSetName>
-            <Top>16.2572cm</Top>
+            <Top>17.28907cm</Top>
             <Left>0.06289cm</Left>
             <Height>1.2cm</Height>
             <Width>9.74451cm</Width>
@@ -5206,8 +5667,7 @@ cdate(Fields!FirstOfMonth.Value) &lt;&gt; cdate(Parameters!SqlFirstday.Value), "
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>SQL_CalendarGenerate</DataSetName>
-            <Top>21.33942cm</Top>
-            <Left>0.06289cm</Left>
+            <Top>22.40658cm</Top>
             <Height>2.56282cm</Height>
             <Width>2.85393cm</Width>
             <ZIndex>6</ZIndex>
@@ -5242,8 +5702,8 @@ cdate(Fields!FirstOfMonth.Value) &lt;&gt; cdate(Parameters!SqlFirstday.Value), "
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox78</rd:DefaultName>
-            <Top>20.70414cm</Top>
-            <Left>0.12578cm</Left>
+            <Top>21.70074cm</Top>
+            <Left>0.06289cm</Left>
             <Height>0.6cm</Height>
             <Width>19.84568cm</Width>
             <ZIndex>7</ZIndex>
@@ -5997,7 +6457,7 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>DebtTargets_2019</DataSetName>
-            <Top>17.52775cm</Top>
+            <Top>18.52435cm</Top>
             <Left>0.06289cm</Left>
             <Height>3cm</Height>
             <Width>9.42792cm</Width>
@@ -6009,10 +6469,10 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>10.02166in</Height>
+        <Height>10.31333in</Height>
         <Style />
       </Body>
-      <Width>8.40895in</Width>
+      <Width>8.50919in</Width>
       <Page>
         <PageHeight>29.7cm</PageHeight>
         <PageWidth>21cm</PageWidth>
@@ -6195,7 +6655,7 @@ iif(Sum(Fields!Second_Target.Value) = nothing, 0, Sum(Fields!Second_Target.Value
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>7</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
