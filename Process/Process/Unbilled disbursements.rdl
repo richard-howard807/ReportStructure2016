@@ -9,7 +9,7 @@
     </DataSource>
   </DataSources>
   <DataSets>
-    <DataSet Name="DataSet1">
+    <DataSet Name="UnbilledDisbursements">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
@@ -18,7 +18,7 @@
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>dbo.UnbilledDisbBanding</CommandText>
+        <CommandText>dbo.UnbilledDisbBandingNew</CommandText>
       </Query>
       <Fields>
         <Field Name="Wip_Value">
@@ -55,14 +55,22 @@
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="DataSet2">
+    <DataSet Name="PeriodParam">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT transaction_fin_month,transaction_fin_period FROM red_dw.dbo.dim_transaction_date
+        <CommandText>SELECT DISTINCT 
+ cal_month_name + '-' + right(cal_year, 2) as 'DAXPeriod'
+ ,transaction_fin_month,transaction_fin_period 
+ FROM red_dw.dbo.dim_transaction_date
+JOIN red_dw.dbo.dim_date ON dim_transaction_date.transaction_fin_month = dim_date.fin_month
 WHERE transaction_fin_month &gt;201001
 ORDER BY transaction_fin_month</CommandText>
       </Query>
       <Fields>
+        <Field Name="DAXPeriod">
+          <DataField>DAXPeriod</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="transaction_fin_month">
           <DataField>transaction_fin_month</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
@@ -73,13 +81,20 @@ ORDER BY transaction_fin_month</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="DataSet3">
+    <DataSet Name="CurrentMonthYear">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT transaction_fin_month,transaction_fin_period FROM red_dw.dbo.dim_transaction_date
+        <CommandText>SELECT TOP 1
+cal_month_name + '-' + right(cal_year, 2) as 'DAXPeriod',
+transaction_fin_month,transaction_fin_period FROM red_dw.dbo.dim_transaction_date
+JOIN red_dw.dbo.dim_date ON dim_transaction_date.transaction_fin_month = dim_date.fin_month
 WHERE transaction_calendar_date=CONVERT(DATE,GETDATE(),103)</CommandText>
       </Query>
       <Fields>
+        <Field Name="DAXPeriod">
+          <DataField>DAXPeriod</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="transaction_fin_month">
           <DataField>transaction_fin_month</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
@@ -2048,7 +2063,7 @@ WHERE transaction_calendar_date=CONVERT(DATE,GETDATE(),103)</CommandText>
             </TablixRowHierarchy>
             <RepeatColumnHeaders>true</RepeatColumnHeaders>
             <RepeatRowHeaders>true</RepeatRowHeaders>
-            <DataSetName>DataSet1</DataSetName>
+            <DataSetName>UnbilledDisbursements</DataSetName>
             <Height>1.92in</Height>
             <Width>7.42709in</Width>
             <ZIndex>2</ZIndex>
@@ -2087,16 +2102,16 @@ WHERE transaction_calendar_date=CONVERT(DATE,GETDATE(),103)</CommandText>
       <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
-          <DataSetName>DataSet3</DataSetName>
-          <ValueField>transaction_fin_month</ValueField>
+          <DataSetName>CurrentMonthYear</DataSetName>
+          <ValueField>DAXPeriod</ValueField>
         </DataSetReference>
       </DefaultValue>
       <Prompt>Period</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>DataSet2</DataSetName>
-          <ValueField>transaction_fin_month</ValueField>
-          <LabelField>transaction_fin_period</LabelField>
+          <DataSetName>PeriodParam</DataSetName>
+          <ValueField>DAXPeriod</ValueField>
+          <LabelField>DAXPeriod</LabelField>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
