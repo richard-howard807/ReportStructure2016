@@ -3007,6 +3007,7 @@ SELECT
       , t.[client_code]
       ,t.[matter_number] AS MatterNumber
 	  ,t.task_code
+	  
 	  ,dimt.task_desccription
 	  ,CONVERT(CHAR(10), t.[dim_task_due_date_key], 120) AS TasksDueDate
 
@@ -3060,6 +3061,7 @@ SELECT
   ,DATEDIFF(dd, dcd.[date_subsequent_sla_report_sent], COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate))
   AS [Days between the date of trial and the date of subsequent report] 
 
+  ,TasksDue.task_desccription
 
   FROM red_dw.[dbo].[dim_detail_court] ddc 
   JOIN red_dw.dbo.dim_client c ON ddc.client_code = c.client_code 
@@ -3086,6 +3088,10 @@ SELECT
   AND COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate) &gt;= @Start
 
   AND COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate) &lt;  @End
+
+  AND ISNULL(TasksDue.task_desccription, '') &lt;&gt; 'Trial window - today'
+
+  AND COALESCE(ddcourt.[date_of_trial], TasksDue.TasksDueDate) IS NOT NULL 
 
   ORDER BY c.client_code, ddc.matter_number</CommandText>
       </Query>
@@ -3157,6 +3163,10 @@ SELECT
         <Field Name="Days_between_the_date_of_trial_and_the_date_of_subsequent_report">
           <DataField>Days between the date of trial and the date of subsequent report</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="task_desccription">
+          <DataField>task_desccription</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
