@@ -2454,19 +2454,24 @@ WHERE  name ='DWHDoc.png'</CommandText>
           <QueryParameter Name="@Type">
             <Value>=Parameters!Type.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@SearchResults">
+            <Value>=Parameters!SearchResults.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>
 SELECT DISTINCT ft_obj_key, ft_table_name
 from red_dw.dbo.ws_fact_tab
 WHERE lower(cast(ft_doc_9 as varchar(100))) LIKE '%*documented*%'
 AND 'Fact' in (@Type)
+and ft_obj_key in (@SearchResults)
 
 union all
 
 select DISTINCT dt_obj_key, dt_table_name
 from  red_dw.dbo.ws_dim_tab 
 where lower(cast(dt_doc_9 as varchar(100))) LIKE '%*documented*%'
-AND 'Dimension' in (@Type)</CommandText>
+AND 'Dimension' in (@Type)
+and dt_obj_key in (@SearchResults)</CommandText>
       </Query>
       <Fields>
         <Field Name="ft_obj_key">
@@ -2785,6 +2790,54 @@ AND dt_obj_key IN (@Table)</CommandText>
         <Field Name="column_name">
           <DataField>column_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="SQL_Search_Results">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Searchstring">
+            <Value>=Parameters!Searchstring.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>
+Declare @Search nvarchar(100) = IIF(LEN(@Searchstring) &gt; 1, '%' + LOWER(@Searchstring) + '%', '%') 
+
+
+SELECT DISTINCT ws_wrk_task_log.wtl_obj_key
+		INTO #tasklog
+FROM red_dw.dbo.ws_wrk_task_log
+WHERE ws_wrk_task_log.wtl_completed &gt;= DATEADD(m,-2, GETDATE())
+
+
+
+SELECT  DISTINCT ft_obj_key
+-- select *
+from red_dw.dbo.ws_fact_col a
+inner JOIN red_dw.dbo.ws_fact_tab ON ws_fact_tab.ft_obj_key = a.fc_obj_key
+WHERE (LOWER(a.fc_col_name) LIKE LOWER(@Search)
+	OR LOWER(CAST(a.fc_doc_1 AS NVARCHAR(MAX))) LIKE LOWER(@Search)
+	OR LOWER(a.fc_display_name) LIKE LOWER(@Search))
+AND ws_fact_tab.ft_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
+
+UNION ALL
+
+SELECT  DISTINCT dt_obj_key
+-- select *
+from red_dw.dbo.ws_dim_col a
+INNER JOIN red_dw.dbo.ws_dim_tab ON a.dc_obj_key = ws_dim_tab.dt_obj_key
+WHERE (LOWER(a.dc_col_name) LIKE LOWER(@Search)
+	OR LOWER(CAST(a.dc_doc_1 AS NVARCHAR(MAX))) LIKE LOWER(@Search)
+	OR LOWER(a.dc_display_name) LIKE LOWER(@Search))
+AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
+
+</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="ft_obj_key">
+          <DataField>ft_obj_key</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -5488,6 +5541,30 @@ AND dt_obj_key IN (@Table)</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Searchstring">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Search for a term</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="SearchResults">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>SQL_Search_Results</DataSetName>
+          <ValueField>ft_obj_key</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>SearchResults</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>SQL_Search_Results</DataSetName>
+          <ValueField>ft_obj_key</ValueField>
+          <LabelField>ft_obj_key</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
     <ReportParameter Name="Type">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5496,7 +5573,7 @@ AND dt_obj_key IN (@Table)</CommandText>
           <Value>Dimension</Value>
         </Values>
       </DefaultValue>
-      <Prompt>Type</Prompt>
+      <Prompt>Or Document</Prompt>
       <ValidValues>
         <ParameterValues>
           <ParameterValue>
@@ -5513,7 +5590,7 @@ AND dt_obj_key IN (@Table)</CommandText>
     </ReportParameter>
     <ReportParameter Name="Table">
       <DataType>String</DataType>
-      <Prompt>Table</Prompt>
+      <Prompt>Table(s)</Prompt>
       <ValidValues>
         <DataSetReference>
           <DataSetName>Param_Tables</DataSetName>
@@ -5535,14 +5612,24 @@ AND dt_obj_key IN (@Table)</CommandText>
           <ParameterName>GroupId</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
+          <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
+          <ParameterName>SearchResults</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>Type</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>1</RowIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>Table</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Searchstring</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
