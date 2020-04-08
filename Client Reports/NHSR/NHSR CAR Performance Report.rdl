@@ -2450,6 +2450,16 @@ WHERE  name ='NHSR_CAR_Performance_Report.png'</CommandText>
     <DataSet Name="NHSR_CAR">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="Team">
+            <Value>=Parameters!Team.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+          <QueryParameter Name="MatterOwner">
+            <Value>=Parameters!MatterOwner.Value</Value>
+            <rd:UserDefined>true</rd:UserDefined>
+          </QueryParameter>
+        </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>nhs.NHSR_CAR</CommandText>
       </Query>
@@ -2629,6 +2639,58 @@ WHERE  name ='NHSR_CAR_Performance_Report.png'</CommandText>
         <Field Name="DamagesTarget">
           <DataField>DamagesTarget</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="TeamPram">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END  AS [Team]
+FROM red_dw.dbo.dim_matter_header_current AS a
+INNER JOIN red_dw.dbo.fact_dimension_main  AS b
+ ON a.dim_matter_header_curr_key=b.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.fact_bill_matter_detail 
+ ON a.client_code=fact_bill_matter_detail.client_code AND a.matter_number=fact_bill_matter_detail.matter_number
+
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim ON b.dim_detail_claim_key=dim_detail_claim.dim_detail_claim_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+ ON a.fee_earner_code=dim_fed_hierarchy_history.fed_code AND dim_fed_hierarchy_history.dss_current_flag='Y' 
+
+WHERE  client_group_name='NHS Resolution'
+ORDER BY CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Team">
+          <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="MatterOwner">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT
+
+header.matter_owner_full_name AS [Matter Owner]
+
+FROM red_dw.dbo.fact_dimension_main main
+INNER JOIN red_dw.dbo.dim_matter_header_current as header ON main.dim_matter_header_curr_key = header.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_detail_health as health ON health.dim_detail_health_key = main.dim_detail_health_key
+LEFT JOIN red_dw.dbo.dim_detail_outcome outcome ON outcome.dim_detail_outcome_key = main.dim_detail_outcome_key
+LEFT JOIN red_dw.dbo.dim_detail_core_details as core ON core.dim_detail_core_detail_key = main.dim_detail_core_detail_key
+
+WHERE header.client_group_code = '00000003'
+AND header.reporting_exclusions = 0
+AND core.referral_reason IS NOT NULL 
+AND core.referral_reason IN ('Dispute on liability and quantum','Dispute on quantum','Dispute on liability','Infant approval', 'Costs dispute','Dispute on Liability','Infant Approval')
+AND (outcome.outcome_of_case IS NULL OR  outcome.outcome_of_case &lt;&gt; 'Exclude from reports')
+AND health.nhs_scheme IN ('CNST','ELS','DH CL','DH Liab','LTPS','PES')
+AND health.nhs_scheme IS NOT NULL </CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Matter_Owner">
+          <DataField>Matter Owner</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -10128,16 +10190,56 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>TeamPram</DataSetName>
+          <ValueField>Team</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>TeamPram</DataSetName>
+          <ValueField>Team</ValueField>
+          <LabelField>Team</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="MatterOwner">
+      <DataType>String</DataType>
+      <Prompt>Matter Owner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>MatterOwner</DataSetName>
+          <ValueField>Matter_Owner</ValueField>
+          <LabelField>Matter_Owner</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Team</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>MatterOwner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
