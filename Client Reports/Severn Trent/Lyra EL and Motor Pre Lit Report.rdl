@@ -2461,11 +2461,11 @@ fact_dimension_main.client_code [Client],
 fact_dimension_main.matter_number [Matter]
 ,
 
-ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],
-        
-        --(
-        CASE WHEN MONTH(dim_detail_incident.[incident_date])&gt;4 THEN CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)  + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) + 1 AS VARCHAR)
-        ELSE CAST(YEAR(dim_detail_incident.[incident_date]) - 1 AS VARCHAR) + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)     END  AS [Year Of Account ISNULL],
+	dim_detail_claim.year_of_account			AS [Year of Account],
+	--ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],    
+ --       --(
+ --       CASE WHEN MONTH(dim_detail_incident.[incident_date])&gt;4 THEN CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)  + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) + 1 AS VARCHAR)
+ --       ELSE CAST(YEAR(dim_detail_incident.[incident_date]) - 1 AS VARCHAR) + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)     END  AS [Year Of Account ISNULL],
 
         --      ISNULL(AccountPeriods.YearOfAccount,
                      --(CASE WHEN MONTH(ISNULL(VE00038.case_date,DOA.case_date)) &gt;= 4 THEN CAST(YEAR(ISNULL(VE00038.case_date,DOA.case_date)) AS VARCHAR) + '/' + CAST(YEAR(ISNULL(VE00038.case_date,DOA.case_date)) + 1 AS VARCHAR)
@@ -2473,8 +2473,10 @@ ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details
                      -- END)) AS [Year of Account] ,
 
 --dim_detail_litigation.[year_of_account],
-       CAST(dim_open_case_management_date.open_case_management_fin_year - 1 AS VARCHAR) + '/'
-       + CAST(dim_open_case_management_date.open_case_management_fin_year AS VARCHAR) AS [Financial Year],
+       --CAST(dim_open_case_management_date.open_case_management_fin_year - 1 AS VARCHAR) + '/'
+       --+ CAST(dim_open_case_management_date.open_case_management_fin_year AS VARCHAR) AS [Financial Year],
+	   dim_detail_claim.financial_year						AS [Financial Year],
+
         dim_detail_claim.[stw_status_on_instruction],
 
        --dim_detail_critical_mi.[policy_section_group]AS 
@@ -2483,6 +2485,7 @@ ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details
        RTRIM(dim_claimant_thirdparty_involvement.matter_number) [Converge Ref],
        ISNULL(dim_detail_core_details.[incident_date] ,dim_detail_incident.incident_date) [Loss Date ],
         date_of_accident, 
+		dim_detail_critical_mi.period_of_exposure					AS [Exposure Period],
        dim_matter_header_current.date_opened_case_management [Entered Date],
        dim_detail_critical_mi.[date_closed] [Date Closed ],
        dim_detail_critical_mi.[claim_status] [Claim Status ],
@@ -2564,6 +2567,7 @@ fact_detail_paid_detail.paid_stw  AS [PAID ST],
       
        
        fact_detail_paid_detail.[paid_lyra] AS [PREVIOUS PAID LYRA],
+	   dim_detail_outcome.percent_of_contributory_negligence_agreed			AS [Apportionment],
        fact_detail_paid_detail.[pending_stw] AS [PENDING ST], 
        dim_detail_client.[cause_description] [Cause Description chart],
        CASE
@@ -2579,7 +2583,7 @@ fact_detail_paid_detail.paid_stw  AS [PAID ST],
        ISNULL(fact_detail_reserve_detail.[el_insurer_tp_costs_reserve],0) + isnull (fact_detail_reserve_detail.[mo_insurer_tp_costs_reserve], 0)
         --+ curPLInserTPRes
          [Received Recoveries Lyra],
-           fact_detail_recovery_detail.[total_net_recoveries_agreed ],
+           fact_detail_recovery_detail.[total_net_recoveries_agreed],
            fact_detail_recovery_detail.[received_recoveries_lyra],
            fact_detail_recovery_detail.received_recoveries_stw,
 		   defence_costs_billed AS [Revenue]
@@ -2616,7 +2620,9 @@ FROM red_dw.dbo.fact_dimension_main
     LEFT OUTER JOIN red_dw.dbo.fact_detail_reserve_detail
         ON fact_detail_reserve_detail.master_fact_key = fact_dimension_main.master_fact_key
      LEFT OUTER JOIN red_dw.dbo.fact_detail_recovery_detail
-     ON fact_detail_recovery_detail.master_fact_key = fact_dimension_main.master_fact_key
+		ON fact_detail_recovery_detail.master_fact_key = fact_dimension_main.master_fact_key
+	LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+		ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
 
     LEFT OUTER JOIN
     (
@@ -2667,7 +2673,7 @@ OR
       AND fact_detail_client.matter_number &lt;&gt; 'ML '
      -- AND red_dw.dbo.fact_dimension_main.matter_number = '00006088'
       --AND dim_matter_header_current.date_opened_case_management BETWEEN @Startdate AND @Enddate
-      AND (ISNULL(dim_detail_critical_mi.claim_status,'') IN ('Open','Re-opened   ',NULL                                        ) OR claim_status IS NULL) 
+      AND (ISNULL(dim_detail_critical_mi.claim_status,'') IN ('Open','Re-opened   ',NULL                                        ) OR dim_detail_critical_mi.claim_status IS NULL) 
       --AND policy_type IN ( 'Employers Liability', 'Motor' )
        --AND dim_child_detail.matter_number = '00004697'
        --AND dim_detail_client.matter_number = '00006959'
@@ -2691,15 +2697,11 @@ ORDER BY 1;</CommandText>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Year_Of_Account">
-          <DataField>Year Of Account</DataField>
+          <DataField>Year of Account</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Matter">
           <DataField>Matter</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Year_Of_Account_ISNULL">
-          <DataField>Year Of Account ISNULL</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Financial_Year">
@@ -2721,6 +2723,10 @@ ORDER BY 1;</CommandText>
         <Field Name="Loss_Date_">
           <DataField>Loss Date </DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="Exposure_Period">
+          <DataField>Exposure Period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="date_of_accident">
           <DataField>date_of_accident</DataField>
@@ -2810,6 +2816,10 @@ ORDER BY 1;</CommandText>
           <DataField>PREVIOUS PAID LYRA</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="Apportionment">
+          <DataField>Apportionment</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
         <Field Name="PENDING_ST">
           <DataField>PENDING ST</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
@@ -2830,8 +2840,8 @@ ORDER BY 1;</CommandText>
           <DataField>Received Recoveries Lyra</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="total_net_recoveries_agreed_">
-          <DataField>total_net_recoveries_agreed </DataField>
+        <Field Name="total_net_recoveries_agreed">
+          <DataField>total_net_recoveries_agreed</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="received_recoveries_lyra">
@@ -2856,9 +2866,11 @@ ORDER BY 1;</CommandText>
 fact_dimension_main.client_code [Client], 
 fact_dimension_main.matter_number [Matter],
 
-ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],
+		dim_detail_claim.year_of_account			AS [Year of Account],
+
+--ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details.year_of_account) [Year Of Account],
         
-        --(
+--        --(
         CASE WHEN MONTH(dim_detail_incident.[incident_date])&gt;4 THEN CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)  + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) + 1 AS VARCHAR)
         ELSE CAST(YEAR(dim_detail_incident.[incident_date]) - 1 AS VARCHAR) + '/' + CAST(YEAR(dim_detail_incident.[incident_date]) AS VARCHAR)     END  AS [Year Of Account ISNULL],
 
@@ -2869,7 +2881,9 @@ ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details
 
 --dim_detail_litigation.[year_of_account],
        CAST(dim_open_case_management_date.open_case_management_fin_year - 1 AS VARCHAR) + '/'
-       + CAST(dim_open_case_management_date.open_case_management_fin_year AS VARCHAR) AS [Financial Year],
+       + CAST(dim_open_case_management_date.open_case_management_fin_year AS VARCHAR) AS [Financial Year IS NULL],
+	   dim_detail_claim.financial_year						AS [Financial Year],
+
         dim_detail_claim.[stw_status_on_instruction],
 
        --dim_detail_critical_mi.[policy_section_group]AS 
@@ -2878,6 +2892,7 @@ ISNULL(dim_detail_incident.[year_of_account], red_dw.dbo.dim_detail_core_details
        RTRIM(dim_claimant_thirdparty_involvement.matter_number) [Converge Ref],
        ISNULL(dim_detail_core_details.[incident_date] ,dim_detail_incident.incident_date) [Loss Date ],
         date_of_accident, 
+		dim_detail_critical_mi.period_of_exposure					AS [Exposure Period],
        dim_matter_header_current.date_opened_case_management [Entered Date],
        dim_detail_critical_mi.[date_closed] [Date Closed ],
        dim_detail_critical_mi.[claim_status] [Claim Status ],
@@ -2959,6 +2974,7 @@ fact_detail_paid_detail.paid_stw  AS [PAID ST],
       
        
        fact_detail_paid_detail.[paid_lyra] AS [PREVIOUS PAID LYRA],
+	   dim_detail_outcome.percent_of_contributory_negligence_agreed			AS [Apportionment],
        fact_detail_paid_detail.[pending_stw] AS [PENDING ST], 
        dim_detail_client.[cause_description] [Cause Description chart],
        CASE
@@ -3012,7 +3028,8 @@ FROM red_dw.dbo.fact_dimension_main
         ON fact_detail_reserve_detail.master_fact_key = fact_dimension_main.master_fact_key
      LEFT OUTER JOIN red_dw.dbo.fact_detail_recovery_detail
      ON fact_detail_recovery_detail.master_fact_key = fact_dimension_main.master_fact_key
-
+	 LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+		ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
     LEFT OUTER JOIN
     (
         SELECT dim_involvement_full.client_code,
@@ -3091,7 +3108,7 @@ ORDER BY 1;</CommandText>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Year_Of_Account">
-          <DataField>Year Of Account</DataField>
+          <DataField>Year of Account</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Matter">
@@ -3100,6 +3117,10 @@ ORDER BY 1;</CommandText>
         </Field>
         <Field Name="Year_Of_Account_ISNULL">
           <DataField>Year Of Account ISNULL</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Financial_Year_IS_NULL">
+          <DataField>Financial Year IS NULL</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Financial_Year">
@@ -3129,6 +3150,10 @@ ORDER BY 1;</CommandText>
         <Field Name="Entered_Date">
           <DataField>Entered Date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="Exposure_Period">
+          <DataField>Exposure Period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Date_Closed_">
           <DataField>Date Closed </DataField>
@@ -3217,6 +3242,10 @@ ORDER BY 1;</CommandText>
         <Field Name="Cause_Description_chart">
           <DataField>Cause Description chart</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Apportionment">
+          <DataField>Apportionment</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="Live_count_">
           <DataField>Live count </DataField>
@@ -5641,7 +5670,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=iif(Fields!Year_Of_Account.Value = nothing, fields!Year_Of_Account_ISNULL.Value , Fields!Year_Of_Account.Value)</Value>
+                                      <Value>=Fields!Year_Of_Account.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5977,7 +6006,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value />
+                                      <Value>=Fields!Exposure_Period.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -7056,7 +7085,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value />
+                                      <Value>=Fields!Apportionment.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -7327,7 +7356,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=iif(fields!Claim_Status_.Value = "Closed","£0.00",Fields!total_net_recoveries_agreed_.Value)</Value>
+                                      <Value>=iif(fields!Claim_Status_.Value = "Closed","£0.00",Fields!total_net_recoveries_agreed.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -10233,7 +10262,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Financial_Year.Value</Value>
+                                      <Value>=iif(Fields!Financial_Year.Value = Nothing, Fields!Financial_Year_IS_NULL.Value, Fields!Financial_Year.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -10502,7 +10531,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value />
+                                      <Value>=Fields!Exposure_Period.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -11581,7 +11610,7 @@ group by fact_debt.client_code, fact_debt.matter_number , bill_total</CommandTex
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value />
+                                      <Value>=Fields!Apportionment.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
