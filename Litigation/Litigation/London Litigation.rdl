@@ -2957,27 +2957,35 @@ GROUP BY coalesce(left(Matter.loadnumber,(charindex('-',Matter.loadnumber)-1)),C
     <DataSet Name="Proforma">
       <Query>
         <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
-        <CommandText>SELECT fileID AS ms_fileid
+        <CommandText>SELECT * FROM 
+(
+SELECT DISTINCT fileID AS ms_fileid
 ,profstatus.[description]  AS  [Proforma Status]
-,DATEDIFF(DAY,prof.ProfDate,GETDATE()) AS [Proforma Elapsed Days]
 ,prof.ProfDate AS [Proforma Date]
+,profstatus.IsClose
+,ROW_NUMBER() OVER(PARTITION BY fileID
+       ORDER BY prof.ProfDate DESC) AS [Row Number]
+
 FROM    [TE_3E_Prod].[dbo].[ProfMaster] prof
---[TE_3E_Prod].[dbo].TRE_WfHistoryHdr AS WfHistoryHdr
---       INNER JOIN [TE_3E_Prod].[dbo].TRE_WfHistory AS WfHistory ON WfHistoryHdr.WfID  =  WfHistory.TRE_WfHistoryHdr 
---       INNER JOIN [TE_3E_Prod].[dbo].TRE_WfRuleSet AS WFRuleSet ON WfHistory.TRE_WfRuleSet = WFRuleSet.Code
---       INNER JOIN [TE_3E_Prod].[dbo].TRE_WfAction AS WfAction   ON WFRuleSet.TRE_WfAction =  WfAction.Code
-       
-	  -- INNER JOIN [TE_3E_Prod].[dbo].[ProfMaster] prof ON WfHistory.joinid = prof.profmasterid  
+
           LEFT JOIN [TE_3E_Prod].[dbo].[ProfStatus] profstatus ON profstatus.code = prof.profstatus
           LEFT JOIN [TE_3E_Prod].[dbo].[Matter] matter ON matter.mattindex = prof.leadmatter
           LEFT JOIN [TE_3E_Prod].[dbo].[Client] client ON matter.client = client.clientindex
-		  LEFT JOIN MS_Prod.config.dbFile ON matter.MattIndex=fileExtLinkID
+                                  LEFT JOIN MS_Prod.config.dbFile ON matter.MattIndex=fileExtLinkID
 
 WHERE 
---WfHistory.CompletedDate IS NULL  
---AND WfHistory.IsHide  =  0
---AND 
-prof.InvMaster IS NULL</CommandText>
+prof.InvMaster IS NULL
+AND profstatus.IsClose=0
+AND profstatus.IsAllowInvNumber= 0
+AND NOT profstatus = 'Billing Team'
+AND NOT profstatus = 'Comp'
+--AND fileID='3931257'
+) AS [Proforma]
+
+WHERE Proforma.[Row Number]=1
+
+ORDER BY Proforma.ms_fileid
+</CommandText>
       </Query>
       <Fields>
         <Field Name="ms_fileid">
@@ -2988,13 +2996,17 @@ prof.InvMaster IS NULL</CommandText>
           <DataField>Proforma Status</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Proforma_Elapsed_Days">
-          <DataField>Proforma Elapsed Days</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="Proforma_Date">
           <DataField>Proforma Date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="IsClose">
+          <DataField>IsClose</DataField>
+          <rd:TypeName>System.Byte</rd:TypeName>
+        </Field>
+        <Field Name="Row_Number">
+          <DataField>Row Number</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
