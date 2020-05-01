@@ -28,10 +28,14 @@
         <CommandText>with member [Measures].[DrilldownValue] as
         [Dim Fed Hierarchy History].[Hierarchy].CurrentMember.UniqueName
 
+member [Measures].[FinYear] as
+        [Dim Date].[Fin Year].CurrentMember.MEMBER_CAPTION 
+
 SELECT 
 NON EMPTY 
 { 
 [Measures].[DrilldownValue],
+[Measures].[FinYear],
 [Measures].[YTD Target Billed Hours],
 [Measures].[YTD Target Profit Costs (Budget Balanced)], 
 [Measures].[Recovery Rate], 
@@ -140,6 +144,14 @@ strtomember(@Month)
                       <UniqueName>[Measures].[DrilldownValue]</UniqueName>
                     </ID>
                     <ItemCaption>DrilldownValue</ItemCaption>
+                    <FormattedValue>true</FormattedValue>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Measure">
+                      <MeasureName>FinYear</MeasureName>
+                      <UniqueName>[Measures].[FinYear]</UniqueName>
+                    </ID>
+                    <ItemCaption>FinYear</ItemCaption>
                     <FormattedValue>true</FormattedValue>
                   </Item>
                   <Item>
@@ -301,10 +313,14 @@ strtomember(@Month)
               <Statement>with member [Measures].[DrilldownValue] as
         [Dim Fed Hierarchy History].[Hierarchy].CurrentMember.UniqueName
 
+member [Measures].[FinYear] as
+        [Dim Date].[Fin Year].CurrentMember.MEMBER_CAPTION 
+
 SELECT 
 NON EMPTY 
 { 
 [Measures].[DrilldownValue],
+[Measures].[FinYear],
 [Measures].[YTD Target Billed Hours],
 [Measures].[YTD Target Profit Costs (Budget Balanced)], 
 [Measures].[Recovery Rate], 
@@ -403,6 +419,10 @@ strtomember(@Month)
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[DrilldownValue]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
+        <Field Name="FinYear">
+          <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[FinYear]" /&gt;</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
         <Field Name="YTD_Target_Billed_Hours">
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[YTD Target Billed Hours]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
@@ -474,6 +494,9 @@ strtomember(@Month)
         <Field Name="Annual_Target_Billed_hours_Team">
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[Annual Target Billed hours Team]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="HideBudget">
+          <Value>=iif(Fields!FinYear.Value &gt; 2020, True, False)</Value>
         </Field>
       </Fields>
       <Filters>
@@ -4142,7 +4165,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!Target_Profit_Costs__Budget_Balanced_.Value)</Value>
+                                  <Value>=iif(Fields!HideBudget.Value=True,"",Sum(Fields!Target_Profit_Costs__Budget_Balanced_.Value))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -4178,6 +4201,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
+                            <BackgroundColor>=iif(Fields!HideBudget.Value=True, "WhiteSmoke", "Transparent")</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -4250,7 +4274,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!YTD_Target_Profit_Costs__Budget_Balanced_.Value)</Value>
+                                  <Value>=iif(Fields!HideBudget.Value=True,"",Sum(Fields!YTD_Target_Profit_Costs__Budget_Balanced_.Value))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -4286,6 +4310,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
+                            <BackgroundColor>=iif(Fields!HideBudget.Value=True, "WhiteSmoke", "Transparent")</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -4303,12 +4328,14 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(
+                                  <Value>=	iif(Fields!HideBudget.Value=True,"",
+	iif(
      Sum(Fields!YTD_Target_Profit_Costs__Budget_Balanced_.Value) = 0,
     0, 
     Sum(Fields!YTD_Profit_Costs.Value) /
     Sum(Fields!YTD_Target_Profit_Costs__Budget_Balanced_.Value) 
-    )</Value>
+    )
+	)</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -4324,6 +4351,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Border>
                               <Style>Solid</Style>
                             </Border>
+                            <BackgroundColor>=iif(Fields!HideBudget.Value=True, "WhiteSmoke", "Transparent")</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -4341,7 +4369,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Sum(Fields!Annual_Target_Profit_Costs__Budget_Balanced_.Value)</Value>
+                                  <Value>=iif(Fields!HideBudget.Value=True,"",Sum(Fields!Annual_Target_Profit_Costs__Budget_Balanced_.Value))</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -4377,6 +4405,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
+                            <BackgroundColor>=iif(Fields!HideBudget.Value=True, "WhiteSmoke", "Transparent")</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -4394,12 +4423,14 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(
+                                  <Value>=	iif(Fields!HideBudget.Value=True,"",
+	iif(
      Sum(Fields!Annual_Target_Profit_Costs__Budget_Balanced_.Value) = 0,
     0, 
     Sum(Fields!YTD_Profit_Costs.Value) /
     Sum(Fields!Annual_Target_Profit_Costs__Budget_Balanced_.Value) 
-    )</Value>
+    )
+	)</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -4415,6 +4446,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Border>
                               <Style>Solid</Style>
                             </Border>
+                            <BackgroundColor>=iif(Fields!HideBudget.Value=True, "WhiteSmoke", "Transparent")</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -4650,10 +4682,12 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(sum(Fields!Annual_Target_Billed_Hours.Value) = 0, 0,
+                                  <Value>=iif(Fields!HideBudget.Value=True,"",
+	iif(sum(Fields!Annual_Target_Billed_Hours.Value) = 0, 0,
      sum(Fields!Annual_Target_Profit_Costs__Budget_Balanced_.Value) /
      sum(Fields!Annual_Target_Billed_Hours.Value) 
-    )</Value>
+    )
+	)</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -4689,6 +4723,7 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
+                            <BackgroundColor>=iif(Fields!HideBudget.Value=True, "WhiteSmoke", "Transparent")</BackgroundColor>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -7140,7 +7175,8 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
                                 </CellContents>
                               </TablixHeader>
                               <Visibility>
-                                <Hidden>=Microsoft.VisualBasic.Interaction.iif(Microsoft.VisualBasic.Strings.len(Fields!Practice_Area.Value) &gt; 0, False, True)</Hidden>
+                                <Hidden>=SWITCH (Fields!HideBudget.Value = True, True,
+	len(Fields!Practice_Area.Value) &lt; 1, True)</Hidden>
                               </Visibility>
                               <KeepWithGroup>Before</KeepWithGroup>
                             </TablixMember>
@@ -7350,8 +7386,8 @@ iif(sum(Fields!Annual_Target_Billed_hours_Team.Value) = 0,
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox40</rd:DefaultName>
-            <Top>9.30787cm</Top>
-            <Left>0.00897cm</Left>
+            <Top>8.44271cm</Top>
+            <Left>3.36036cm</Left>
             <Height>0.6cm</Height>
             <Width>20.5252cm</Width>
             <ZIndex>2</ZIndex>
