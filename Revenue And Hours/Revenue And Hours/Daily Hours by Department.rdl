@@ -13,103 +13,284 @@
     <DataSet Name="DailyHours">
       <Query>
         <DataSourceName>DailyHours</DataSourceName>
-        <CommandText>SELECT        mainquery.Calender, mainquery.gl_fin_day_in_month, mainquery.gl_fin_period, mainquery.trading, mainquery.gl_week_end_flag, mainquery.gl_holiday_flag, mainquery.gl_cal_month_name, 
-                         mainquery.hierarchylevel2hist, mainquery.hierarchylevel3hist, mainquery.[Hours Recorded], ISNULL(workdaysall.number_of_work_days, 0) AS number_of_work_days,
-						 dim_date.current_fin_month
-FROM            (SELECT        CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
-                                                     = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END AS Calender, fin_days.gl_fin_day_in_month, fin_days.gl_fin_period, 
-                                                    fin_days.gl_trading_days_in_mth AS trading, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours.hierarchylevel2hist, Hours.hierarchylevel3hist, 
-                                                    ISNULL(SUM(Hours.[Hours Recorded]), 0) AS [Hours Recorded]
-                          FROM            red_dw.dbo.dim_gl_date AS fin_month INNER JOIN
-                                                    red_dw.dbo.dim_gl_date AS fin_days ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date) AND 
-                                                    fin_days.gl_calendar_date &gt;= '2019-03-01' LEFT OUTER JOIN
-                                                        (SELECT        red_dw.dbo.dim_date.fin_month_no, red_dw.dbo.dim_date.fin_year, first_day_month.dim_date_key AS first_day_key, COUNT(*) AS number_of_work_days
-                                                          FROM            red_dw.dbo.dim_date INNER JOIN
-                                                                                    red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = red_dw.dbo.dim_date.fin_month AND first_day_month.fin_year = red_dw.dbo.dim_date.fin_year AND 
-                                                                                    first_day_month.cal_day_in_month = 1
-                                                          WHERE        (red_dw.dbo.dim_date.holiday_flag = 'N') AND (red_dw.dbo.dim_date.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (red_dw.dbo.dim_date.calendar_date &lt;= GETDATE() - 1)
-                                                          GROUP BY red_dw.dbo.dim_date.fin_month_no, red_dw.dbo.dim_date.fin_year, first_day_month.dim_date_key) AS workdays ON workdays.first_day_key = fin_days.dim_gl_date_key INNER JOIN
-                                                        (SELECT        red_dw.dbo.fact_billable_time_activity.dim_orig_posting_date_key AS dim_gl_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist, 
-                                                                                    ISNULL(SUM(red_dw.dbo.fact_billable_time_activity.minutes_recorded), 0) / 60 AS [Hours Recorded]
-                                                          FROM            red_dw.dbo.fact_billable_time_activity INNER JOIN
-                                                                                    red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy] ON 
-                                                                                    [Current Hierarchy].dim_fed_hierarchy_history_key = red_dw.dbo.fact_billable_time_activity.dim_fed_hierarchy_history_key AND 
-                                                                                    [Current Hierarchy].hierarchylevel2hist IN ('Legal Ops - Claims', 'Legal Ops - LTA')
-                                                          GROUP BY red_dw.dbo.fact_billable_time_activity.dim_orig_posting_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist) AS Hours ON 
-                                                    Hours.dim_gl_date_key = fin_days.dim_gl_date_key
-                          WHERE        (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date)) AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
-                          GROUP BY CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
-                                                     = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END, fin_days.gl_trading_days_in_mth, fin_days.gl_week_end_flag, 
-                                                    fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours.hierarchylevel2hist, Hours.hierarchylevel3hist, fin_days.gl_fin_day_in_month, workdays.number_of_work_days, 
-                                                    fin_days.gl_fin_period
-                          UNION
-                          SELECT DISTINCT 
-                                                   [dummy].Calender, [dummy].gl_fin_day_in_month, [dummy].gl_fin_period, [dummy].trading, [dummy].gl_week_end_flag, [dummy].gl_holiday_flag, [dummy].gl_cal_month_name, 
-                                                   dummy3.hierarchylevel2hist, dummy3.hierarchylevel3hist, 0 AS [Hours Recorded]
-                          FROM            (SELECT        CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
-                                                                               = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END AS Calender, fin_days.gl_fin_day_in_month, 
-                                                                              fin_days.gl_fin_period, fin_days.gl_trading_days_in_mth AS trading, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours_2.hierarchylevel2hist, 
-                                                                              Hours_2.hierarchylevel3hist, 0 AS [Hours Recorded], workdays_2.number_of_work_days
-                                                    FROM            red_dw.dbo.dim_gl_date AS fin_month INNER JOIN
-                                                                              red_dw.dbo.dim_gl_date AS fin_days ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date) AND 
-                                                                              fin_days.gl_calendar_date &gt;= '2019-03-01' LEFT OUTER JOIN
-                                                                                  (SELECT        dim_date_3.fin_month_no, dim_date_3.fin_year, first_day_month.dim_date_key AS first_day_key, COUNT(*) AS number_of_work_days
-                                                                                    FROM            red_dw.dbo.dim_date AS dim_date_3 INNER JOIN
-                                                                                                              red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = dim_date_3.fin_month AND first_day_month.fin_year = dim_date_3.fin_year AND 
-                                                                                                              first_day_month.cal_day_in_month = 1
-                                                                                    WHERE        (dim_date_3.holiday_flag = 'N') AND (dim_date_3.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (dim_date_3.calendar_date &lt;= GETDATE() - 1)
-                                                                                    GROUP BY dim_date_3.fin_month_no, dim_date_3.fin_year, first_day_month.dim_date_key) AS workdays_2 ON workdays_2.first_day_key = fin_days.dim_gl_date_key INNER JOIN
-                                                                                  (SELECT        fact_billable_time_activity_2.dim_orig_posting_date_key AS dim_gl_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist, 
-                                                                                                              ISNULL(SUM(fact_billable_time_activity_2.minutes_recorded), 0) / 60 AS [Hours Recorded]
-                                                                                    FROM            red_dw.dbo.fact_billable_time_activity AS fact_billable_time_activity_2 INNER JOIN
-                                                                                                              red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy] ON 
-                                                                                                              [Current Hierarchy].dim_fed_hierarchy_history_key = fact_billable_time_activity_2.dim_fed_hierarchy_history_key AND 
-                                                                                                              [Current Hierarchy].hierarchylevel2hist IN ('Legal Ops - Claims', 'Legal Ops - LTA')
-                                                                                    GROUP BY fact_billable_time_activity_2.dim_orig_posting_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist) AS Hours_2 ON 
-                                                                              Hours_2.dim_gl_date_key = fin_days.dim_gl_date_key
-                                                    WHERE        (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date)) AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
-                                                    GROUP BY CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN fin_days.gl_cal_day_in_week
-                                                                               = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END, fin_days.gl_trading_days_in_mth, fin_days.gl_week_end_flag, 
-                                                                              fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours_2.hierarchylevel2hist, Hours_2.hierarchylevel3hist, fin_days.gl_fin_day_in_month, workdays_2.number_of_work_days, 
-                                                                              fin_days.gl_fin_period) AS [dummy] INNER JOIN
-                                                       (SELECT DISTINCT hierarchylevel2hist, hierarchylevel3hist, ISNULL(number_of_work_days, 0) AS number_of_work_days
-                                                         FROM            (SELECT        CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN
-                                                                                                              fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END AS Calender, 
-                                                                                                             fin_days.gl_fin_day_in_month, fin_days.gl_fin_period, fin_days.gl_trading_days_in_mth AS trading, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, 
-                                                                                                             fin_days.gl_cal_month_name, Hours_1.hierarchylevel2hist, Hours_1.hierarchylevel3hist, 0 AS [Hours Recorded], workdays_1.number_of_work_days
-                                                                                   FROM            red_dw.dbo.dim_gl_date AS fin_month INNER JOIN
-                                                                                                             red_dw.dbo.dim_gl_date AS fin_days ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date) AND 
-                                                                                                             fin_days.gl_calendar_date &gt;= '2019-03-01' LEFT OUTER JOIN
-                                                                                                                 (SELECT        dim_date_2.fin_month_no, dim_date_2.fin_year, first_day_month.dim_date_key AS first_day_key, COUNT(*) AS number_of_work_days
-                                                                                                                   FROM            red_dw.dbo.dim_date AS dim_date_2 INNER JOIN
-                                                                                                                                             red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = dim_date_2.fin_month AND first_day_month.fin_year = dim_date_2.fin_year AND 
-                                                                                                                                             first_day_month.cal_day_in_month = 1
-                                                                                                                   WHERE        (dim_date_2.holiday_flag = 'N') AND (dim_date_2.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (dim_date_2.calendar_date &lt;= GETDATE() - 1)
-                                                                                                                   GROUP BY dim_date_2.fin_month_no, dim_date_2.fin_year, first_day_month.dim_date_key) AS workdays_1 ON 
-                                                                                                             workdays_1.first_day_key = fin_days.dim_gl_date_key INNER JOIN
-                                                                                                                 (SELECT        fact_billable_time_activity_1.dim_orig_posting_date_key AS dim_gl_date_key, [Current Hierarchy].hierarchylevel2hist, 
-                                                                                                                                             [Current Hierarchy].hierarchylevel3hist, ISNULL(SUM(fact_billable_time_activity_1.minutes_recorded), 0) / 60 AS [Hours Recorded]
-                                                                                                                   FROM            red_dw.dbo.fact_billable_time_activity AS fact_billable_time_activity_1 INNER JOIN
-                                                                                                                                             red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy] ON 
-                                                                                                                                             [Current Hierarchy].dim_fed_hierarchy_history_key = fact_billable_time_activity_1.dim_fed_hierarchy_history_key AND 
-                                                                                                                                             [Current Hierarchy].hierarchylevel2hist IN ('Legal Ops - Claims', 'Legal Ops - LTA')
-                                                                                                                   GROUP BY fact_billable_time_activity_1.dim_orig_posting_date_key, [Current Hierarchy].hierarchylevel2hist, [Current Hierarchy].hierarchylevel3hist) AS Hours_1 ON 
-                                                                                                             Hours_1.dim_gl_date_key = fin_days.dim_gl_date_key
-                                                                                   WHERE        (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS date)) AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
-                                                                                   GROUP BY CASE WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN [fin_days].gl_calendar_date - 1 WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN [fin_days].gl_calendar_date - 2 WHEN
-                                                                                                              fin_days.gl_cal_day_in_week = 'Mon' AND fin_days.gl_holiday_flag = 'Y' THEN [fin_days].gl_calendar_date - 2 ELSE fin_days.gl_calendar_date END, 
-                                                                                                             fin_days.gl_trading_days_in_mth, fin_days.gl_week_end_flag, fin_days.gl_holiday_flag, fin_days.gl_cal_month_name, Hours_1.hierarchylevel2hist, 
-                                                                                                             Hours_1.hierarchylevel3hist, fin_days.gl_fin_day_in_month, workdays_1.number_of_work_days, fin_days.gl_fin_period) AS dummy2) AS dummy3 ON 1 = 1) 
-                         AS mainquery LEFT OUTER JOIN
-                             (SELECT        dim_date_1.fin_month_no, dim_date_1.fin_year, first_day_month.calendar_date AS first_day, COUNT(*) AS number_of_work_days
-                               FROM            red_dw.dbo.dim_date AS dim_date_1 INNER JOIN
-                                                         red_dw.dbo.dim_date AS first_day_month ON first_day_month.fin_month = dim_date_1.fin_month AND first_day_month.fin_year = dim_date_1.fin_year AND 
-                                                         first_day_month.cal_day_in_month = 1
-                               WHERE        (dim_date_1.holiday_flag = 'N') AND (dim_date_1.fin_day_in_week NOT IN ('Sat', 'Sun')) AND (dim_date_1.calendar_date &lt;= GETDATE() - 1)
-                               GROUP BY dim_date_1.fin_month_no, dim_date_1.fin_year, first_day_month.calendar_date) AS workdaysall ON workdaysall.first_day = mainquery.Calender
-							   inner join red_dw.dbo.dim_date on mainquery.Calender = calendar_date
-							   and current_fin_month = 'Current'
-ORDER BY mainquery.Calender</CommandText>
+        <CommandText>
+SELECT mainquery.Calender,
+       mainquery.gl_fin_day_in_month,
+       mainquery.gl_fin_period,
+       mainquery.trading,
+       mainquery.gl_week_end_flag,
+       mainquery.gl_holiday_flag,
+       mainquery.gl_cal_month_name,
+       mainquery.hierarchylevel2hist,
+       mainquery.hierarchylevel3hist,
+       mainquery.[Hours Recorded],
+       ISNULL(workdaysall.number_of_work_days, 0) AS number_of_work_days,
+       dim_date.current_fin_month
+FROM
+(
+    SELECT --CASE
+    --           WHEN fin_days.gl_cal_day_in_week = 'Sat' THEN
+    --               [fin_days].gl_calendar_date - 1
+    --           WHEN fin_days.gl_cal_day_in_week = 'Sun' THEN
+    --               [fin_days].gl_calendar_date - 2
+    --           WHEN fin_days.gl_cal_day_in_week = 'Mon'
+    --                AND fin_days.gl_holiday_flag = 'Y' THEN
+    --               [fin_days].gl_calendar_date - 2
+				--WHEN fin_days.gl_cal_day_in_week = 'Fri'
+    --                  AND fin_days.gl_holiday_flag = 'Y' THEN
+    --                 [fin_days].gl_calendar_date - 1
+    --           ELSE
+    --               fin_days.gl_calendar_date
+	--			ELSE
+	--                  fin_days.gl_calendar_date
+
+	--          END
+		
+		-- RH 11/05/2020 - changed to account for Friday bank holidays
+			 fin_days.gl_last_working_day
+			 AS Calender,
+           fin_days.gl_fin_day_in_month,
+           fin_days.gl_fin_period,
+           fin_days.gl_trading_days_in_mth AS trading,
+           fin_days.gl_week_end_flag,
+           fin_days.gl_holiday_flag,
+           fin_days.gl_cal_month_name,
+           Hours.hierarchylevel2hist,
+           Hours.hierarchylevel3hist,
+           ISNULL(SUM(Hours.[Hours Recorded]), 0) AS [Hours Recorded]
+    FROM red_dw.dbo.dim_gl_date AS fin_month
+        INNER JOIN red_dw.dbo.dim_gl_date AS fin_days
+            ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key
+               AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS DATE)
+               AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+        LEFT OUTER JOIN
+        (
+            SELECT red_dw.dbo.dim_date.fin_month_no,
+                   red_dw.dbo.dim_date.fin_year,
+                   first_day_month.dim_date_key AS first_day_key,
+                   COUNT(*) AS number_of_work_days
+            FROM red_dw.dbo.dim_date
+                INNER JOIN red_dw.dbo.dim_date AS first_day_month
+                    ON first_day_month.fin_month = red_dw.dbo.dim_date.fin_month
+                       AND first_day_month.fin_year = red_dw.dbo.dim_date.fin_year
+                       AND first_day_month.cal_day_in_month = 1
+            WHERE (red_dw.dbo.dim_date.holiday_flag = 'N')
+                  AND (red_dw.dbo.dim_date.fin_day_in_week NOT IN ( 'Sat', 'Sun' ))
+                  AND (red_dw.dbo.dim_date.calendar_date &lt;= GETDATE() - 1)
+            GROUP BY red_dw.dbo.dim_date.fin_month_no,
+                     red_dw.dbo.dim_date.fin_year,
+                     first_day_month.dim_date_key
+        ) AS workdays
+            ON workdays.first_day_key = fin_days.dim_gl_date_key
+        INNER JOIN
+        (
+            SELECT red_dw.dbo.fact_billable_time_activity.dim_orig_posting_date_key AS dim_gl_date_key,
+                   [Current Hierarchy].hierarchylevel2hist,
+                   [Current Hierarchy].hierarchylevel3hist,
+                   ISNULL(SUM(red_dw.dbo.fact_billable_time_activity.minutes_recorded), 0) / 60 AS [Hours Recorded]
+            FROM red_dw.dbo.fact_billable_time_activity
+                INNER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy]
+                    ON [Current Hierarchy].dim_fed_hierarchy_history_key = red_dw.dbo.fact_billable_time_activity.dim_fed_hierarchy_history_key
+                       AND [Current Hierarchy].hierarchylevel2hist IN ( 'Legal Ops - Claims', 'Legal Ops - LTA' )
+            GROUP BY red_dw.dbo.fact_billable_time_activity.dim_orig_posting_date_key,
+                     [Current Hierarchy].hierarchylevel2hist,
+                     [Current Hierarchy].hierarchylevel3hist
+        ) AS Hours
+            ON Hours.dim_gl_date_key = fin_days.dim_gl_date_key
+    WHERE (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS DATE))
+          AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
+    GROUP BY fin_days.gl_last_working_day,
+             fin_days.gl_trading_days_in_mth,
+             fin_days.gl_week_end_flag,
+             fin_days.gl_holiday_flag,
+             fin_days.gl_cal_month_name,
+             Hours.hierarchylevel2hist,
+             Hours.hierarchylevel3hist,
+             fin_days.gl_fin_day_in_month,
+             workdays.number_of_work_days,
+             fin_days.gl_fin_period
+
+
+    UNION
+
+
+    SELECT DISTINCT
+           [dummy].Calender,
+           [dummy].gl_fin_day_in_month,
+           [dummy].gl_fin_period,
+           [dummy].trading,
+           [dummy].gl_week_end_flag,
+           [dummy].gl_holiday_flag,
+           [dummy].gl_cal_month_name,
+           dummy3.hierarchylevel2hist,
+           dummy3.hierarchylevel3hist,
+           0 AS [Hours Recorded]
+    FROM
+    (
+        SELECT fin_days.gl_last_working_day Calender,
+               fin_days.gl_fin_day_in_month,
+               fin_days.gl_fin_period,
+               fin_days.gl_trading_days_in_mth AS trading,
+               fin_days.gl_week_end_flag,
+               fin_days.gl_holiday_flag,
+               fin_days.gl_cal_month_name,
+               Hours_2.hierarchylevel2hist,
+               Hours_2.hierarchylevel3hist,
+               0 AS [Hours Recorded],
+               workdays_2.number_of_work_days
+        FROM red_dw.dbo.dim_gl_date AS fin_month
+            INNER JOIN red_dw.dbo.dim_gl_date AS fin_days
+                ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key
+                   AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS DATE)
+                   AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+            LEFT OUTER JOIN
+            (
+                SELECT dim_date_3.fin_month_no,
+                       dim_date_3.fin_year,
+                       first_day_month.dim_date_key AS first_day_key,
+                       COUNT(*) AS number_of_work_days
+                FROM red_dw.dbo.dim_date AS dim_date_3
+                    INNER JOIN red_dw.dbo.dim_date AS first_day_month
+                        ON first_day_month.fin_month = dim_date_3.fin_month
+                           AND first_day_month.fin_year = dim_date_3.fin_year
+                           AND first_day_month.cal_day_in_month = 1
+                WHERE (dim_date_3.holiday_flag = 'N')
+                      AND (dim_date_3.fin_day_in_week NOT IN ( 'Sat', 'Sun' ))
+                      AND (dim_date_3.calendar_date &lt;= GETDATE() - 1)
+                GROUP BY dim_date_3.fin_month_no,
+                         dim_date_3.fin_year,
+                         first_day_month.dim_date_key
+            ) AS workdays_2
+                ON workdays_2.first_day_key = fin_days.dim_gl_date_key
+            INNER JOIN
+            (
+                SELECT fact_billable_time_activity_2.dim_orig_posting_date_key AS dim_gl_date_key,
+                       [Current Hierarchy].hierarchylevel2hist,
+                       [Current Hierarchy].hierarchylevel3hist,
+                       ISNULL(SUM(fact_billable_time_activity_2.minutes_recorded), 0) / 60 AS [Hours Recorded]
+                FROM red_dw.dbo.fact_billable_time_activity AS fact_billable_time_activity_2
+                    INNER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy]
+                        ON [Current Hierarchy].dim_fed_hierarchy_history_key = fact_billable_time_activity_2.dim_fed_hierarchy_history_key
+                           AND [Current Hierarchy].hierarchylevel2hist IN ( 'Legal Ops - Claims', 'Legal Ops - LTA' )
+                GROUP BY fact_billable_time_activity_2.dim_orig_posting_date_key,
+                         [Current Hierarchy].hierarchylevel2hist,
+                         [Current Hierarchy].hierarchylevel3hist
+            ) AS Hours_2
+                ON Hours_2.dim_gl_date_key = fin_days.dim_gl_date_key
+        WHERE (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS DATE))
+              AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
+        GROUP BY fin_days.gl_last_working_day,
+                 fin_days.gl_trading_days_in_mth,
+                 fin_days.gl_week_end_flag,
+                 fin_days.gl_holiday_flag,
+                 fin_days.gl_cal_month_name,
+                 Hours_2.hierarchylevel2hist,
+                 Hours_2.hierarchylevel3hist,
+                 fin_days.gl_fin_day_in_month,
+                 workdays_2.number_of_work_days,
+                 fin_days.gl_fin_period
+    ) AS [dummy]
+        INNER JOIN
+        (
+            SELECT DISTINCT
+                   hierarchylevel2hist,
+                   hierarchylevel3hist,
+                   ISNULL(number_of_work_days, 0) AS number_of_work_days
+            FROM
+            (
+                SELECT fin_days.gl_last_working_day AS Calender,
+                       fin_days.gl_fin_day_in_month,
+                       fin_days.gl_fin_period,
+                       fin_days.gl_trading_days_in_mth AS trading,
+                       fin_days.gl_week_end_flag,
+                       fin_days.gl_holiday_flag,
+                       fin_days.gl_cal_month_name,
+                       Hours_1.hierarchylevel2hist,
+                       Hours_1.hierarchylevel3hist,
+                       0 AS [Hours Recorded],
+                       workdays_1.number_of_work_days
+                FROM red_dw.dbo.dim_gl_date AS fin_month
+                    INNER JOIN red_dw.dbo.dim_gl_date AS fin_days
+                        ON fin_days.dim_gl_date_key = fin_month.dim_gl_date_key
+                           AND fin_days.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS DATE)
+                           AND fin_days.gl_calendar_date &gt;= '2019-03-01'
+                    LEFT OUTER JOIN
+                    (
+                        SELECT dim_date_2.fin_month_no,
+                               dim_date_2.fin_year,
+                               first_day_month.dim_date_key AS first_day_key,
+                               COUNT(*) AS number_of_work_days
+                        FROM red_dw.dbo.dim_date AS dim_date_2
+                            INNER JOIN red_dw.dbo.dim_date AS first_day_month
+                                ON first_day_month.fin_month = dim_date_2.fin_month
+                                   AND first_day_month.fin_year = dim_date_2.fin_year
+                                   AND first_day_month.cal_day_in_month = 1
+                        WHERE (dim_date_2.holiday_flag = 'N')
+                              AND (dim_date_2.fin_day_in_week NOT IN ( 'Sat', 'Sun' ))
+                              AND (dim_date_2.calendar_date &lt;= GETDATE() - 1)
+                        GROUP BY dim_date_2.fin_month_no,
+                                 dim_date_2.fin_year,
+                                 first_day_month.dim_date_key
+                    ) AS workdays_1
+                        ON workdays_1.first_day_key = fin_days.dim_gl_date_key
+                    INNER JOIN
+                    (
+                        SELECT fact_billable_time_activity_1.dim_orig_posting_date_key AS dim_gl_date_key,
+                               [Current Hierarchy].hierarchylevel2hist,
+                               [Current Hierarchy].hierarchylevel3hist,
+                               ISNULL(SUM(fact_billable_time_activity_1.minutes_recorded), 0) / 60 AS [Hours Recorded]
+                        FROM red_dw.dbo.fact_billable_time_activity AS fact_billable_time_activity_1
+                            INNER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [Current Hierarchy]
+                                ON [Current Hierarchy].dim_fed_hierarchy_history_key = fact_billable_time_activity_1.dim_fed_hierarchy_history_key
+                                   AND [Current Hierarchy].hierarchylevel2hist IN ( 'Legal Ops - Claims',
+                                                                                    'Legal Ops - LTA'
+                                                                                  )
+                        GROUP BY fact_billable_time_activity_1.dim_orig_posting_date_key,
+                                 [Current Hierarchy].hierarchylevel2hist,
+                                 [Current Hierarchy].hierarchylevel3hist
+                    ) AS Hours_1
+                        ON Hours_1.dim_gl_date_key = fin_days.dim_gl_date_key
+                WHERE (fin_month.gl_calendar_date &lt;= CAST(GETDATE() - 1 AS DATE))
+                      AND (fin_days.gl_calendar_date &gt;= '2019-03-01')
+                GROUP BY fin_days.gl_last_working_day,
+                         fin_days.gl_trading_days_in_mth,
+                         fin_days.gl_week_end_flag,
+                         fin_days.gl_holiday_flag,
+                         fin_days.gl_cal_month_name,
+                         Hours_1.hierarchylevel2hist,
+                         Hours_1.hierarchylevel3hist,
+                         fin_days.gl_fin_day_in_month,
+                         workdays_1.number_of_work_days,
+                         fin_days.gl_fin_period
+            ) AS dummy2
+        ) AS dummy3
+            ON 1 = 1
+) AS mainquery
+    LEFT OUTER JOIN
+    (
+        SELECT dim_date_1.fin_month_no,
+               dim_date_1.fin_year,
+               first_day_month.calendar_date AS first_day,
+               COUNT(*) AS number_of_work_days
+        FROM red_dw.dbo.dim_date AS dim_date_1
+            INNER JOIN red_dw.dbo.dim_date AS first_day_month
+                ON first_day_month.fin_month = dim_date_1.fin_month
+                   AND first_day_month.fin_year = dim_date_1.fin_year
+                   AND first_day_month.cal_day_in_month = 1
+        WHERE (dim_date_1.holiday_flag = 'N')
+              AND (dim_date_1.fin_day_in_week NOT IN ( 'Sat', 'Sun' ))
+              AND (dim_date_1.calendar_date &lt;= GETDATE() - 1)
+        GROUP BY dim_date_1.fin_month_no,
+                 dim_date_1.fin_year,
+                 first_day_month.calendar_date
+    ) AS workdaysall
+        ON workdaysall.first_day = mainquery.Calender
+    INNER JOIN red_dw.dbo.dim_date
+        ON mainquery.Calender = calendar_date
+           AND current_fin_month = 'Current'
+ORDER BY mainquery.Calender;
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Calender">
