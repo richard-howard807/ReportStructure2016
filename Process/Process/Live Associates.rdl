@@ -3520,22 +3520,32 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] asc<
 	--, entity_code 
 	--, capacity_code
 	--, dim_client.email
-	, CASE WHEN capacity_code='COURT' THEN email ELSE NULL END AS [Court Email Address]
-	, CASE WHEN capacity_code='CLAIMANTSOLS' THEN email ELSE NULL END AS [Claimant Solicitor Email Address]
-	, CASE WHEN capacity_code='DEFENDANT' THEN email ELSE NULL END AS [Defendant Email Address]
-	, CASE WHEN capacity_code='COMPRECUNITDWP' THEN email ELSE NULL END AS [Compensation Recovery Unit/DWP Email Address]
-	, CASE WHEN capacity_code='EXPERT' THEN email ELSE NULL END AS [Expert Email Address]
-	, CASE WHEN capacity_code='EXPERTNONMED' THEN email ELSE NULL END AS [Expert (non-medical) Email Address]
-	, CASE WHEN capacity_code='OTHER' THEN email ELSE NULL END AS [Other Email Address]
+	, CASE WHEN capacity_code='COURT' THEN ISNULL(contemail, email) ELSE NULL END AS [Court Email Address]
+	, CASE WHEN capacity_code='CLAIMANTSOLS' THEN ISNULL(contemail, email) ELSE NULL END AS [Claimant Solicitor Email Address]
+	, CASE WHEN capacity_code='DEFENDANT' THEN ISNULL(contemail, email) ELSE NULL END AS [Defendant Email Address]
+	, CASE WHEN capacity_code='COMPRECUNITDWP' THEN ISNULL(contemail, email) ELSE NULL END AS [Compensation Recovery Unit/DWP Email Address]
+	, CASE WHEN capacity_code='EXPERT' THEN ISNULL(contemail, email) ELSE NULL END AS [Expert Email Address]
+	, CASE WHEN capacity_code='EXPERTNONMED' THEN ISNULL(contemail, email) ELSE NULL END AS [Expert (non-medical) Email Address]
+	, CASE WHEN capacity_code='OTHER' THEN ISNULL(contemail, email) ELSE NULL END AS [Other Email Address]
+	-- select contactid, *
 FROM red_dw.dbo.dim_involvement_full 
 INNER JOIN red_dw.dbo.dim_client ON entity_code = dim_client.client_code
 LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
 ON dim_matter_header_current.client_code = dim_involvement_full.client_code 
 AND dim_matter_header_current.matter_number = dim_involvement_full.matter_number
+LEFT OUTER JOIN (SELECT emails.contid, emails.contcode, emails.contemail, ROW_NUMBER() OVER	(PARTITION BY emails.contid ORDER BY emails.contdefaultorder) rnk
+				  -- select *
+				  FROM red_dw.dbo.ds_sh_ms_dbcontactemails emails
+				  WHERE emails.contactive = 1) emails ON emails.contid = dim_client.contactid AND emails.rnk = 1
+INNER JOIN red_dw.dbo.ds_sh_ms_dbassociates ON ds_sh_ms_dbassociates.contid = dim_client.contactid  AND ds_sh_ms_dbassociates.fileid = dim_matter_header_current.ms_fileid 
+												AND ds_sh_ms_dbassociates.assoctype = dim_involvement_full.capacity_code
 WHERE
 dim_client.email IS NOT NULL
 AND capacity_code IN ('COURT','CLAIMANTSOLS','DEFENDANT','DEFENDANTINS','COMPRECUNITDWP','EXPERT','EXPERTNONMED','OTHER' )
 AND date_closed_case_management IS NULL
+--and dim_involvement_full.matter_number = '00000397' AND dim_involvement_full.client_code = '00610426'
+AND ds_sh_ms_dbassociates.assocactive = 1
+AND dim_involvement_full.source_system_id = 6
 ORDER by
 client_code
 	, dim_involvement_full.matter_number</CommandText>
@@ -7388,6 +7398,7 @@ Fields!Expert__non_medical__Email_Address.Value, "InvolvmentEmailAddress")</Valu
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
