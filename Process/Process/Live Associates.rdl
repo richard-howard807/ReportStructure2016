@@ -2903,9 +2903,17 @@ fact_dimension_main
           <DataField>matter_description</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="ms_fileid">
+          <DataField>ms_fileid</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
         <Field Name="matter_owner_name">
           <DataField>matter_owner_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dim_matter_header_curr_key">
+          <DataField>dim_matter_header_curr_key</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="matter_owner_team">
           <DataField>matter_owner_team</DataField>
@@ -3388,149 +3396,6 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] asc<
       <Fields>
         <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_business_line_">
           <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="InvolvmentEmailAddress">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT RTRIM(dim_involvement_full.client_code)  AS client_code
-	, dim_involvement_full.matter_number
-	--, entity_code 
-	--, capacity_code
-	--, dim_client.email
-	, CASE WHEN capacity_code='COURT' THEN ISNULL(contemail, email) ELSE NULL END AS [Court Email Address]
-	, CASE WHEN capacity_code='CLAIMANTSOLS' THEN ISNULL(contemail, email) ELSE NULL END AS [Claimant Solicitor Email Address]
-	, CASE WHEN capacity_code='DEFENDANT' THEN ISNULL(contemail, email) ELSE NULL END AS [Defendant Email Address]
-	, CASE WHEN capacity_code='COMPRECUNITDWP' THEN ISNULL(contemail, email) ELSE NULL END AS [Compensation Recovery Unit/DWP Email Address]
-	, CASE WHEN capacity_code='EXPERT' THEN ISNULL(contemail, email) ELSE NULL END AS [Expert Email Address]
-	, CASE WHEN capacity_code='EXPERTNONMED' THEN ISNULL(contemail, email) ELSE NULL END AS [Expert (non-medical) Email Address]
-	, CASE WHEN capacity_code='OTHER' THEN ISNULL(contemail, email) ELSE NULL END AS [Other Email Address]
-	-- select contactid, *
-FROM red_dw.dbo.dim_involvement_full 
-INNER JOIN red_dw.dbo.dim_client ON entity_code = dim_client.client_code
-LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
-ON dim_matter_header_current.client_code = dim_involvement_full.client_code 
-AND dim_matter_header_current.matter_number = dim_involvement_full.matter_number
-LEFT OUTER JOIN (SELECT emails.contid, emails.contcode, emails.contemail, ROW_NUMBER() OVER	(PARTITION BY emails.contid ORDER BY emails.contdefaultorder) rnk
-				  -- select *
-				  FROM red_dw.dbo.ds_sh_ms_dbcontactemails emails
-				  WHERE emails.contactive = 1) emails ON emails.contid = dim_client.contactid AND emails.rnk = 1
-INNER JOIN red_dw.dbo.ds_sh_ms_dbassociates ON ds_sh_ms_dbassociates.contid = dim_client.contactid  AND ds_sh_ms_dbassociates.fileid = dim_matter_header_current.ms_fileid 
-												AND ds_sh_ms_dbassociates.assoctype = dim_involvement_full.capacity_code
-WHERE
-dim_client.email IS NOT NULL
-AND capacity_code IN ('COURT','CLAIMANTSOLS','DEFENDANT','DEFENDANTINS','COMPRECUNITDWP','EXPERT','EXPERTNONMED','OTHER' )
-AND date_closed_case_management IS NULL
---and dim_involvement_full.matter_number = '00000397' AND dim_involvement_full.client_code = '00610426'
-AND ds_sh_ms_dbassociates.assocactive = 1
-AND dim_involvement_full.source_system_id = 6
-ORDER by
-client_code
-	, dim_involvement_full.matter_number</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="client_code">
-          <DataField>client_code</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="matter_number">
-          <DataField>matter_number</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Court_Email_Address">
-          <DataField>Court Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Claimant_Solicitor_Email_Address">
-          <DataField>Claimant Solicitor Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Defendant_Email_Address">
-          <DataField>Defendant Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Compensation_Recovery_Unit_DWP_Email_Address">
-          <DataField>Compensation Recovery Unit/DWP Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Expert_Email_Address">
-          <DataField>Expert Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Expert__non_medical__Email_Address">
-          <DataField>Expert (non-medical) Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="Other_Email_Address">
-          <DataField>Other Email Address</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="CODEF">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>	SELECT RTRIM(client_code) client_code, matter_number,contName,assocType,assocRef, assocEmail , addLine1, addLine2, addLine3, addLine4, addPostcode
-	, CONCAT(addLine1,' ', addLine2,' ', addLine3,' ', addLine4,' ', addPostcode) address
-	FROM ms_prod.config.dbAssociates
-	INNER JOIN ms_prod.config.dbContact
-	 ON dbContact.contID = dbAssociates.contID
-	LEFT OUTER JOIN MS_Prod..dbAddress
-	ON addID=contDefaultAddress
-	 INNER JOIN red_dw.dbo.dim_matter_header_current
-	 ON fileID=ms_fileid
-	 AND date_closed_case_management IS NULL
-	WHERE assocType='CODEF'</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="client_code">
-          <DataField>client_code</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="matter_number">
-          <DataField>matter_number</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="contName">
-          <DataField>contName</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="assocType">
-          <DataField>assocType</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="assocRef">
-          <DataField>assocRef</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="assocEmail">
-          <DataField>assocEmail</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="addLine1">
-          <DataField>addLine1</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="addLine2">
-          <DataField>addLine2</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="addLine3">
-          <DataField>addLine3</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="addLine4">
-          <DataField>addLine4</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="addPostcode">
-          <DataField>addPostcode</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="address">
-          <DataField>address</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -6960,7 +6825,13 @@ client_code
                         <TablixMember />
                         <TablixMember />
                         <TablixMember />
-                        <TablixMember />
+                        <TablixMember>
+                          <Visibility>
+                            <Hidden>=iif(Fields!capacity_code.Value = "CLAIMANTSOLS" or
+ Fields!capacity_code.Value = "CLAIMANTREP" or
+ Fields!capacity_code.Value = "CODEF",False,True)</Hidden>
+                          </Visibility>
+                        </TablixMember>
                       </TablixMembers>
                     </TablixMember>
                   </TablixMembers>
@@ -6987,7 +6858,7 @@ client_code
                 <DataSetName>DAXCD</DataSetName>
                 <Top>0.0441cm</Top>
                 <Height>1.26041in</Height>
-                <Width>20.02677in</Width>
+                <Width>20.02678in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
