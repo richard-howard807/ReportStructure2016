@@ -20,7 +20,6 @@
         <CommandText>
 
 EVALUATE (
-
 SUMMARIZE (
 
 fact_bill_activity,
@@ -53,12 +52,10 @@ dim_bill_date[bill_current_fin_ytd],
 "CurrentMonth_Budget", IF (dim_bill_date[bill_current_fin_month] = "Current", sum(fact_budget_activity[budget_value]), 0),
 
 
-"YTD_Budget", IF (dim_bill_date[bill_current_fin_ytd] = "Current", sum(fact_budget_activity[budget_value]), 0)
-
+"YTD_Budget", IF (dim_bill_date[bill_current_fin_ytd] = "Current", sum(fact_budget_activity[budget_value]), 0),
+"AllowRun", True
 )
-
-)
-</CommandText>
+)</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DAX</CommandType>
@@ -240,6 +237,12 @@ dim_bill_date[bill_current_fin_ytd],
                     </ID>
                     <ItemCaption>YTD_Budget</ItemCaption>
                   </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[AllowRun]</ColumnName>
+                    </ID>
+                    <ItemCaption>AllowRun</ItemCaption>
+                  </Item>
                 </Items>
               </Select>
               <AutoExecute>false</AutoExecute>
@@ -255,7 +258,6 @@ dim_bill_date[bill_current_fin_ytd],
               <Statement>
 
 EVALUATE (
-
 SUMMARIZE (
 
 fact_bill_activity,
@@ -288,14 +290,10 @@ dim_bill_date[bill_current_fin_ytd],
 "CurrentMonth_Budget", IF (dim_bill_date[bill_current_fin_month] = "Current", sum(fact_budget_activity[budget_value]), 0),
 
 
-"YTD_Budget", IF (dim_bill_date[bill_current_fin_ytd] = "Current", sum(fact_budget_activity[budget_value]), 0)
-
+"YTD_Budget", IF (dim_bill_date[bill_current_fin_ytd] = "Current", sum(fact_budget_activity[budget_value]), 0),
+"AllowRun", True
 )
-
-)
-
-
-</Statement>
+)</Statement>
               <ParameterDefinitions />
             </Query>
           </QueryDefinition>
@@ -394,7 +392,20 @@ dim_bill_date[bill_current_fin_ytd],
           <DataField>[YTD_Budget]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="AllowRun">
+          <DataField>[AllowRun]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
       </Fields>
+      <Filters>
+        <Filter>
+          <FilterExpression>=Fields!AllowRun.Value</FilterExpression>
+          <Operator>Equal</Operator>
+          <FilterValues>
+            <FilterValue>=Parameters!AllowRun.Value</FilterValue>
+          </FilterValues>
+        </Filter>
+      </Filters>
     </DataSet>
     <DataSet Name="param_Level">
       <Query>
@@ -483,6 +494,49 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
         <Field Name="Month">
           <DataField>Month</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="SQL_allow_run">
+      <Query>
+        <DataSourceName>SQL12</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Level">
+            <Value>=Parameters!Level.Label</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>IF (
+
+	SELECT COUNT(*)
+	FROM dbo.ws_wrk_job_log (NOLOCK)
+	WHERE ws_wrk_job_log.wjl_job_key = 967373
+	AND ws_wrk_job_log.wjl_started &gt;= DATEADD(MI, -120, GETDATE())
+
+	) &gt; 0
+
+	BEGIN
+
+		IF @Level = 'Firm'
+			begin
+
+				SELECT CAST(1 AS BIT) allowrun
+
+			END
+			
+			ELSE 
+
+			SELECT CAST(0 AS BIT) allowrun
+	
+	END
+
+	ELSE 
+
+	SELECT CAST(0 AS BIT) allowrun</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="allowrun">
+          <DataField>allowrun</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -3244,7 +3298,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
             <Height>4.235cm</Height>
             <Width>25.14581cm</Width>
             <Visibility>
-              <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+              <Hidden>=iif(Parameters!AllowRun.Value= "False", true, false)</Hidden>
             </Visibility>
             <Style>
               <Border>
@@ -3276,6 +3330,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
             <Height>0.6cm</Height>
             <Width>20.5252cm</Width>
             <ZIndex>1</ZIndex>
+            <Visibility>
+              <Hidden>=iif(Parameters!AllowRun.Value= "False", true, false)</Hidden>
+            </Visibility>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -3309,6 +3366,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
             <Height>0.6cm</Height>
             <Width>20.5252cm</Width>
             <ZIndex>2</ZIndex>
+            <Visibility>
+              <Hidden>=iif(Parameters!AllowRun.Value= "False", true, false)</Hidden>
+            </Visibility>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -3332,7 +3392,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                   <Width>3cm</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>2.49999cm</Width>
+                  <Width>2.54cm</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>3cm</Width>
@@ -3354,6 +3414,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           <Source>Embedded</Source>
                           <Value>company_logo</Value>
                           <Sizing>FitProportional</Sizing>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -3371,6 +3434,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           <Value>WeightmansLLP_BrandedImage_Revenue_SelectColour_Small_0_dual_line</Value>
                           <Sizing>FitProportional</Sizing>
                           <ZIndex>1</ZIndex>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -3398,7 +3464,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(Parameters!Level.Label &lt;&gt; "Firm", "Please use the standard &lt;a href=""http://svr-liv-dw-01/Reports/report/2%20-%20Revenue%20and%20Hours/Revenue""&gt;revenue&lt;/a&gt; report, this report is not currently available.", "")</Value>
+                                  <Value>=iif(Fields!AllowRun.Value = false, "Please use the standard &lt;a href=""http://svr-liv-dw-01/Reports/report/2%20-%20Revenue%20and%20Hours/Revenue""&gt;revenue&lt;/a&gt; report, this report is not currently available.", "")</Value>
                                   <MarkupType>HTML</MarkupType>
                                   <Style />
                                 </TextRun>
@@ -3434,6 +3500,242 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox13">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox13</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox14">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox14</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox1</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox16">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox16</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox17">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox17</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox18">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox18</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox19">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox19</rd:DefaultName>
+                          <Visibility>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
+                          </Visibility>
+                          <Style>
+                            <Border>
+                              <Color>White</Color>
+                              <Style>None</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.635cm</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox162">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -3455,7 +3757,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox162</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3487,7 +3789,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                     <TablixCell />
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox96">
+                        <Textbox Name="Textbox12">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
@@ -3499,7 +3801,6 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>9pt</FontSize>
                                     <FontWeight>Bold</FontWeight>
-                                    <Color>White</Color>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
@@ -3508,9 +3809,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox96</rd:DefaultName>
+                          <rd:DefaultName>Textbox12</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3519,7 +3820,6 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                             </Border>
                             <TopBorder>
                               <Color>White</Color>
-                              <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
@@ -3565,7 +3865,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox162</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3625,7 +3925,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox163</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3685,7 +3985,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox171</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3745,7 +4045,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox163</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3782,7 +4082,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox97">
+                        <Textbox Name="Textbox9">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
@@ -3802,9 +4102,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox97</rd:DefaultName>
+                          <rd:DefaultName>Textbox9</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3859,7 +4159,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox165</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3919,7 +4219,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox150</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -3979,7 +4279,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Textbox149</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4044,7 +4344,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Today</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4103,7 +4403,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>Yesterday</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4142,7 +4442,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>PYToday</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4178,7 +4478,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox141">
+                        <Textbox Name="Textbox10">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
@@ -4198,9 +4498,9 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox141</rd:DefaultName>
+                          <rd:DefaultName>Textbox10</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4255,7 +4555,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>CurrentMonth4</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4314,7 +4614,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>CurrentMonth_Budget1</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4353,7 +4653,7 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                           </Paragraphs>
                           <rd:DefaultName>PYMonth</rd:DefaultName>
                           <Visibility>
-                            <Hidden>=iif(Parameters!Level.Value &lt;&gt; "Firm", true, false)</Hidden>
+                            <Hidden>=iif(Parameters!AllowRun.Value= "False", True, False)</Hidden>
                           </Visibility>
                           <Style>
                             <Border>
@@ -4409,12 +4709,13 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixRowHierarchy>
             <KeepTogether>true</KeepTogether>
             <DataSetName>DAX_Dataset</DataSetName>
-            <Height>4.91271cm</Height>
-            <Width>20.49999cm</Width>
+            <Height>5.54771cm</Height>
+            <Width>20.54cm</Width>
             <ZIndex>3</ZIndex>
             <Style>
               <Border>
@@ -4475,6 +4776,28 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
       <Prompt>FEDCode</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="AllowRun">
+      <DataType>Boolean</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>SQL_allow_run</DataSetName>
+          <ValueField>allowrun</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>AllowRun</Prompt>
+      <ValidValues>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>true</Value>
+            <Label>True</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>false</Value>
+            <Label>false</Label>
+          </ParameterValue>
+        </ParameterValues>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -4487,14 +4810,19 @@ WHERE (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
           <ParameterName>Username</ParameterName>
         </CellDefinition>
         <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>Level</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>Level</ParameterName>
+          <ParameterName>FEDCode</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>FEDCode</ParameterName>
+          <ParameterName>AllowRun</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
