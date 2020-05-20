@@ -47,10 +47,10 @@
             <Value>=iif(isnothing(Parameters!DateTo.Value), "30000101", format(CDATE(Parameters!DateTo.Value), "yyyyMMdd"))</Value>
           </QueryParameter>
           <QueryParameter Name="Team">
-            <Value>=Parameters!Team.Value</Value>
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
           </QueryParameter>
           <QueryParameter Name="BusinessLine">
-            <Value>=Parameters!BusinessLine.Value</Value>
+            <Value>=join(Parameters!BusinessLine.Value,"|")</Value>
           </QueryParameter>
           <QueryParameter Name="Rate">
             <Value>=Parameters!Rate.Value</Value>
@@ -61,68 +61,101 @@
           <QueryParameter Name="Grade">
             <Value>=Parameters!Grade.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="PracticeArea">
+            <Value>=JOIN(Parameters!PracticeArea.Value,"|")</Value>
+          </QueryParameter>
         </QueryParameters>
-        <CommandText>evaluate (
-	calculatetable(
-			summarize (
-			    TimeTransactions,
-TimeTransactions[OriginalTransactionID],
-				TimeTransactions[TransactionID],
-				dimClient[ClientCode],
-				Matter[MatterNumber],
-					dimClient[ClientGroupName],
-
-                Matter[MatterDesc],
-dimTimeTransactionsFEDHierarchy[TimeTransactionsJobTitle],
-				dimDateTransactionDate[TransactionDateDate],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsDisplayName],
-				dimTimeTransactionTimeActivity[TimeActivityCode],
-				dimTimeTransactionTimeActivity[TimeActivityDesc],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
-				Bill[BillNumber],
-				TimeTransactions[ChargeRate],
-				TimeTransactions[MinutesRecorded],
-				TimeTransactions[timeChargeValue],
-                dimTimeNarrative[TimeNarrative],
-				TimeTransactions[StageDesc],
-				TimeTransactions[EditAmt],
-				TimeTransactions[EditHrs],
-				TimeTransactions[EditRate],
-dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
-dimOriginalMatter[ClientCode],
-dimOriginalMatter[MatterNumber],
-TimeTransactions[TransactionType],
-"Client Transferred", IF (
+        <CommandText>EVALUATE
+ (
+    CALCULATETABLE (
+        SUMMARIZE (
+            TimeTransactions,
+            TimeTransactions[OriginalTransactionID],
+            TimeTransactions[TransactionID],
+            dimClient[ClientCode],
+            Matter[MatterNumber],
+            dimClient[ClientGroupName],
+            Matter[MatterDesc],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsJobTitle],
+            dimDateTransactionDate[TransactionDateDate],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsDisplayName],
+            dimTimeTransactionTimeActivity[TimeActivityCode],
+            dimTimeTransactionTimeActivity[TimeActivityDesc],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
+            Bill[BillNumber],
+            TimeTransactions[ChargeRate],
+            TimeTransactions[MinutesRecorded],
+            TimeTransactions[timeChargeValue],
+            dimTimeNarrative[TimeNarrative],
+            TimeTransactions[StageDesc],
+            TimeTransactions[EditAmt],
+            TimeTransactions[EditHrs],
+            TimeTransactions[EditRate],
+            dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
+            dimOriginalMatter[ClientCode],
+            dimOriginalMatter[MatterNumber],
+            TimeTransactions[TransactionType],
+            "Client Transferred", IF (
                 dimClient[ClientCode] = dimOriginalMatter[ClientCode],
                 "",
-                dimOriginalMatter[ClientCode]),
-"Matter Transferred",IF(Matter[MatterNumber]=dimOriginalMatter[MatterNumber],"",dimOriginalMatter[MatterNumber])
-						),
-					if(@Client_Group = blank(),1,dimClient[ClientGroupName] = @Client_Group),
-					if(@Grade = blank(),1,dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel] = @Grade),
-			dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Bill",
-			dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Abmt",
-
-			'dimTimeTransactionTimeType'[TimeTransactionTimeTypeDesc] = @ChargeableTimeType, 
-			pathcontains(@TimeType, TimeTransactions[TransactionType]),
-			Bill[BillNumber] = if(@BilNum = blank(), Bill[BillNumber], @BilNum),
-TimeTransactions[ChargeRate] = if(@Rate = blank(), TimeTransactions[ChargeRate], value(@Rate)),
-			dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
-			Matter[MatterNumber] = if(@MatterCode = blank(), Matter[MatterNumber], @MatterCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode] = if(@FedCode = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode], @FedCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] = if(@BusinessLine = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine], @BusinessLine),
-			PATHCONTAINS(@ActivityType,dimTimeTransactionTimeActivity[TimeActivityDesc]),
-			--pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
-			--pathcontains(@Team, dimFEDHierarchy[Team]),
-			dimDateTransactionDate[TransactionDateKey] &gt; if(value(@DateFrom) = blank(), 19000101, value(@DateFrom)),
-			dimDateTransactionDate[TransactionDateKey] &lt;= if(value(@DateTo) = blank(), 30000101,  value(@DateTo))
-					)
-				)
-
-order by
-dimDateTransactionDate[TransactionDateDate]</CommandText>
+                dimOriginalMatter[ClientCode]
+            ),
+            "Matter Transferred", IF (
+                Matter[MatterNumber] = dimOriginalMatter[MatterNumber],
+                "",
+                dimOriginalMatter[MatterNumber]
+            )
+        ),
+        IF ( @Client_Group = BLANK (), 1, dimClient[ClientGroupName] = @Client_Group ),
+        IF (
+            @Grade = BLANK (),
+            1,
+            dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel] = @Grade
+        ),
+        dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Bill",
+        dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Abmt",
+        'dimTimeTransactionTimeType'[TimeTransactionTimeTypeDesc] = @ChargeableTimeType,
+        PATHCONTAINS ( @TimeType, TimeTransactions[TransactionType] ),
+        Bill[BillNumber]
+            = IF ( @BilNum = BLANK (), Bill[BillNumber], @BilNum ),
+        TimeTransactions[ChargeRate]
+            = IF ( @Rate = BLANK (), TimeTransactions[ChargeRate], VALUE ( @Rate ) ),
+        dimClient[ClientCode]
+            = IF ( @ClientCode = BLANK (), dimClient[ClientCode], @ClientCode ),
+        Matter[MatterNumber]
+            = IF ( @MatterCode = BLANK (), Matter[MatterNumber], @MatterCode ),
+        dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode]
+            = IF (
+                @FedCode = BLANK (),
+                dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
+                @FedCode
+            ),
+//        dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam]
+//            = IF (
+//                @Team = BLANK (),
+//                dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
+//                @Team
+//            ),
+//        dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine]
+//            = IF (
+//                @BusinessLine = BLANK (),
+//                dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine],
+//                @BusinessLine
+//            ),
+       PATHCONTAINS ( @BusinessLine, dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] ),
+       PATHCONTAINS ( @PracticeArea, dimTimeTransactionsFEDHierarchy[TimeTransactionsPracticeArea]),
+       PATHCONTAINS ( @Team, dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] ),
+        PATHCONTAINS ( @ActivityType, dimTimeTransactionTimeActivity[TimeActivityDesc] ),
+        --pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
+        --pathcontains(@Team, dimFEDHierarchy[Team]),
+        dimDateTransactionDate[TransactionDateKey]
+            &gt; IF ( VALUE ( @DateFrom ) = BLANK (), 19000101, VALUE ( @DateFrom ) ),
+        dimDateTransactionDate[TransactionDateKey]
+            &lt;= IF ( VALUE ( @DateTo ) = BLANK (), 30000101, VALUE ( @DateTo ) )
+    )
+)
+ORDER BY dimDateTransactionDate[TransactionDateDate]</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -308,67 +341,97 @@ dimDateTransactionDate[TransactionDateDate]</CommandText>
   &lt;/SelectTablesControlState&gt;
   &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
   &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;evaluate (
-	calculatetable(
-			summarize (
-			    TimeTransactions,
-TimeTransactions[OriginalTransactionID],
-				TimeTransactions[TransactionID],
-				dimClient[ClientCode],
-				Matter[MatterNumber],
-					dimClient[ClientGroupName],
-
-                Matter[MatterDesc],
-dimTimeTransactionsFEDHierarchy[TimeTransactionsJobTitle],
-				dimDateTransactionDate[TransactionDateDate],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsDisplayName],
-				dimTimeTransactionTimeActivity[TimeActivityCode],
-				dimTimeTransactionTimeActivity[TimeActivityDesc],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
-				Bill[BillNumber],
-				TimeTransactions[ChargeRate],
-				TimeTransactions[MinutesRecorded],
-				TimeTransactions[timeChargeValue],
-                dimTimeNarrative[TimeNarrative],
-				TimeTransactions[StageDesc],
-				TimeTransactions[EditAmt],
-				TimeTransactions[EditHrs],
-				TimeTransactions[EditRate],
-dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
-dimOriginalMatter[ClientCode],
-dimOriginalMatter[MatterNumber],
-TimeTransactions[TransactionType],
-"Client Transferred", IF (
+  &lt;QueryText&gt;EVALUATE
+ (
+    CALCULATETABLE (
+        SUMMARIZE (
+            TimeTransactions,
+            TimeTransactions[OriginalTransactionID],
+            TimeTransactions[TransactionID],
+            dimClient[ClientCode],
+            Matter[MatterNumber],
+            dimClient[ClientGroupName],
+            Matter[MatterDesc],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsJobTitle],
+            dimDateTransactionDate[TransactionDateDate],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsDisplayName],
+            dimTimeTransactionTimeActivity[TimeActivityCode],
+            dimTimeTransactionTimeActivity[TimeActivityDesc],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
+            Bill[BillNumber],
+            TimeTransactions[ChargeRate],
+            TimeTransactions[MinutesRecorded],
+            TimeTransactions[timeChargeValue],
+            dimTimeNarrative[TimeNarrative],
+            TimeTransactions[StageDesc],
+            TimeTransactions[EditAmt],
+            TimeTransactions[EditHrs],
+            TimeTransactions[EditRate],
+            dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
+            dimOriginalMatter[ClientCode],
+            dimOriginalMatter[MatterNumber],
+            TimeTransactions[TransactionType],
+            "Client Transferred", IF (
                 dimClient[ClientCode] = dimOriginalMatter[ClientCode],
                 "",
-                dimOriginalMatter[ClientCode]),
-"Matter Transferred",IF(Matter[MatterNumber]=dimOriginalMatter[MatterNumber],"",dimOriginalMatter[MatterNumber])
-						),
-					if(@Client_Group = blank(),1,dimClient[ClientGroupName] = @Client_Group),
-					if(@Grade = blank(),1,dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel] = @Grade),
-			dimTimeTransactionTimeActivity[TimeActivityCode] &amp;lt;&amp;gt; "Bill",
-			dimTimeTransactionTimeActivity[TimeActivityCode] &amp;lt;&amp;gt; "Abmt",
-
-			'dimTimeTransactionTimeType'[TimeTransactionTimeTypeDesc] = @ChargeableTimeType, 
-			pathcontains(@TimeType, TimeTransactions[TransactionType]),
-			Bill[BillNumber] = if(@BilNum = blank(), Bill[BillNumber], @BilNum),
-TimeTransactions[ChargeRate] = if(@Rate = blank(), TimeTransactions[ChargeRate], value(@Rate)),
-			dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
-			Matter[MatterNumber] = if(@MatterCode = blank(), Matter[MatterNumber], @MatterCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode] = if(@FedCode = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode], @FedCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] = if(@BusinessLine = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine], @BusinessLine),
-			PATHCONTAINS(@ActivityType,dimTimeTransactionTimeActivity[TimeActivityDesc]),
-			--pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
-			--pathcontains(@Team, dimFEDHierarchy[Team]),
-			dimDateTransactionDate[TransactionDateKey] &amp;gt; if(value(@DateFrom) = blank(), 19000101, value(@DateFrom)),
-			dimDateTransactionDate[TransactionDateKey] &amp;lt;= if(value(@DateTo) = blank(), 30000101,  value(@DateTo))
-					)
-				)
-
-order by
-dimDateTransactionDate[TransactionDateDate]&lt;/QueryText&gt;
+                dimOriginalMatter[ClientCode]
+            ),
+            "Matter Transferred", IF (
+                Matter[MatterNumber] = dimOriginalMatter[MatterNumber],
+                "",
+                dimOriginalMatter[MatterNumber]
+            )
+        ),
+        IF ( @Client_Group = BLANK (), 1, dimClient[ClientGroupName] = @Client_Group ),
+        IF (
+            @Grade = BLANK (),
+            1,
+            dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel] = @Grade
+        ),
+        dimTimeTransactionTimeActivity[TimeActivityCode] &amp;lt;&amp;gt; "Bill",
+        dimTimeTransactionTimeActivity[TimeActivityCode] &amp;lt;&amp;gt; "Abmt",
+        'dimTimeTransactionTimeType'[TimeTransactionTimeTypeDesc] = @ChargeableTimeType,
+        PATHCONTAINS ( @TimeType, TimeTransactions[TransactionType] ),
+        Bill[BillNumber]
+            = IF ( @BilNum = BLANK (), Bill[BillNumber], @BilNum ),
+        TimeTransactions[ChargeRate]
+            = IF ( @Rate = BLANK (), TimeTransactions[ChargeRate], VALUE ( @Rate ) ),
+        dimClient[ClientCode]
+            = IF ( @ClientCode = BLANK (), dimClient[ClientCode], @ClientCode ),
+        Matter[MatterNumber]
+            = IF ( @MatterCode = BLANK (), Matter[MatterNumber], @MatterCode ),
+        dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode]
+            = IF (
+                @FedCode = BLANK (),
+                dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
+                @FedCode
+            ),
+//        dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam]
+//            = IF (
+//                @Team = BLANK (),
+//                dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
+//                @Team
+//            ),
+//        dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine]
+//            = IF (
+//                @BusinessLine = BLANK (),
+//                dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine],
+//                @BusinessLine
+//            ),
+       PATHCONTAINS ( @BusinessLine, dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] ),
+       PATHCONTAINS ( @PracticeArea, dimTimeTransactionsFEDHierarchy[TimeTransactionsPracticeArea]),
+       PATHCONTAINS ( @Team, dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] ),
+        PATHCONTAINS ( @ActivityType, dimTimeTransactionTimeActivity[TimeActivityDesc] ),
+        --pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
+        --pathcontains(@Team, dimFEDHierarchy[Team]),
+        dimDateTransactionDate[TransactionDateKey]
+            &amp;gt; IF ( VALUE ( @DateFrom ) = BLANK (), 19000101, VALUE ( @DateFrom ) ),
+        dimDateTransactionDate[TransactionDateKey]
+            &amp;lt;= IF ( VALUE ( @DateTo ) = BLANK (), 30000101, VALUE ( @DateTo ) )
+    )
+)
+ORDER BY dimDateTransactionDate[TransactionDateDate]&lt;/QueryText&gt;
   &lt;DatabaseId /&gt;
   &lt;MiningStructureId /&gt;
   &lt;MiningModelId /&gt;
@@ -377,72 +440,102 @@ dimDateTransactionDate[TransactionDateDate]&lt;/QueryText&gt;
 &lt;/DataminingQueryBuilderState&gt;</Data>
             </QuerySpecification>
             <Query>
-              <Statement>evaluate (
-	calculatetable(
-			summarize (
-			    TimeTransactions,
-TimeTransactions[OriginalTransactionID],
-				TimeTransactions[TransactionID],
-				dimClient[ClientCode],
-				Matter[MatterNumber],
-					dimClient[ClientGroupName],
-
-                Matter[MatterDesc],
-dimTimeTransactionsFEDHierarchy[TimeTransactionsJobTitle],
-				dimDateTransactionDate[TransactionDateDate],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsDisplayName],
-				dimTimeTransactionTimeActivity[TimeActivityCode],
-				dimTimeTransactionTimeActivity[TimeActivityDesc],
-				dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
-				Bill[BillNumber],
-				TimeTransactions[ChargeRate],
-				TimeTransactions[MinutesRecorded],
-				TimeTransactions[timeChargeValue],
-                dimTimeNarrative[TimeNarrative],
-				TimeTransactions[StageDesc],
-				TimeTransactions[EditAmt],
-				TimeTransactions[EditHrs],
-				TimeTransactions[EditRate],
-dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
-dimOriginalMatter[ClientCode],
-dimOriginalMatter[MatterNumber],
-TimeTransactions[TransactionType],
-"Client Transferred", IF (
+              <Statement>EVALUATE
+ (
+    CALCULATETABLE (
+        SUMMARIZE (
+            TimeTransactions,
+            TimeTransactions[OriginalTransactionID],
+            TimeTransactions[TransactionID],
+            dimClient[ClientCode],
+            Matter[MatterNumber],
+            dimClient[ClientGroupName],
+            Matter[MatterDesc],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsJobTitle],
+            dimDateTransactionDate[TransactionDateDate],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsDisplayName],
+            dimTimeTransactionTimeActivity[TimeActivityCode],
+            dimTimeTransactionTimeActivity[TimeActivityDesc],
+            dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
+            Bill[BillNumber],
+            TimeTransactions[ChargeRate],
+            TimeTransactions[MinutesRecorded],
+            TimeTransactions[timeChargeValue],
+            dimTimeNarrative[TimeNarrative],
+            TimeTransactions[StageDesc],
+            TimeTransactions[EditAmt],
+            TimeTransactions[EditHrs],
+            TimeTransactions[EditRate],
+            dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
+            dimOriginalMatter[ClientCode],
+            dimOriginalMatter[MatterNumber],
+            TimeTransactions[TransactionType],
+            "Client Transferred", IF (
                 dimClient[ClientCode] = dimOriginalMatter[ClientCode],
                 "",
-                dimOriginalMatter[ClientCode]),
-"Matter Transferred",IF(Matter[MatterNumber]=dimOriginalMatter[MatterNumber],"",dimOriginalMatter[MatterNumber])
-						),
-					if(@Client_Group = blank(),1,dimClient[ClientGroupName] = @Client_Group),
-					if(@Grade = blank(),1,dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel] = @Grade),
-			dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Bill",
-			dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Abmt",
-
-			'dimTimeTransactionTimeType'[TimeTransactionTimeTypeDesc] = @ChargeableTimeType, 
-			pathcontains(@TimeType, TimeTransactions[TransactionType]),
-			Bill[BillNumber] = if(@BilNum = blank(), Bill[BillNumber], @BilNum),
-TimeTransactions[ChargeRate] = if(@Rate = blank(), TimeTransactions[ChargeRate], value(@Rate)),
-			dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
-			Matter[MatterNumber] = if(@MatterCode = blank(), Matter[MatterNumber], @MatterCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode] = if(@FedCode = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode], @FedCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] = if(@BusinessLine = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine], @BusinessLine),
-			PATHCONTAINS(@ActivityType,dimTimeTransactionTimeActivity[TimeActivityDesc]),
-			--pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
-			--pathcontains(@Team, dimFEDHierarchy[Team]),
-			dimDateTransactionDate[TransactionDateKey] &gt; if(value(@DateFrom) = blank(), 19000101, value(@DateFrom)),
-			dimDateTransactionDate[TransactionDateKey] &lt;= if(value(@DateTo) = blank(), 30000101,  value(@DateTo))
-					)
-				)
-
-order by
-dimDateTransactionDate[TransactionDateDate]</Statement>
+                dimOriginalMatter[ClientCode]
+            ),
+            "Matter Transferred", IF (
+                Matter[MatterNumber] = dimOriginalMatter[MatterNumber],
+                "",
+                dimOriginalMatter[MatterNumber]
+            )
+        ),
+        IF ( @Client_Group = BLANK (), 1, dimClient[ClientGroupName] = @Client_Group ),
+        IF (
+            @Grade = BLANK (),
+            1,
+            dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel] = @Grade
+        ),
+        dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Bill",
+        dimTimeTransactionTimeActivity[TimeActivityCode] &lt;&gt; "Abmt",
+        'dimTimeTransactionTimeType'[TimeTransactionTimeTypeDesc] = @ChargeableTimeType,
+        PATHCONTAINS ( @TimeType, TimeTransactions[TransactionType] ),
+        Bill[BillNumber]
+            = IF ( @BilNum = BLANK (), Bill[BillNumber], @BilNum ),
+        TimeTransactions[ChargeRate]
+            = IF ( @Rate = BLANK (), TimeTransactions[ChargeRate], VALUE ( @Rate ) ),
+        dimClient[ClientCode]
+            = IF ( @ClientCode = BLANK (), dimClient[ClientCode], @ClientCode ),
+        Matter[MatterNumber]
+            = IF ( @MatterCode = BLANK (), Matter[MatterNumber], @MatterCode ),
+        dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode]
+            = IF (
+                @FedCode = BLANK (),
+                dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode],
+                @FedCode
+            ),
+//        dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam]
+//            = IF (
+//                @Team = BLANK (),
+//                dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam],
+//                @Team
+//            ),
+//        dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine]
+//            = IF (
+//                @BusinessLine = BLANK (),
+//                dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine],
+//                @BusinessLine
+//            ),
+       PATHCONTAINS ( @BusinessLine, dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] ),
+       PATHCONTAINS ( @PracticeArea, dimTimeTransactionsFEDHierarchy[TimeTransactionsPracticeArea]),
+       PATHCONTAINS ( @Team, dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] ),
+        PATHCONTAINS ( @ActivityType, dimTimeTransactionTimeActivity[TimeActivityDesc] ),
+        --pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
+        --pathcontains(@Team, dimFEDHierarchy[Team]),
+        dimDateTransactionDate[TransactionDateKey]
+            &gt; IF ( VALUE ( @DateFrom ) = BLANK (), 19000101, VALUE ( @DateFrom ) ),
+        dimDateTransactionDate[TransactionDateKey]
+            &lt;= IF ( VALUE ( @DateTo ) = BLANK (), 30000101, VALUE ( @DateTo ) )
+    )
+)
+ORDER BY dimDateTransactionDate[TransactionDateDate]</Statement>
               <ParameterDefinitions>
                 <ParameterDefinition>
                   <Name>BilNum</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>BilNum</Caption>
                   <ParameterValuesQuery>
@@ -454,7 +547,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>ClientCode</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>ClientCode</Caption>
                   <ParameterValuesQuery>
@@ -466,7 +559,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>MatterCode</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>MatterCode</Caption>
                   <ParameterValuesQuery>
@@ -478,7 +571,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>FedCode</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>FedCode</Caption>
                   <ParameterValuesQuery>
@@ -490,7 +583,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>DateFrom</Name>
                   <DefaultValues>
-                    <DefaultValue>0</DefaultValue>
+                    <DefaultValue>00</DefaultValue>
                   </DefaultValues>
                   <Caption>DateFrom</Caption>
                   <ParameterValuesQuery>
@@ -514,7 +607,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>TimeType</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>TimeType</Caption>
                   <ParameterValuesQuery>
@@ -526,7 +619,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>ChargeableTimeType</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>ChargeableTimeType</Caption>
                   <ParameterValuesQuery>
@@ -538,7 +631,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Team</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Team</Caption>
                   <ParameterValuesQuery>
@@ -550,7 +643,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>BusinessLine</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>BusinessLine</Caption>
                   <ParameterValuesQuery>
@@ -562,7 +655,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>ActivityType</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>ActivityType</Caption>
                   <ParameterValuesQuery>
@@ -574,7 +667,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Rate</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Rate</Caption>
                   <ParameterValuesQuery>
@@ -586,7 +679,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Client_Group</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Client_Group</Caption>
                   <ParameterValuesQuery>
@@ -598,9 +691,21 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Grade</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Grade</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>PracticeArea</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>PracticeArea</Caption>
                   <ParameterValuesQuery>
                     <ParameterizedStatement>
                       <ReferencedParameters />
@@ -959,19 +1064,28 @@ order by dimMatterFEDHierarchy[MatterBusinessLine]</Statement>
     <DataSet Name="param_Team">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="PracticeArea">
+            <Value>=JOIN(Parameters!PracticeArea.Value, "|")</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>evaluate (
+calculatetable(
 	summarize (
 				dimMatterFEDHierarchy,
 				dimMatterFEDHierarchy[MatterTeam]
 		)
+		,
+PATHCONTAINS ( @PracticeArea, dimMatterFEDHierarchy[MatterPracticeArea] )
+)
 	)
 
 order by dimMatterFEDHierarchy[MatterTeam]</CommandText>
         <rd:DesignerState>
-          <QueryDefinition xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
             <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <QuerySpecification xsi:type="DMXQuerySpecification">
               <Select>
                 <Items>
                   <Item>
@@ -982,6 +1096,7 @@ order by dimMatterFEDHierarchy[MatterTeam]</CommandText>
                   </Item>
                 </Items>
               </Select>
+              <AutoExecute>false</AutoExecute>
               <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
   &lt;SelectTablesControlState&gt;
@@ -990,10 +1105,14 @@ order by dimMatterFEDHierarchy[MatterTeam]</CommandText>
   &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
   &lt;View&gt;Text&lt;/View&gt;
   &lt;QueryText&gt;evaluate (
+calculatetable(
 	summarize (
 				dimMatterFEDHierarchy,
 				dimMatterFEDHierarchy[MatterTeam]
 		)
+		,
+PATHCONTAINS ( @PracticeArea, dimMatterFEDHierarchy[MatterPracticeArea] )
+)
 	)
 
 order by dimMatterFEDHierarchy[MatterTeam]&lt;/QueryText&gt;
@@ -1006,14 +1125,31 @@ order by dimMatterFEDHierarchy[MatterTeam]&lt;/QueryText&gt;
             </QuerySpecification>
             <Query>
               <Statement>evaluate (
+calculatetable(
 	summarize (
 				dimMatterFEDHierarchy,
 				dimMatterFEDHierarchy[MatterTeam]
 		)
+		,
+PATHCONTAINS ( @PracticeArea, dimMatterFEDHierarchy[MatterPracticeArea] )
+)
 	)
 
 order by dimMatterFEDHierarchy[MatterTeam]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>PracticeArea</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>PracticeArea</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -1409,6 +1545,94 @@ dim_client[client_code],
         </Field>
         <Field Name="whitbread_brand">
           <DataField>dim_detail_client[whitbread_brand]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_PracticeArea">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="BusinessLine">
+            <Value>=join(Parameters!BusinessLine.Value, "|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>evaluate (
+CALCULATETABLE(
+	summarize (
+				dimMatterFEDHierarchy,
+				dimMatterFEDHierarchy[MatterPracticeArea]
+		),
+PATHCONTAINS ( @BusinessLine, dimMatterFEDHierarchy[MatterBusinessLine] )
+	)
+)
+
+order by dimMatterFEDHierarchy[MatterPracticeArea]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DAX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="MDXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Level">
+                      <DimensionName>dimMatterFEDHierarchy</DimensionName>
+                      <HierarchyName>MatterPracticeArea</HierarchyName>
+                      <HierarchyUniqueName>[dimMatterFEDHierarchy].[MatterPracticeArea]</HierarchyUniqueName>
+                      <LevelName>MatterPracticeArea</LevelName>
+                      <UniqueName>[dimMatterFEDHierarchy].[MatterPracticeArea].[MatterPracticeArea]</UniqueName>
+                    </ID>
+                    <ItemCaption>MatterPracticeArea</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <From>Model</From>
+              <Filter>
+                <FilterItems />
+              </Filter>
+              <Calculations />
+              <Aggregates />
+              <QueryProperties />
+            </QuerySpecification>
+            <Query>
+              <Statement>evaluate (
+CALCULATETABLE(
+	summarize (
+				dimMatterFEDHierarchy,
+				dimMatterFEDHierarchy[MatterPracticeArea]
+		),
+PATHCONTAINS ( @BusinessLine, dimMatterFEDHierarchy[MatterBusinessLine] )
+	)
+)
+
+order by dimMatterFEDHierarchy[MatterPracticeArea]
+
+</Statement>
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>BusinessLine</Name>
+                  <DefaultValues>
+                    <DefaultValue>[dimMatterFEDHierarchy].[MatterBusinessLine].&amp;[Legal Ops - LTA]</DefaultValue>
+                  </DefaultValues>
+                  <Caption>BusinessLine</Caption>
+                  <HierarchyUniqueName>[dimMatterFEDHierarchy].[MatterBusinessLine]</HierarchyUniqueName>
+                  <ParameterValuesQuery>
+                    <Statement>WITH MEMBER [Measures].[ParameterCaption] AS [dimMatterFEDHierarchy].[MatterBusinessLine].CURRENTMEMBER.MEMBER_CAPTION MEMBER [Measures].[ParameterValue] AS [dimMatterFEDHierarchy].[MatterBusinessLine].CURRENTMEMBER.UNIQUENAME MEMBER [Measures].[ParameterLevel] AS [dimMatterFEDHierarchy].[MatterBusinessLine].CURRENTMEMBER.LEVEL.ORDINAL SELECT {[Measures].[ParameterCaption], [Measures].[ParameterValue], [Measures].[ParameterLevel]} ON COLUMNS , [dimMatterFEDHierarchy].[MatterBusinessLine].ALLMEMBERS ON ROWS FROM [Model]</Statement>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="MatterPracticeArea">
+          <DataField>dimMatterFEDHierarchy[MatterPracticeArea]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4522,7 +4746,6 @@ dim_client[client_code],
     </ReportParameter>
     <ReportParameter Name="BusinessLine">
       <DataType>String</DataType>
-      <Nullable>true</Nullable>
       <DefaultValue>
         <DataSetReference>
           <DataSetName>param_BusinessLine</DataSetName>
@@ -4537,10 +4760,28 @@ dim_client[client_code],
           <LabelField>dimMatterFEDHierarchy_MatterBusinessLine_</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="PracticeArea">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_PracticeArea</DataSetName>
+          <ValueField>MatterPracticeArea</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Department</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_PracticeArea</DataSetName>
+          <ValueField>MatterPracticeArea</ValueField>
+          <LabelField>MatterPracticeArea</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="Team">
       <DataType>String</DataType>
-      <Nullable>true</Nullable>
       <DefaultValue>
         <DataSetReference>
           <DataSetName>param_Team</DataSetName>
@@ -4555,6 +4796,7 @@ dim_client[client_code],
           <LabelField>dimMatterFEDHierarchy_MatterTeam_</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="ActivityType">
       <DataType>String</DataType>
@@ -4589,7 +4831,7 @@ dim_client[client_code],
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>7</NumberOfRows>
+      <NumberOfRows>8</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4649,16 +4891,21 @@ dim_client[client_code],
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>5</RowIndex>
-          <ParameterName>Team</ParameterName>
+          <ParameterName>PracticeArea</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>6</RowIndex>
-          <ParameterName>ActivityType</ParameterName>
+          <ParameterName>Team</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>6</RowIndex>
+          <ParameterName>ActivityType</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>7</RowIndex>
           <ParameterName>Rate</ParameterName>
         </CellDefinition>
       </CellDefinitions>
