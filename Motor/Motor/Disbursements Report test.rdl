@@ -2462,26 +2462,89 @@ WHERE  name ='Disbursements_Report.png'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>
+SELECT  Matters.Client,
+       Matters.Matter,
+       Matters.Description,
+       Disbs.WorkRate AS ChargeRate,
+       Disbs.PostDate,
+       Disbs.Narrative_UnformattedText AS DisbNotes,
+	   Timekeeper.Number,
+	   InvMaster.InvNumber,
 
-SELECT        Matters.Client, Matters.Matter, Matters.Description, Disbs.WorkRate AS ChargeRate, Disbs.PostDate, Disbs.Narrative_UnformattedText AS DisbNotes, costype_description, 
-                         Matters.Client AS DisbClient, Matters.Matter AS DisbMatter, COALESCE (VchrDetail.Amount, Disbs.WorkAmt) AS DisbAmount, CASE WHEN ISNULL(VchrTax.CalcAmt, 
-                         0) &lt;&gt; 0 THEN COALESCE (VchrDetail.Amount, Disbs.WorkAmt) * 0.2 ELSE ISNULL(VchrTax.CalcAmt, 0) END AS DisbVAT, Timekeeper.DisplayName AS AccountsUser, 
-                         MattFE.name AS MatterOwner, MattFE.hierarchylevel4 AS MattOwnTeam, InvMaster.InvNumber AS Bill_Number, InvMaster.PostDate AS Invoice_Date
-FROM            (SELECT        ISNULL(RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)), RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))) AS Client, 
-                                                    ISNULL(SUBSTRING(LoadNumber, CHARINDEX('-', LoadNumber) + 1, LEN(LoadNumber)), SUBSTRING(AltNumber, CHARINDEX('-', AltNumber) + 1, 
-                                                    LEN(AltNumber))) AS Matter, MattIndex, LoadNumber, Description
-                          FROM            TE_3E_Prod.dbo.Matter AS Matter) AS Matters INNER JOIN
-                         TE_3E_Prod.dbo.CostCard AS Disbs ON Matters.MattIndex = Disbs.Matter LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.InvMaster AS InvMaster ON Disbs.InvMaster = InvMaster.InvIndex LEFT OUTER JOIN
+      -- costype_description,
+       Matters.Client AS DisbClient,
+       Matters.Matter AS DisbMatter,
+       COALESCE(VchrDetail.Amount, Disbs.WorkAmt) AS DisbAmount,
+       CASE
+           WHEN ISNULL(VchrTax.CalcAmt, 0) &lt;&gt; 0 THEN
+               COALESCE(VchrDetail.Amount, Disbs.WorkAmt) * 0.2
+           ELSE
+               ISNULL(VchrTax.CalcAmt, 0)
+       END AS DisbVAT,
+       Timekeeper.DisplayName AS AccountsUser,
+      dim_fed_hierarchy_current.name AS MatterOwner,
+       dbo.dim_fed_hierarchy_current.hierarchylevel4 AS MattOwnTeam,
+	   
+       InvMaster.InvNumber AS Bill_Number,
+       InvMaster.PostDate AS Invoice_Date
+FROM
+(
+    SELECT ISNULL(
+                     RTRIM(LEFT(LoadNumber, CHARINDEX('-', LoadNumber) - 1)),
+                     RTRIM(LEFT(AltNumber, CHARINDEX('-', AltNumber) - 1))
+                 ) AS Client,
+           ISNULL(
+                     SUBSTRING(LoadNumber, CHARINDEX('-', LoadNumber) + 1, LEN(LoadNumber)),
+                     SUBSTRING(AltNumber, CHARINDEX('-', AltNumber) + 1, LEN(AltNumber))
+                 ) AS Matter,
+           MattIndex,
+           LoadNumber,
+           Description
+    FROM TE_3E_Prod.dbo.Matter AS Matter
+) AS Matters
+    left JOIN TE_3E_Prod.dbo.CostCard AS Disbs
+        ON Matters.MattIndex = Disbs.Matter
+    LEFT OUTER JOIN TE_3E_Prod.dbo.InvMaster AS InvMaster
+        ON Disbs.InvMaster = InvMaster.InvIndex
+    LEFT OUTER JOIN TE_3E_Prod.dbo.Timekeeper AS Timekeeper
+        ON Disbs.Timekeeper = Timekeeper.TkprIndex
+		--LEFT JOIN TE_3E_Prod.dbo.Matter m ON Disbs.Matter = m.m
+		--.
 
-                         TE_3E_Prod.dbo.Timekeeper AS Timekeeper ON Disbs.Timekeeper = Timekeeper.TkprIndex INNER JOIN
-                         axxia01.dbo.camatgrp AS camatgrp ON Matters.Client = camatgrp.mg_client COLLATE database_default AND 
-                         Matters.Matter = camatgrp.mg_matter COLLATE database_default LEFT OUTER JOIN
-                         dim_fed_hierarchy_history AS MattFE ON camatgrp.mg_feearn = MattFE.fed_code COLLATE database_default AND MattFE.dss_current_flag = 'Y' LEFT OUTER JOIN
-						  fact_disbursements_detail ON fact_disbursements_detail.dim_fed_hierarchy_history_key = MattFE.dim_fed_hierarchy_history_key 		 LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.VchrDetail AS VchrDetail ON Disbs.CostIndex = VchrDetail.CostCard LEFT OUTER JOIN
-                         TE_3E_Prod.dbo.VchrTax AS VchrTax ON VchrDetail.Voucher = VchrTax.Voucher AND VchrTax.LineNum = 1
-WHERE        (Disbs.IsActive = 1) AND (Matters.Client = @Client) AND (Disbs.PostDate &gt;= @Start) AND (Disbs.PostDate &lt; @End)</CommandText>
+
+    --INNER JOIN axxia01.dbo.camatgrp AS camatgrp
+    --    ON Matters.Client = camatgrp.mg_client COLLATE DATABASE_DEFAULT
+    --       AND Matters.Matter = camatgrp.mg_matter COLLATE DATABASE_DEFAULT
+left JOIN red_dw.dbo.dim_fed_hierarchy_current ON Timekeeper.Number  COLLATE Latin1_General_BIN = dim_fed_hierarchy_current.fed_code
+--EFT JOIN red_dw.dbo.fact_disbursements_detail ON fact_disbursements_detail.
+	
+	
+	
+	
+	--LEFT OUTER JOIN dim_fed_hierarchy_history AS MattFE
+ --       ON camatgrp.mg_feearn = MattFE.fed_code COLLATE DATABASE_DEFAULT
+ --          AND MattFE.dss_current_flag = 'Y'
+   -- LEFT OUTER JOIN fact_disbursements_detail
+     --   ON fact_disbursements_detail.dim_fed_hierarchy_history_key = dim_fed_hierarchy_current.dim_fed_hierarchy_history_key
+    LEFT OUTER JOIN TE_3E_Prod.dbo.VchrDetail AS VchrDetail
+        ON Disbs.CostIndex = VchrDetail.CostCard
+    LEFT OUTER JOIN TE_3E_Prod.dbo.VchrTax AS VchrTax
+        ON VchrDetail.Voucher = VchrTax.Voucher
+          -- AND VchrTax.LineNum = 1
+
+WHERE (Disbs.IsActive = 1)
+
+
+
+
+
+
+
+
+
+      AND (Matters.Client = @Client)
+      AND (Disbs.PostDate &gt;= @Start)
+      AND (Disbs.PostDate &lt; @End);</CommandText>
       </Query>
       <Fields>
         <Field Name="Client">
@@ -2508,12 +2571,16 @@ WHERE        (Disbs.IsActive = 1) AND (Matters.Client = @Client) AND (Disbs.Post
           <DataField>DisbNotes</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="costype_description">
-          <DataField>costype_description</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="DisbClient">
           <DataField>DisbClient</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Number">
+          <DataField>Number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="InvNumber">
+          <DataField>InvNumber</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="DisbMatter">
@@ -4068,7 +4135,7 @@ WHERE        (Disbs.IsActive = 1) AND (Matters.Client = @Client) AND (Disbs.Post
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <Format>'��'#,0.00</Format>
+                                        <Format>'£'0.00;('£'0.00)</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -4137,7 +4204,7 @@ WHERE        (Disbs.IsActive = 1) AND (Matters.Client = @Client) AND (Disbs.Post
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <Format>'��'#,0.00</Format>
+                                        <Format>'£'0.00;('£'0.00)</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -4206,7 +4273,7 @@ WHERE        (Disbs.IsActive = 1) AND (Matters.Client = @Client) AND (Disbs.Post
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <Format>'��'#,0.00</Format>
+                                        <Format>'£'0.00;('£'0.00)</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
