@@ -2457,11 +2457,14 @@ WHERE  name ='WIP Allocation Report.png'</CommandText>
         <DataSourceName>DWH</DataSourceName>
         <CommandText>
 
+
 WITH cte AS (
 
 SELECT 
 --COALESCE(dim_matter_header_current.client_group_name,dim_client.client_name) [client],
-
+dim_matter_header_current.master_client_code, 
+    REPLACE(LTRIM(REPLACE(RTRIM(dim_matter_header_current.master_client_code), '0', ' ')), ' ', '0') + '-'
+    + REPLACE(LTRIM(REPLACE(RTRIM(dim_matter_header_current.master_matter_number), '0', ' ')), ' ', '0') AS [3eReference],
 CASE WHEN 
 (dim_matter_header_current.client_group_name IS NULL OR dim_matter_header_current.client_group_name ='')
 THEN dim_client.client_name ELSE dim_matter_header_current.client_group_name END AS Client ,
@@ -2492,7 +2495,9 @@ left JOIN dbo.dim_client ON dim_client.dim_client_key = fact_dimension_main.dim_
 LEFT JOIN dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
 LEFT JOIN dbo.fact_finance_summary ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
 
-GROUP BY	CASE
+GROUP BY	REPLACE(LTRIM(REPLACE(RTRIM(dim_matter_header_current.master_client_code), '0', ' ')), ' ', '0') + '-'
+            + REPLACE(LTRIM(REPLACE(RTRIM(dim_matter_header_current.master_matter_number), '0', ' ')), ' ', '0'),
+            CASE
             WHEN
             (
             dim_matter_header_current.client_group_name IS NULL
@@ -2512,8 +2517,8 @@ GROUP BY	CASE
             ELSE
             dim_matter_header_current.client_group_code
             END,
-      	dim_client.sub_sector
-
+            dim_matter_header_current.master_client_code,
+            dim_client.sub_sector
 
 			)
 
@@ -2657,6 +2662,14 @@ dim_matter_header_current[matter_number]</Statement>
         </rd:DesignerState>
       </Query>
       <Fields>
+        <Field Name="master_client_code">
+          <DataField>master_client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID3eReference">
+          <DataField>3eReference</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Client">
           <DataField>Client</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -2698,10 +2711,10 @@ dim_matter_header_current[matter_number]</Statement>
                 <TablixBody>
                   <TablixColumns>
                     <TablixColumn>
-                      <Width>2.61459in</Width>
+                      <Width>1.67361in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>1.70833in</Width>
+                      <Width>1.5in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.10417in</Width>
@@ -2722,14 +2735,14 @@ dim_matter_header_current[matter_number]</Statement>
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox1">
+                            <Textbox Name="Textbox5">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Client</Value>
+                                      <Value>3E Ref</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -2748,7 +2761,7 @@ dim_matter_header_current[matter_number]</Statement>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox1</rd:DefaultName>
+                              <rd:DefaultName>Textbox5</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -2789,7 +2802,7 @@ dim_matter_header_current[matter_number]</Statement>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox8">
+                            <Textbox Name="Textbox2">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
@@ -2815,7 +2828,7 @@ dim_matter_header_current[matter_number]</Statement>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox8</rd:DefaultName>
+                              <rd:DefaultName>Textbox2</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3132,14 +3145,14 @@ Gross</Value>
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Client">
+                            <Textbox Name="master_client_code">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Client.Value</Value>
+                                      <Value>=Fields!master_client_code.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3158,7 +3171,7 @@ Gross</Value>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Client</rd:DefaultName>
+                              <rd:DefaultName>master_client_code</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -3570,7 +3583,7 @@ Gross</Value>
                 <PageName>WIP on Completed Cases</PageName>
                 <Top>0.0441cm</Top>
                 <Height>0.78124in</Height>
-                <Width>9.05209in</Width>
+                <Width>7.90278in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
