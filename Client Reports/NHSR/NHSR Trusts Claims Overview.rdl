@@ -17,6 +17,11 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>b46d25bd-4646-4102-812a-4dd17c975867</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="ReportingOnSQL2012">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>c619bff4-9786-4cbe-aadd-8159850b7815</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="DefaultProperties">
@@ -2959,7 +2964,7 @@ ORDER BY
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="lookup">
-          <Value>=fields!dim_client_client_code_.Value+"-"+fields!dim_matter_header_current_matter_number_.Value</Value>
+          <Value>=TRIM(fields!dim_client_client_code_.Value)+"-"+TRIM(fields!dim_matter_header_current_matter_number_.Value)</Value>
         </Field>
         <Field Name="dim_detail_core_details_present_position_">
           <DataField>dim_detail_core_details[present_position]</DataField>
@@ -3550,6 +3555,30 @@ dim_task_due_date[task_due_date]</Statement>
         </Field>
         <Field Name="lookup">
           <Value>=fields!dim_matter_header_current_client_code_.Value+"-"+fields!dim_matter_header_current_matter_number_.Value</Value>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Part36DueToday">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT RTRIM(client_code) + '-' +RTRIM(matter_number) AS lookup
+,tskDue  AS DueDate
+FROM ms_prod.dbo.dbTasks
+INNER JOIN red_dw.dbo.dim_matter_header_current
+ ON fileID=ms_fileid
+WHERE master_client_code='N1001'
+AND tskActive=1
+AND tskComplete=0
+AND tskDesc ='Last date for making Part 36 offer due - today'</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="lookup">
+          <DataField>lookup</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="DueDate">
+          <DataField>DueDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -6060,7 +6089,9 @@ dim_task_due_date[task_due_date]</Statement>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=lookup(fields!lookup.Value,fields!lookup.Value,Fields!dim_task_due_date_task_due_date_.Value,"DAXP36Offer")</Value>
+                                      <Value>=lookup(TRIM(Fields!lookup.Value)
+,TRIM(Fields!lookup.Value)
+,Fields!DueDate.Value, "Part36DueToday")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6117,6 +6148,7 @@ dim_task_due_date[task_due_date]</Statement>
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
