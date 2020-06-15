@@ -2545,16 +2545,24 @@ ORDER BY hierarchylevel3hist </CommandText>
     <DataSet Name="Team">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT hierarchylevel4hist AS Team FROM red_dw.dbo.dim_fed_hierarchy_history
+        <QueryParameters>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,",")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>	IF OBJECT_ID('tempdb..#Department') IS NOT NULL   DROP TABLE #Department
+	
+	SELECT ListValue  INTO #Department FROM dbo.udt_TallySplit(',', @Department)
+
+SELECT DISTINCT hierarchylevel4hist AS Team FROM red_dw.dbo.dim_fed_hierarchy_history
 INNER JOIN red_dw.dbo.dim_employee
  ON dim_employee.dim_employee_key = dim_fed_hierarchy_history.dim_employee_key
-
+INNER JOIN #Department AS Department ON Department.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel3hist COLLATE DATABASE_DEFAULT
 WHERE dss_current_flag='Y'
 AND activeud=1
 AND name NOT IN ('Unknown','Budget Balance')
 AND fed_code NOT IN ('Unknown')
-AND hierarchylevel4hist IS NOT NULL
-ORDER BY hierarchylevel4hist </CommandText>
+AND hierarchylevel4hist IS NOT NULL</CommandText>
       </Query>
       <Fields>
         <Field Name="Team">
@@ -5317,12 +5325,12 @@ ORDER BY hierarchylevel4hist </CommandText>
           <ParameterName>GroupId</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>0</RowIndex>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>Department</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
+          <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Team</ParameterName>
         </CellDefinition>
