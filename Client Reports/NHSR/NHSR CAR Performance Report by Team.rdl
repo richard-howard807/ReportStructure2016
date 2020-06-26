@@ -2640,24 +2640,34 @@ WHERE  name ='NHSR_CAR_Performance_Report.png'</CommandText>
           <DataField>DamagesTarget</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="Filter">
+          <Value>=IIF(Fields!Reporting_cal_year.Value&gt;=2020 and Fields!Reporting_cal_month_no.Value&gt;=6, "Current", "Historic")</Value>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="TeamPram">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END  AS [Team]
-FROM red_dw.dbo.dim_matter_header_current AS a
-INNER JOIN red_dw.dbo.fact_dimension_main  AS b
- ON a.dim_matter_header_curr_key=b.dim_matter_header_curr_key
-INNER JOIN red_dw.dbo.fact_bill_matter_detail 
- ON a.client_code=fact_bill_matter_detail.client_code AND a.matter_number=fact_bill_matter_detail.matter_number
-
-LEFT OUTER JOIN red_dw.dbo.dim_detail_claim ON b.dim_detail_claim_key=dim_detail_claim.dim_detail_claim_key
-LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history 
- ON a.fee_earner_code=dim_fed_hierarchy_history.fed_code AND dim_fed_hierarchy_history.dss_current_flag='Y' 
-
-WHERE  client_group_name='NHS Resolution'
-ORDER BY CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END</CommandText>
+        <CommandText>
+SELECT DISTINCT CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END  AS [Team]
+FROM red_dw.dbo.fact_dimension_main
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_health
+ON dim_detail_health.dim_detail_health_key = fact_dimension_main.dim_detail_health_key
+WHERE client_group_code = '00000003'
+AND reporting_exclusions = 0
+AND referral_reason IS NOT NULL 
+AND referral_reason IN ('Dispute on liability and quantum','Dispute on quantum','Dispute on liability','Infant approval', 'Costs dispute','Dispute on Liability','Infant Approval')
+AND (outcome_of_case IS NULL OR  outcome_of_case &lt;&gt; 'Exclude from reports')
+AND nhs_scheme IN ('CNST','ELS','DH CL','DH Liab','LTPS','PES')
+AND nhs_scheme IS NOT NULL </CommandText>
       </Query>
       <Fields>
         <Field Name="Team">
@@ -2690,6 +2700,22 @@ AND health.nhs_scheme IS NOT NULL </CommandText>
       <Fields>
         <Field Name="Matter_Owner">
           <DataField>Matter Owner</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="ReportingMonth">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT 
+CASE WHEN cal_month&gt;=202006 THEN 'Current' ELSE 'Historic' END AS [Filter]
+FROM red_dw.dbo.dim_date
+WHERE calendar_date&gt;='2019-06-01'
+AND calendar_date&lt;GETDATE()</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Filter">
+          <DataField>Filter</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4469,6 +4495,13 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
                       <FilterValue>="Clinical"</FilterValue>
                     </FilterValues>
                   </Filter>
+                  <Filter>
+                    <FilterExpression>=Fields!Filter.Value</FilterExpression>
+                    <Operator>Equal</Operator>
+                    <FilterValues>
+                      <FilterValue>=Parameters!ReportingMonth.Value(0)</FilterValue>
+                    </FilterValues>
+                  </Filter>
                 </Filters>
                 <Top>0.0441cm</Top>
                 <Left>0.00003cm</Left>
@@ -5736,7 +5769,7 @@ IIF(ReportItems("Damages_Paid").value &gt; ReportItems("Textbox14").value, "Red"
                                   <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
                                 </RightBorder>
                                 <BackgroundColor>=IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_Report.Value, Nothing))=nothing, "Transparent",
-IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_Report.Value, Nothing)) &gt; 28,"Red","LimeGreen"))</BackgroundColor>
+IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_Report.Value, Nothing)) &gt; 14,"Red","LimeGreen"))</BackgroundColor>
                                 <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
                                 <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
                                 <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
@@ -6249,9 +6282,15 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
                       <FilterValue>="Risk"</FilterValue>
                     </FilterValues>
                   </Filter>
+                  <Filter>
+                    <FilterExpression>=Fields!Filter.Value</FilterExpression>
+                    <Operator>Equal</Operator>
+                    <FilterValues>
+                      <FilterValue>=Parameters!ReportingMonth.Value(0)</FilterValue>
+                    </FilterValues>
+                  </Filter>
                 </Filters>
-                <Top>5.14615cm</Top>
-                <Left>0.00003cm</Left>
+                <Top>3.57982cm</Top>
                 <Height>1.03124in</Height>
                 <Width>13.52084in</Width>
                 <ZIndex>1</ZIndex>
@@ -6267,7 +6306,7 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
               </Tablix>
             </ReportItems>
             <Top>0.3175cm</Top>
-            <Height>3.78125in</Height>
+            <Height>2.77292in</Height>
             <Width>15.15627in</Width>
             <Style>
               <Border>
@@ -6276,7 +6315,7 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
             </Style>
           </Rectangle>
         </ReportItems>
-        <Height>4.03125in</Height>
+        <Height>2.92292in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -6901,11 +6940,28 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="ReportingMonth">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>Current</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Reporting Period</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ReportingMonth</DataSetName>
+          <ValueField>Filter</ValueField>
+          <LabelField>Filter</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -6921,6 +6977,11 @@ IIF(Avg(IIF(Fields!Reporting_Line.Value = "Opened", Fields!Days_to_Send_Initial_
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>MatterOwner</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>ReportingMonth</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
