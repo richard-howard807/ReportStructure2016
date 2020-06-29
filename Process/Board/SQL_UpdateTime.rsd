@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SharedDataSet xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2010/01/shareddatasetdefinition">
+  <DataSet Name="">
+    <Query>
+      <DataSourceReference>Data Warehouse Server SQL2012</DataSourceReference>
+      <CommandText>SELECT invstart as 'started_scheduled', 'Y' as 'quarter_end' FROM 
+(
+SELECT t1.task_name, t1.started, t1.completed, t1.status , t3.task_name invtask, t3.started invstart, t3.completed invcomp, t3.status invstat
+  FROM [red_dw].[dbo].[ws_admin_v_task]  t1, [red_dw].[dbo].[ws_admin_v_task] t3
+  WHERE t1.task_name LIKE 'process_database_red_as_dw_profit_costs'
+  AND t1.completed IS NOT NULL
+  AND t1.status = 'Completed'
+  AND t3.task_name = 'load_3e_invmaster'
+  AND t1.started &gt; t3.started
+  AND t3.status = 'Completed'
+  AND t3.completed = 
+  (SELECT MAX(completed) FROM  [red_dw].[dbo].[ws_admin_v_task] t4
+  WHERE t3.task_name = t4.task_name
+  AND t1.started &gt; t4.started
+  )
+  AND t1.completed = 
+  (SELECT MAX(completed) FROM  [red_dw].[dbo].[ws_admin_v_task] t2
+  WHERE t1.task_name = t2.task_name)
+  ) invmaster</CommandText>
+    </Query>
+    <Fields>
+      <Field Name="started_scheduled">
+        <DataField>started_scheduled</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="quarter_end">
+        <DataField>quarter_end</DataField>
+        <rd:TypeName>System.String</rd:TypeName>
+      </Field>
+    </Fields>
+  </DataSet>
+</SharedDataSet>
