@@ -377,7 +377,7 @@ WHERE a.[Name]=@ReportName</CommandText>
 	   ,ROW_NUMBER() OVER (PARTITION BY AllData.[Report Name] ORDER BY AllData.[Time Ran]  DESC) AS RowNum
 	   FROM 
 (
-SELECT ReportServer.dbo.Catalog.Name AS [Report Name]
+SELECT REPLACE([Name],'"','-') AS [Report Name]
 ,CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' ELSE  Employee.forename + ' '+ Employee.surname END  AS [Ran By]
 ,COUNT(1) AS [Time Ran]
 FROM ReportServer.dbo.ExecutionLog
@@ -424,7 +424,7 @@ GROUP BY ReportServer.dbo.Catalog.Name
             <Value>=Parameters!ReportName.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT ReportServer.dbo.Catalog.Name AS [Report Name]
+        <CommandText>SELECT  REPLACE([Name],'"','-') AS [Report Name]
 ,cal_month_name AS [Month Name]
 ,cal_month_no AS [Month Number]
 ,cal_year AS [Year]
@@ -445,7 +445,7 @@ WHERE CONVERT(DATE,TimeStart,103) BETWEEN DATEADD(YEAR,-1,GETDATE()) AND GETDATE
 AND postid NOT  LIKE '%Business Intelligence%'
 AND postid NOT  LIKE '%MI Analyst%'
 AND ISNULL(worksforemail,'')  &lt;&gt;'bob.hetherington@weightmans.com'
-AND Name=@ReportName
+AND REPLACE([Name],'"','-')=@ReportName
 GROUP BY ReportServer.dbo.Catalog.Name
 ,ExecutionLog.UserName
 ,Employee.forename + ' '+ Employee.surname
@@ -505,9 +505,16 @@ ORDER BY [Report Name]
        [Changed By],
        [Change Description],
        [Report Name]
-FROM ReportInventory.dbo.TFSReportChangeTracking
-WHERE [Report Name]=@ReportName
-ORDER BY [Date Changed] DESC </CommandText>
+	   ,CASE WHEN ISNUMERIC(LEFT(RIGHT([Change Description],LEN([Change Description])-CHARINDEX('#',[Change Description])),5))=1
+	   THEN 'https://sdp.weightmans.com/WorkOrder.do?woMode=viewWO&amp;woID=' + LEFT(RIGHT([Change Description],LEN([Change Description])-CHARINDEX('#',[Change Description])),5)  ELSE NULL END AS Links
+FROM (SELECT  REPLACE([Report Name],'"','-') AS [Report Name]
+,ChangeSetId
+,OwnerId
+,[Changed By]
+,REPLACE(REPLACE([Change Description],'request ','#') ,'Ticket','#') AS [Change Description]
+,[Date Changed]
+FROM ReportInventory.dbo.TFSReportChangeTracking) AS AllData
+WHERE [Report Name]=@ReportName</CommandText>
       </Query>
       <Fields>
         <Field Name="ChangeSetId">
@@ -532,6 +539,10 @@ ORDER BY [Date Changed] DESC </CommandText>
         </Field>
         <Field Name="Report_Name">
           <DataField>Report Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Links">
+          <DataField>Links</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4640,6 +4651,7 @@ Colour,
                                 <TextRun>
                                   <Value>=Fields!Change_Description.Value</Value>
                                   <Style>
+                                    <Color>=IIF(NOT ISNOTHING(Fields!Links.Value),"blue","Black")</Color>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -4648,6 +4660,13 @@ Colour,
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Change_Description</rd:DefaultName>
+                          <ActionInfo>
+                            <Actions>
+                              <Action>
+                                <Hyperlink>=Fields!Links.Value</Hyperlink>
+                              </Action>
+                            </Actions>
+                          </ActionInfo>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -4659,6 +4678,7 @@ Colour,
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
