@@ -2645,23 +2645,33 @@ WHERE  name ='NHSR_CAR_Performance_Report.png'</CommandText>
     <DataSet Name="TeamPram">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END  AS [Team]
-FROM red_dw.dbo.dim_matter_header_current AS a
-INNER JOIN red_dw.dbo.fact_dimension_main  AS b
- ON a.dim_matter_header_curr_key=b.dim_matter_header_curr_key
-INNER JOIN red_dw.dbo.fact_bill_matter_detail 
- ON a.client_code=fact_bill_matter_detail.client_code AND a.matter_number=fact_bill_matter_detail.matter_number
-
-LEFT OUTER JOIN red_dw.dbo.dim_detail_claim ON b.dim_detail_claim_key=dim_detail_claim.dim_detail_claim_key
-LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history 
- ON a.fee_earner_code=dim_fed_hierarchy_history.fed_code AND dim_fed_hierarchy_history.dss_current_flag='Y' 
-
-WHERE  client_group_name='NHS Resolution'
-ORDER BY CASE WHEN hierarchylevel4hist IS NULL THEN 'Unknown' ELSE hierarchylevel4hist END</CommandText>
+        <CommandText>SELECT DISTINCT hierarchylevel4hist, matter_owner_full_name
+FROM red_dw.dbo.fact_dimension_main
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_health
+ON dim_detail_health.dim_detail_health_key = fact_dimension_main.dim_detail_health_key
+WHERE client_group_code = '00000003'
+AND reporting_exclusions = 0
+AND referral_reason IS NOT NULL 
+AND referral_reason IN ('Dispute on liability and quantum','Dispute on quantum','Dispute on liability','Infant approval', 'Costs dispute','Dispute on Liability','Infant Approval')
+AND (outcome_of_case IS NULL OR  outcome_of_case &lt;&gt; 'Exclude from reports')
+AND nhs_scheme IN ('CNST','ELS','DH CL','DH Liab','LTPS','PES')
+AND nhs_scheme IS NOT NULL </CommandText>
       </Query>
       <Fields>
-        <Field Name="Team">
-          <DataField>Team</DataField>
+        <Field Name="hierarchylevel4hist">
+          <DataField>hierarchylevel4hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_owner_full_name">
+          <DataField>matter_owner_full_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
