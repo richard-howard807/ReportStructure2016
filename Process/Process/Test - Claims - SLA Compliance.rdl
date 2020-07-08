@@ -2649,6 +2649,7 @@ SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
 ),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_team]</CommandText>
@@ -2681,6 +2682,7 @@ SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
 ),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_team]&lt;/QueryText&gt;
@@ -2698,6 +2700,7 @@ SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
 ),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
@@ -2806,25 +2809,11 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
     </DataSet>
     <DataSet Name="ClientGroup">
       <Query>
-        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="Team">
-            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
-          </QueryParameter>
-          <QueryParameter Name="Name">
-            <Value>=JOIN(Parameters!Name.Value,"|")</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>EVALUATE(
-CALCULATETABLE(
-SUMMARIZE(
-fact_dimension_main
-,dim_client[client_group_name]
-),PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
-,PATHCONTAINS(@Name,dim_fed_hierarchy_history_matter_owner[matter_owner_name])
-)
-)
-ORDER BY dim_client[client_group_name]</CommandText>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT client_group_name FROM
+(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
+FROM red_dw.dbo.dim_client) AS AllData
+ORDER BY AllData.client_group_name</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -2907,24 +2896,17 @@ ORDER BY dim_client[client_group_name]</Statement>
         </rd:DesignerState>
       </Query>
       <Fields>
-        <Field Name="dim_client_client_group_name_">
-          <DataField>dim_client[client_group_name]</DataField>
+        <Field Name="client_group_name">
+          <DataField>client_group_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
     <DataSet Name="PresentPosition">
       <Query>
-        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
-        <CommandText>EVALUATE(
-CALCULATETABLE(
-SUMMARIZE(
-fact_dimension_main
-,dim_detail_core_details[present_position]
-)
-)
-)
-ORDER BY dim_detail_core_details[present_position]</CommandText>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT ISNULL([present_position],'Missing')  AS [present_position]
+FROM red_dw.dbo.dim_detail_core_details</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -2980,8 +2962,8 @@ ORDER BY dim_detail_core_details[present_position]</Statement>
         </rd:DesignerState>
       </Query>
       <Fields>
-        <Field Name="dim_detail_core_details_present_position_">
-          <DataField>dim_detail_core_details[present_position]</DataField>
+        <Field Name="present_position">
+          <DataField>present_position</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -10679,15 +10661,15 @@ fact_dimension_main
       <DefaultValue>
         <DataSetReference>
           <DataSetName>ClientGroup</DataSetName>
-          <ValueField>dim_client_client_group_name_</ValueField>
+          <ValueField>client_group_name</ValueField>
         </DataSetReference>
       </DefaultValue>
       <Prompt>Client Group</Prompt>
       <ValidValues>
         <DataSetReference>
           <DataSetName>ClientGroup</DataSetName>
-          <ValueField>dim_client_client_group_name_</ValueField>
-          <LabelField>dim_client_client_group_name_</LabelField>
+          <ValueField>client_group_name</ValueField>
+          <LabelField>client_group_name</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
@@ -10697,7 +10679,7 @@ fact_dimension_main
       <DefaultValue>
         <DataSetReference>
           <DataSetName>PresentPosition</DataSetName>
-          <ValueField>dim_detail_core_details_present_position_</ValueField>
+          <ValueField>present_position</ValueField>
         </DataSetReference>
       </DefaultValue>
       <AllowBlank>true</AllowBlank>
@@ -10705,8 +10687,8 @@ fact_dimension_main
       <ValidValues>
         <DataSetReference>
           <DataSetName>PresentPosition</DataSetName>
-          <ValueField>dim_detail_core_details_present_position_</ValueField>
-          <LabelField>dim_detail_core_details_present_position_</LabelField>
+          <ValueField>present_position</ValueField>
+          <LabelField>present_position</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
