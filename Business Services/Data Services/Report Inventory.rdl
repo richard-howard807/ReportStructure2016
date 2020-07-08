@@ -2450,8 +2450,18 @@ WHERE  name ='Report_Inventory.png'</CommandText>
     <DataSet Name="ReportInventory">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@SearchParam">
+            <Value>=Parameters!SearchParam.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>
 -- SELECT *  FROM dbo.Catalog WHERE Catalog.Name LIKE '%Blocking - By Application%'
+
+
+
+
+DECLARE @SearchString VARCHAR(50) = LOWER(@SearchParam)
 
 
 DROP TABLE IF EXISTS #Structure;
@@ -2474,22 +2484,36 @@ WITH Reporting_Structure AS (
 
 	)
 
-SELECT *
+SELECT Reporting_Structure.*,
+		Inventory.[Report Rules / Overarching Logic],
+		Inventory.KeyWords
 	INTO #Structure
 FROM Reporting_Structure
+LEFT OUTER JOIN ReportInventory..Inventory ON Reporting_Structure.Path = Inventory.Path collate Latin1_General_CI_AS
 WHERE Reporting_Structure.ParentID IS NOT NULL
 
 
 
 SELECT #Structure.*, (SELECT SUM(hidden) FROM #Structure structure WHERE Path = #Structure.Path) hiddenpath, IIF(#Structure.Type = 2, 999, level) AS OrderBy,
-	IIF(Inventory.[Report Rules / Overarching Logic] IS NULL AND #Structure.Type = 2, CAST(0 AS BIT), CAST(1 AS BIT)) IsDocumented,
-	CASE WHEN #Structure.Type = 2 AND Inventory.[Report Rules / Overarching Logic] IS NOT NULL THEN 1 ELSE 0 end AS DocumentedCount,
-	CASE WHEN #Structure.Type = 2 AND Inventory.[Report Rules / Overarching Logic] IS NULL THEN 1 ELSE 0 end AS UnDocumentedCount
+	IIF([Report Rules / Overarching Logic] IS NULL AND #Structure.Type = 2, CAST(0 AS BIT), CAST(1 AS BIT)) IsDocumented,
+	CASE WHEN #Structure.Type = 2 AND [Report Rules / Overarching Logic] IS NOT NULL THEN 1 ELSE 0 end AS DocumentedCount,
+	CASE WHEN #Structure.Type = 2 AND [Report Rules / Overarching Logic] IS NULL THEN 1 ELSE 0 end AS UnDocumentedCount,
+
+	-- Search Results
+	CASE WHEN type = 2 and LOWER(Name) LIKE '%'+@SearchString+'%' then CAST(1 AS BIT)
+		 WHEN type = 2 AND LOWER(#Structure.[Report Rules / Overarching Logic]) LIKE '%'+@SearchString+'%' then CAST(1 AS BIT)
+		 WHEN type = 2 AND LOWER(#Structure.KeyWords) LIKE '%'+@SearchString+'%' then CAST(1 AS BIT)	
+	ELSE CAST(0 AS BIT) end SearchMatch 
+
 FROM #Structure
-LEFT OUTER JOIN ReportInventory..Inventory ON #Structure.Path = Inventory.Path collate Latin1_General_CI_AS
 WHERE (SELECT SUM(hidden) FROM #Structure structure WHERE Path = #Structure.Path) = 0
 
-</CommandText>
+
+
+
+
+
+                               </CommandText>
       </Query>
       <Fields>
         <Field Name="path">
@@ -2524,9 +2548,17 @@ WHERE (SELECT SUM(hidden) FROM #Structure structure WHERE Path = #Structure.Path
           <DataField>ModifiedDate</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
+        <Field Name="Report_Rules___Overarching_Logic">
+          <DataField>Report Rules / Overarching Logic</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="hiddenpath">
           <DataField>hiddenpath</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="KeyWords">
+          <DataField>KeyWords</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="OrderBy">
           <DataField>OrderBy</DataField>
@@ -2543,6 +2575,10 @@ WHERE (SELECT SUM(hidden) FROM #Structure structure WHERE Path = #Structure.Path
         <Field Name="UnDocumentedCount">
           <DataField>UnDocumentedCount</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="SearchMatch">
+          <DataField>SearchMatch</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -2850,6 +2886,15 @@ WHERE (SELECT SUM(hidden) FROM #Structure structure WHERE Path = #Structure.Path
                         <GroupExpressions>
                           <GroupExpression>=Fields!itemid.Value</GroupExpression>
                         </GroupExpressions>
+                        <Filters>
+                          <Filter>
+                            <FilterExpression>=sum(iif(Fields!SearchMatch.Value = True, 1, 0), "ParentName", recursive)</FilterExpression>
+                            <Operator>GreaterThanOrEqual</Operator>
+                            <FilterValues>
+                              <FilterValue DataType="Integer">=iif(len(Parameters!SearchParam.Value) &gt; 0, 1, 0)</FilterValue>
+                            </FilterValues>
+                          </Filter>
+                        </Filters>
                         <Parent>=Fields!parentid.Value</Parent>
                       </Group>
                       <SortExpressions>
@@ -2904,6 +2949,7 @@ WHERE (SELECT SUM(hidden) FROM #Structure structure WHERE Path = #Structure.Path
                                     <Color>LightGrey</Color>
                                     <Style>None</Style>
                                   </Border>
+                                  <BackgroundColor>=iif(Fields!SearchMatch.Value = true, "Yellow","Transparent")</BackgroundColor>
                                   <PaddingLeft>=switch (
 	Fields!level.Value = 2, "15pt",
 	Fields!level.Value = 3, "30pt",
@@ -3007,7 +3053,11 @@ iif(Fields!Type.Value = 2, "Report Last Updated " &amp; FormatDateTime(Fields!Mo
                         </TablixMember>
                       </TablixMembers>
                       <Visibility>
-                        <Hidden>true</Hidden>
+                        <Hidden>=iif(
+
+sum(iif(Fields!SearchMatch.Value = True, 1, 0), "ParentName", recursive) &gt; 0
+
+, False, True)</Hidden>
                         <ToggleItem>Name1</ToggleItem>
                       </Visibility>
                     </TablixMember>
@@ -3645,6 +3695,11 @@ iif(Fields!Type.Value = 2, "Report Last Updated " &amp; FormatDateTime(Fields!Mo
     </ReportSection>
   </ReportSections>
   <ReportParameters>
+    <ReportParameter Name="SearchParam">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Keyword Search</Prompt>
+    </ReportParameter>
     <ReportParameter Name="GroupId">
       <DataType>String</DataType>
       <DefaultValue>
@@ -3659,12 +3714,17 @@ iif(Fields!Type.Value = 2, "Report Last Updated " &amp; FormatDateTime(Fields!Mo
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>0</RowIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>SearchParam</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
