@@ -28,7 +28,7 @@
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>new_monthly_121_status_report</CommandText>
+        <CommandText>new_monthly_121_status_report_v1</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -85,7 +85,7 @@
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="EmployeeStartDate">
-          <DataField>EmployeeStartDate</DataField>
+          <DataField>employeestartdate</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
@@ -143,20 +143,31 @@ ORDER BY 1</CommandText>
       <Query>
         <DataSourceName>Reporting</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@CalendarMonth">
+            <Value>=Parameters!CalendarMonth.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@Division">
             <Value>=Parameters!Division.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT department 
-FROM Reporting.dbo.list_departments(@Division)
+        <CommandText>
+	DECLARE @StartDate  DATE = (SELECT MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE cal_month=@CalendarMonth)
+	DECLARE @EndDate  DATE = (SELECT MAX(calendar_date) FROM red_dw.dbo.dim_date WHERE cal_month=@CalendarMonth)
 
-order by 1
-</CommandText>
+SELECT distinct dim_fed_hierarchy_history.hierarchylevel3hist  Department
+FROM red_dw..dim_fed_hierarchy_history
+WHERE dim_fed_hierarchy_history.hierarchylevel2hist IN (@Division)
+AND dim_fed_hierarchy_history.activeud = 1
+AND (@StartDate BETWEEN dim_fed_hierarchy_history.dss_start_date AND dim_fed_hierarchy_history.dss_end_date
+	OR
+    @EndDate BETWEEN dim_fed_hierarchy_history.dss_start_date AND dim_fed_hierarchy_history.dss_end_date)
+AND hierarchylevel4hist IS NOT null
+ORDER BY 1</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
         <Field Name="department">
-          <DataField>department</DataField>
+          <DataField>Department</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -165,17 +176,32 @@ order by 1
       <Query>
         <DataSourceName>Reporting</DataSourceName>
         <QueryParameters>
+          <QueryParameter Name="@CalendarMonth">
+            <Value>=Parameters!CalendarMonth.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@Department">
-            <Value>=JOIN(Parameters!Department.Value,",")</Value>
+            <Value>=Parameters!Department.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
-SELECT team FROM Reporting.dbo.list_teams(@Department)</CommandText>
+        <CommandText>	DECLARE @StartDate  DATE = (SELECT MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE cal_month=@CalendarMonth)
+	DECLARE @EndDate  DATE = (SELECT MAX(calendar_date) FROM red_dw.dbo.dim_date WHERE cal_month=@CalendarMonth)
+
+
+
+SELECT distinct  dim_fed_hierarchy_history.hierarchylevel4hist  Team
+FROM red_dw..dim_fed_hierarchy_history
+WHERE  dim_fed_hierarchy_history.activeud = 1
+AND dim_fed_hierarchy_history.hierarchylevel3hist IN (@Department)
+AND (@StartDate BETWEEN dim_fed_hierarchy_history.dss_start_date AND dim_fed_hierarchy_history.dss_end_date
+	OR
+    @EndDate BETWEEN dim_fed_hierarchy_history.dss_start_date AND dim_fed_hierarchy_history.dss_end_date)
+AND hierarchylevel4hist IS NOT null
+ORDER BY 1</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
         <Field Name="Team">
-          <DataField>team</DataField>
+          <DataField>Team</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
