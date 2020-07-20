@@ -2492,19 +2492,32 @@ and dt_obj_key in (@SearchResults)</CommandText>
             <Value>=Parameters!Table.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT   ft_obj_key AS object_key, ft_table_name AS table_name, ft_description AS tbl_comments, ft_doc_1 AS purpose, ft_doc_2 AS concept, ft_doc_3 AS grain, ft_doc_4 AS example_query, ft_doc_7 AS Update_frequency, ft_doc_8 AS notes, ft_doc_9 AS documented, 'Fact' AS table_type,
+        <CommandText>
+
+SELECT   ft_obj_key AS object_key, ft_table_name AS table_name, ft_description AS tbl_comments, ft_doc_1 AS purpose, ft_doc_2 AS concept, ft_doc_3 AS grain, ft_doc_4 AS example_query, ft_doc_7 AS Update_frequency, ft_doc_8 AS notes, ft_doc_9 AS documented, 'Fact' AS table_type,
                  (SELECT   ISNULL(MAX(wtl_completed), MAX(wtl_started)) AS Expr1
                  FROM     red_dw.dbo.ws_wrk_task_log
-                 WHERE   (wtl_audit_status = 'S') AND (wtl_action_type IN (6, 7, 8)) AND (wtl_obj_key = a.ft_obj_key)) AS Last_Updated
+                 WHERE   (wtl_audit_status = 'S') AND (wtl_action_type IN (6, 7, 8)) AND (wtl_obj_key = a.ft_obj_key)) AS Last_Updated, IIF(LEN(CAST(ft_doc_10 AS varchar(100))) &gt; 0, CAST(ft_doc_10 AS varchar(100)), 'Uncategorised') Category, a.ft_doc_11 Subcategory
+
+				 , 
+				 IIF(LEN(CAST(ft_doc_10 AS varchar(100))) &gt; 0, CAST(ft_doc_10 AS varchar(100)), 'Uncategorised') + ' - ' + 
+				IIF(LEN(CAST(ft_doc_11 AS varchar(100))) &gt; 0, CAST(ft_doc_11 AS varchar(100)) + ' - ', '') + 	
+				ft_table_name  doc_map
 FROM     red_dw.dbo.ws_fact_tab AS a
 WHERE   (ft_obj_key in (@Table))
 UNION ALL
 SELECT   dt_obj_key AS object_key, dt_table_name AS table_name, dt_description AS tbl_comments, dt_doc_1 AS purpose, dt_doc_2 AS concept, dt_doc_3 AS grain, dt_doc_4 AS example_query, dt_doc_7 AS Update_frequency, dt_doc_8 AS notes, dt_doc_9 AS documented, 'Dimension' AS Expr1,
                  (SELECT   ISNULL(MAX(wtl_completed), MAX(wtl_started)) AS Expr1
                  FROM     red_dw.dbo.ws_wrk_task_log AS ws_wrk_task_log_1
-                 WHERE   (wtl_audit_status = 'S') AND (wtl_action_type IN (6, 7, 8)) AND (wtl_obj_key = a.dt_obj_key)) AS Last_Updated
+                 WHERE   (wtl_audit_status = 'S') AND (wtl_action_type IN (6, 7, 8)) AND (wtl_obj_key = a.dt_obj_key)) AS Last_Updated,  IIF(LEN(CAST(a.dt_doc_10 AS varchar(100))) &gt; 0, CAST(dt_doc_10 AS varchar(100)), 'Uncategorised') Category, a.dt_doc_11 Subcategory
+				  , 
+				 IIF(LEN(CAST(a.dt_doc_10 AS varchar(100))) &gt; 0, CAST(dt_doc_10 AS varchar(100)), 'Uncategorised') + ' - ' + 
+				IIF(LEN(CAST(a.dt_doc_11 AS varchar(100))) &gt; 0, CAST(dt_doc_11 AS varchar(100)) + ' - ', '') + 	
+				a.dt_table_name 
 FROM     red_dw.dbo.ws_dim_tab AS a
-WHERE   (dt_obj_key in (@Table))</CommandText>
+WHERE   (dt_obj_key in (@Table))
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="object_key">
@@ -2554,6 +2567,18 @@ WHERE   (dt_obj_key in (@Table))</CommandText>
         <Field Name="Last_Updated">
           <DataField>Last_Updated</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="Subcategory">
+          <DataField>Subcategory</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="doc_map">
+          <DataField>doc_map</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Category">
+          <DataField>Category</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -2656,9 +2681,12 @@ ORDER BY Key_Type DESC
             <Value>=Parameters!Table.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
+        <CommandText>SELECT  ft_obj_key object_key, ft_table_name AS table_name, bookmarks.bookmark bookmark, 
 
-SELECT  ft_obj_key object_key, ft_table_name AS table_name, bookmarks.bookmark bookmark, ft_table_name + ' -' + bookmark bookmarklink
+	IIF(LEN(CAST(ft_doc_10 AS varchar(100))) &gt; 0, CAST(ft_doc_10 AS varchar(100)), 'Uncategorised') + ' - ' + 
+	IIF(LEN(CAST(ft_doc_11 AS varchar(100))) &gt; 0, CAST(ft_doc_11 AS varchar(100)) + ' - ', '') + 	
+		ft_table_name + ' -' + bookmark bookmarklink
+		, IIF(LEN(CAST(ft_doc_10 AS varchar(100))) &gt; 0, CAST(ft_doc_10 AS varchar(100)), 'Uncategorised') Category, a.ft_doc_11 Subcategory
 -- select *
 FROM     red_dw.dbo.ws_fact_tab AS a
 CROSS APPLY (SELECT ' Overview' bookmark
@@ -2672,7 +2700,12 @@ WHERE   (ft_obj_key IN(@Table))
 
 UNION ALL
 
-SELECT  dt_obj_key, dt_table_name AS table_name , bookmarks.bookmark, dt_table_name + ' -' + bookmark bookmarklink
+SELECT  dt_obj_key, dt_table_name AS table_name , bookmarks.bookmark, 
+		IIF(LEN(CAST(a.dt_doc_10 AS varchar(100))) &gt; 0, CAST(a.dt_doc_10 AS varchar(100)), 'Uncategorised') + ' - ' + 
+		IIF(LEN(CAST(a.dt_doc_11 AS varchar(100))) &gt; 0, CAST(a.dt_doc_11 AS varchar(100)) + ' - ', '') +
+		dt_table_name + ' -' + bookmark bookmarklink
+
+		, IIF(LEN(CAST(a.dt_doc_10 AS varchar(100))) &gt; 0, CAST(a.dt_doc_10 AS varchar(100)), 'Uncategorised'), a.dt_doc_11
 FROM     red_dw.dbo.ws_dim_tab AS a
 CROSS APPLY (SELECT ' Overview' bookmark
 			UNION all
@@ -2698,6 +2731,14 @@ WHERE   (dt_obj_key IN (@Table))</CommandText>
         </Field>
         <Field Name="bookmarklink">
           <DataField>bookmarklink</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Category">
+          <DataField>Category</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Subcategory">
+          <DataField>Subcategory</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -2848,853 +2889,968 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
         <ReportItems>
           <Rectangle Name="rctKeepTogether">
             <ReportItems>
-              <Tablix Name="Tablix2">
+              <Tablix Name="Tablix6">
                 <TablixBody>
                   <TablixColumns>
                     <TablixColumn>
-                      <Width>17.54753in</Width>
+                      <Width>17.93823in</Width>
                     </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
                     <TablixRow>
-                      <Height>8.43526in</Height>
+                      <Height>8.62081in</Height>
                       <TablixCells>
                         <TablixCell>
                           <CellContents>
-                            <Rectangle Name="Rectangle2">
+                            <Rectangle Name="Rectangle24">
                               <ReportItems>
-                                <Textbox Name="table_name2">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!table_type.Value &amp; " - " &amp; Fields!table_name.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style />
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>table_name2</rd:DefaultName>
-                                  <Top>0.89202cm</Top>
-                                  <Left>1.55392in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
+                                <Tablix Name="Tablix2">
+                                  <TablixBody>
+                                    <TablixColumns>
+                                      <TablixColumn>
+                                        <Width>17.93823in</Width>
+                                      </TablixColumn>
+                                    </TablixColumns>
+                                    <TablixRows>
+                                      <TablixRow>
+                                        <Height>8.62081in</Height>
+                                        <TablixCells>
+                                          <TablixCell>
+                                            <CellContents>
+                                              <Rectangle Name="Rectangle5">
+                                                <ReportItems>
+                                                  <Tablix Name="Tablix3">
+                                                    <TablixBody>
+                                                      <TablixColumns>
+                                                        <TablixColumn>
+                                                          <Width>17.54753in</Width>
+                                                        </TablixColumn>
+                                                      </TablixColumns>
+                                                      <TablixRows>
+                                                        <TablixRow>
+                                                          <Height>8.43526in</Height>
+                                                          <TablixCells>
+                                                            <TablixCell>
+                                                              <CellContents>
+                                                                <Rectangle Name="Rectangle2">
+                                                                  <ReportItems>
+                                                                    <Textbox Name="table_name2">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!table_type.Value &amp; " - " &amp; Fields!table_name.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style />
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>table_name2</rd:DefaultName>
+                                                                      <Top>0.89202cm</Top>
+                                                                      <Left>1.55392in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>15.70382in</Width>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox22">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Type &amp; Name:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>0.89202cm</Top>
+                                                                      <Left>0.59065cm</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>1.40472in</Width>
+                                                                      <ZIndex>1</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox23">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Concept:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>5.68097cm</Top>
+                                                                      <Left>0.59065cm</Left>
+                                                                      <Height>0.50694in</Height>
+                                                                      <Width>1.3889in</Width>
+                                                                      <ZIndex>2</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox24">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Purpose:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>4.19048cm</Top>
+                                                                      <Left>0.23254in</Left>
+                                                                      <Height>0.50694in</Height>
+                                                                      <Width>1.3889in</Width>
+                                                                      <ZIndex>3</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox25">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Breif Description:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>1.5623cm</Top>
+                                                                      <Left>0.59065cm</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>1.39083in</Width>
+                                                                      <ZIndex>4</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="tbl_comments1">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!tbl_comments.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style />
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>tbl_comments1</rd:DefaultName>
+                                                                      <Top>0.61508in</Top>
+                                                                      <Left>1.54003in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>15.70382in</Width>
+                                                                      <ZIndex>5</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="purpose">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!purpose.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style />
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>purpose</rd:DefaultName>
+                                                                      <Top>1.6498in</Top>
+                                                                      <Left>1.53809in</Left>
+                                                                      <Height>0.50694in</Height>
+                                                                      <Width>15.71774in</Width>
+                                                                      <ZIndex>6</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="purpose2">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!concept.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style />
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>purpose</rd:DefaultName>
+                                                                      <Top>2.2366in</Top>
+                                                                      <Left>1.53809in</Left>
+                                                                      <Height>0.50694in</Height>
+                                                                      <Width>15.71774in</Width>
+                                                                      <ZIndex>7</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox26">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Grain:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>7.07443cm</Top>
+                                                                      <Left>0.59065cm</Left>
+                                                                      <Height>0.50694in</Height>
+                                                                      <Width>1.3889in</Width>
+                                                                      <ZIndex>8</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="purpose3">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!grain.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style />
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>purpose</rd:DefaultName>
+                                                                      <Top>2.78521in</Top>
+                                                                      <Left>1.53809in</Left>
+                                                                      <Height>0.50694in</Height>
+                                                                      <Width>15.71774in</Width>
+                                                                      <ZIndex>9</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="tbl_comments2">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!Update_frequency.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style />
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>tbl_comments1</rd:DefaultName>
+                                                                      <Top>0.87897in</Top>
+                                                                      <Left>1.53809in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>15.70382in</Width>
+                                                                      <ZIndex>10</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox27">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Update Frequency:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>2.23258cm</Top>
+                                                                      <Left>0.59065cm</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>1.38889in</Width>
+                                                                      <ZIndex>11</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox28">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Last Updated:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>2.84993cm</Top>
+                                                                      <Left>0.23254in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>1.3889in</Width>
+                                                                      <ZIndex>12</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="tbl_comments3">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!Last_Updated.Value</Value>
+                                                                              <Style>
+                                                                                <Format>dd MMM yyyy HH:mm</Format>
+                                                                              </Style>
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Left</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>tbl_comments1</rd:DefaultName>
+                                                                      <Top>1.12202in</Top>
+                                                                      <Left>1.53809in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>15.70382in</Width>
+                                                                      <ZIndex>13</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox29">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Example Query:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>8.50759cm</Top>
+                                                                      <Left>0.59065cm</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>1.40279in</Width>
+                                                                      <ZIndex>14</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox30">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>Show</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Left</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>8.50317cm</Top>
+                                                                      <Left>3.94203cm</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>0.68925in</Width>
+                                                                      <ZIndex>15</ZIndex>
+                                                                      <Visibility>
+                                                                        <Hidden>=IIF(Globals!RenderFormat.Name = "EXCELOPENXML",true,false)</Hidden>
+                                                                      </Visibility>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox31">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Fields!example_query.Value</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Left</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>9.24842cm</Top>
+                                                                      <Left>3.94203cm</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>15.70382in</Width>
+                                                                      <ZIndex>16</ZIndex>
+                                                                      <Visibility>
+                                                                        <Hidden>=IIF(Globals!RenderFormat.Name = "EXCELOPENXML" or Globals!RenderFormat.Name = "EXCEL" or Globals!RenderFormat.Name = "PDF", false, true)</Hidden>
+                                                                        <ToggleItem>Textbox30</ToggleItem>
+                                                                      </Visibility>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox33">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>No of Records:</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Right</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>3.59077cm</Top>
+                                                                      <Left>0.23254in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>1.3889in</Width>
+                                                                      <ZIndex>17</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="tbl_comments4">
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>=Lookup(Fields!table_name.Value, Fields!tablename.Value, Fields!count_of_rows.Value, "SQL_Table_no_of_records")</Value>
+                                                                              <Style />
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Left</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>tbl_comments1</rd:DefaultName>
+                                                                      <Top>1.41369in</Top>
+                                                                      <Left>1.53809in</Left>
+                                                                      <Height>0.25in</Height>
+                                                                      <Width>15.70382in</Width>
+                                                                      <ZIndex>18</ZIndex>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Color>#004f59</Color>
+                                                                          <Style>None</Style>
+                                                                          <Width>0.5pt</Width>
+                                                                        </Border>
+                                                                        <BottomBorder>
+                                                                          <Style>Solid</Style>
+                                                                        </BottomBorder>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Textbox Name="Textbox35">
+                                                                      <CanGrow>true</CanGrow>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Paragraphs>
+                                                                        <Paragraph>
+                                                                          <TextRuns>
+                                                                            <TextRun>
+                                                                              <Value>="Table Overview - " &amp; Fields!table_name.Value</Value>
+                                                                              <Style>
+                                                                                <FontSize>16pt</FontSize>
+                                                                                <FontWeight>Bold</FontWeight>
+                                                                                <Color>#004f59</Color>
+                                                                              </Style>
+                                                                            </TextRun>
+                                                                          </TextRuns>
+                                                                          <Style>
+                                                                            <TextAlign>Left</TextAlign>
+                                                                          </Style>
+                                                                        </Paragraph>
+                                                                      </Paragraphs>
+                                                                      <rd:DefaultName>Textbox22</rd:DefaultName>
+                                                                      <Top>0.03526cm</Top>
+                                                                      <Left>1.13394cm</Left>
+                                                                      <Height>0.29564in</Height>
+                                                                      <Width>6.78082in</Width>
+                                                                      <ZIndex>19</ZIndex>
+                                                                      <DocumentMapLabel>=Fields!table_name.Value</DocumentMapLabel>
+                                                                      <Bookmark>=Fields!table_name.Value &amp; " - Overview"</Bookmark>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                        <PaddingLeft>2pt</PaddingLeft>
+                                                                        <PaddingRight>2pt</PaddingRight>
+                                                                        <PaddingTop>2pt</PaddingTop>
+                                                                        <PaddingBottom>2pt</PaddingBottom>
+                                                                      </Style>
+                                                                    </Textbox>
+                                                                    <Rectangle Name="Rectangle6">
+                                                                      <ReportItems>
+                                                                        <Subreport Name="Table_keys">
+                                                                          <ReportName>DWH Documentation_keys_SubReport</ReportName>
+                                                                          <Parameters>
+                                                                            <Parameter Name="Table">
+                                                                              <Value>=Fields!object_key.Value</Value>
+                                                                            </Parameter>
+                                                                          </Parameters>
+                                                                          <Top>0.09881in</Top>
+                                                                          <Left>0.59065cm</Left>
+                                                                          <Height>0.80239in</Height>
+                                                                          <Width>17.1576in</Width>
+                                                                          <Style>
+                                                                            <Border>
+                                                                              <Style>None</Style>
+                                                                            </Border>
+                                                                          </Style>
+                                                                        </Subreport>
+                                                                      </ReportItems>
+                                                                      <PageBreak>
+                                                                        <BreakLocation>Start</BreakLocation>
+                                                                      </PageBreak>
+                                                                      <PageName>="Keys - " &amp; Fields!table_name.Value</PageName>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Top>4.11669in</Top>
+                                                                      <Height>1.02198in</Height>
+                                                                      <Width>17.3993in</Width>
+                                                                      <ZIndex>20</ZIndex>
+                                                                      <DocumentMapLabel>Keys</DocumentMapLabel>
+                                                                      <Bookmark>=Fields!table_name.Value &amp; " - Keys"</Bookmark>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                      </Style>
+                                                                    </Rectangle>
+                                                                    <Rectangle Name="Rectangle7">
+                                                                      <ReportItems>
+                                                                        <Subreport Name="table_attributues">
+                                                                          <ReportName>DWH Documentation_attributes_SubReport</ReportName>
+                                                                          <Parameters>
+                                                                            <Parameter Name="Table">
+                                                                              <Value>=Fields!object_key.Value</Value>
+                                                                            </Parameter>
+                                                                          </Parameters>
+                                                                          <Top>0.1032in</Top>
+                                                                          <Left>0.55081cm</Left>
+                                                                          <Height>0.7936in</Height>
+                                                                          <Width>17.13928in</Width>
+                                                                          <Style>
+                                                                            <Border>
+                                                                              <Style>None</Style>
+                                                                            </Border>
+                                                                          </Style>
+                                                                        </Subreport>
+                                                                      </ReportItems>
+                                                                      <PageBreak>
+                                                                        <BreakLocation>Start</BreakLocation>
+                                                                      </PageBreak>
+                                                                      <PageName>="Attributes - " &amp; Fields!table_name.Value</PageName>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Top>5.41418in</Top>
+                                                                      <Left>0.03984cm</Left>
+                                                                      <Height>1in</Height>
+                                                                      <Width>17.36072in</Width>
+                                                                      <ZIndex>21</ZIndex>
+                                                                      <DocumentMapLabel>Attributes</DocumentMapLabel>
+                                                                      <Bookmark>=Fields!table_name.Value &amp; " - Attributes"</Bookmark>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                      </Style>
+                                                                    </Rectangle>
+                                                                    <Rectangle Name="Rectangle8">
+                                                                      <ReportItems>
+                                                                        <Subreport Name="table_attributues2">
+                                                                          <ReportName>DWH Documentation_jobs_SubReport</ReportName>
+                                                                          <Parameters>
+                                                                            <Parameter Name="Table">
+                                                                              <Value>=Fields!object_key.Value</Value>
+                                                                            </Parameter>
+                                                                          </Parameters>
+                                                                          <Top>0.1032in</Top>
+                                                                          <Left>0.48101cm</Left>
+                                                                          <Height>0.7936in</Height>
+                                                                          <Width>17.16677in</Width>
+                                                                          <Style>
+                                                                            <Border>
+                                                                              <Style>None</Style>
+                                                                            </Border>
+                                                                          </Style>
+                                                                        </Subreport>
+                                                                      </ReportItems>
+                                                                      <PageBreak>
+                                                                        <BreakLocation>StartAndEnd</BreakLocation>
+                                                                      </PageBreak>
+                                                                      <PageName>="Jobs - " &amp; Fields!table_name.Value</PageName>
+                                                                      <KeepTogether>true</KeepTogether>
+                                                                      <Top>6.62726in</Top>
+                                                                      <Left>0.10964cm</Left>
+                                                                      <Height>1in</Height>
+                                                                      <Width>17.36072in</Width>
+                                                                      <ZIndex>22</ZIndex>
+                                                                      <DocumentMapLabel>Jobs</DocumentMapLabel>
+                                                                      <Bookmark>=Fields!table_name.Value &amp; " - Jobs"</Bookmark>
+                                                                      <Style>
+                                                                        <Border>
+                                                                          <Style>None</Style>
+                                                                        </Border>
+                                                                      </Style>
+                                                                    </Rectangle>
+                                                                  </ReportItems>
+                                                                  <PageName>="Overview - " &amp; Fields!table_name.Value</PageName>
+                                                                  <KeepTogether>true</KeepTogether>
+                                                                  <Style>
+                                                                    <Border>
+                                                                      <Style>None</Style>
+                                                                    </Border>
+                                                                  </Style>
+                                                                </Rectangle>
+                                                              </CellContents>
+                                                            </TablixCell>
+                                                          </TablixCells>
+                                                        </TablixRow>
+                                                      </TablixRows>
+                                                    </TablixBody>
+                                                    <TablixColumnHierarchy>
+                                                      <TablixMembers>
+                                                        <TablixMember />
+                                                      </TablixMembers>
+                                                    </TablixColumnHierarchy>
+                                                    <TablixRowHierarchy>
+                                                      <TablixMembers>
+                                                        <TablixMember>
+                                                          <Group Name="TableName">
+                                                            <DocumentMapLabel>=Fields!table_name.Value</DocumentMapLabel>
+                                                            <GroupExpressions>
+                                                              <GroupExpression>=Fields!table_name.Value</GroupExpression>
+                                                            </GroupExpressions>
+                                                          </Group>
+                                                          <SortExpressions>
+                                                            <SortExpression>
+                                                              <Value>=Fields!table_name.Value</Value>
+                                                            </SortExpression>
+                                                          </SortExpressions>
+                                                        </TablixMember>
+                                                      </TablixMembers>
+                                                    </TablixRowHierarchy>
+                                                    <DataSetName>SQL_Table_Info</DataSetName>
+                                                    <Height>8.43526in</Height>
+                                                    <Width>17.54753in</Width>
+                                                    <Style>
+                                                      <Border>
+                                                        <Style>None</Style>
+                                                      </Border>
+                                                    </Style>
+                                                  </Tablix>
+                                                </ReportItems>
+                                                <KeepTogether>true</KeepTogether>
+                                                <Style>
+                                                  <Border>
+                                                    <Style>None</Style>
+                                                  </Border>
+                                                </Style>
+                                              </Rectangle>
+                                            </CellContents>
+                                          </TablixCell>
+                                        </TablixCells>
+                                      </TablixRow>
+                                    </TablixRows>
+                                  </TablixBody>
+                                  <TablixColumnHierarchy>
+                                    <TablixMembers>
+                                      <TablixMember />
+                                    </TablixMembers>
+                                  </TablixColumnHierarchy>
+                                  <TablixRowHierarchy>
+                                    <TablixMembers>
+                                      <TablixMember>
+                                        <Group Name="subcategory">
+                                          <DocumentMapLabel>=Fields!Subcategory.Value</DocumentMapLabel>
+                                          <GroupExpressions>
+                                            <GroupExpression>=Fields!Subcategory.Value</GroupExpression>
+                                          </GroupExpressions>
+                                        </Group>
+                                      </TablixMember>
+                                    </TablixMembers>
+                                  </TablixRowHierarchy>
+                                  <DataSetName>SQL_Table_Info</DataSetName>
+                                  <Height>8.62081in</Height>
+                                  <Width>17.93823in</Width>
                                   <Style>
                                     <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox22">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Type &amp; Name:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>0.89202cm</Top>
-                                  <Left>0.59065cm</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>1.40472in</Width>
-                                  <ZIndex>1</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Color>#004f59</Color>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox23">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Concept:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>5.68097cm</Top>
-                                  <Left>0.59065cm</Left>
-                                  <Height>0.50694in</Height>
-                                  <Width>1.3889in</Width>
-                                  <ZIndex>2</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox24">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Purpose:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>4.19048cm</Top>
-                                  <Left>0.23254in</Left>
-                                  <Height>0.50694in</Height>
-                                  <Width>1.3889in</Width>
-                                  <ZIndex>3</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox25">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Breif Description:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>1.5623cm</Top>
-                                  <Left>0.59065cm</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>1.39083in</Width>
-                                  <ZIndex>4</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="tbl_comments1">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!tbl_comments.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style />
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>tbl_comments1</rd:DefaultName>
-                                  <Top>0.61508in</Top>
-                                  <Left>1.54003in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
-                                  <ZIndex>5</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="purpose">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!purpose.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style />
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>purpose</rd:DefaultName>
-                                  <Top>1.6498in</Top>
-                                  <Left>1.53809in</Left>
-                                  <Height>0.50694in</Height>
-                                  <Width>15.71774in</Width>
-                                  <ZIndex>6</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="purpose2">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!concept.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style />
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>purpose</rd:DefaultName>
-                                  <Top>2.2366in</Top>
-                                  <Left>1.53809in</Left>
-                                  <Height>0.50694in</Height>
-                                  <Width>15.71774in</Width>
-                                  <ZIndex>7</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox26">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Grain:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>7.07443cm</Top>
-                                  <Left>0.59065cm</Left>
-                                  <Height>0.50694in</Height>
-                                  <Width>1.3889in</Width>
-                                  <ZIndex>8</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="purpose3">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!grain.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style />
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>purpose</rd:DefaultName>
-                                  <Top>2.78521in</Top>
-                                  <Left>1.53809in</Left>
-                                  <Height>0.50694in</Height>
-                                  <Width>15.71774in</Width>
-                                  <ZIndex>9</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="tbl_comments2">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!Update_frequency.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style />
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>tbl_comments1</rd:DefaultName>
-                                  <Top>0.87897in</Top>
-                                  <Left>1.53809in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
-                                  <ZIndex>10</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox27">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Update Frequency:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>2.23258cm</Top>
-                                  <Left>0.59065cm</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>1.38889in</Width>
-                                  <ZIndex>11</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox28">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Last Updated:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>2.84993cm</Top>
-                                  <Left>0.23254in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>1.3889in</Width>
-                                  <ZIndex>12</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="tbl_comments3">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!Last_Updated.Value</Value>
-                                          <Style>
-                                            <Format>dd MMM yyyy HH:mm</Format>
-                                          </Style>
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Left</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>tbl_comments1</rd:DefaultName>
-                                  <Top>1.12202in</Top>
-                                  <Left>1.53809in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
-                                  <ZIndex>13</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox29">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Example Query:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>8.50759cm</Top>
-                                  <Left>0.59065cm</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>1.40279in</Width>
-                                  <ZIndex>14</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Style>None</Style>
-                                    </Border>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox30">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>Show</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Left</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>8.50317cm</Top>
-                                  <Left>3.94203cm</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>0.68925in</Width>
-                                  <ZIndex>15</ZIndex>
-                                  <Visibility>
-                                    <Hidden>=IIF(Globals!RenderFormat.Name = "EXCELOPENXML",true,false)</Hidden>
-                                  </Visibility>
-                                  <Style>
-                                    <Border>
-                                      <Style>None</Style>
-                                    </Border>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox31">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Fields!example_query.Value</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Left</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>9.24842cm</Top>
-                                  <Left>3.94203cm</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
-                                  <ZIndex>16</ZIndex>
-                                  <Visibility>
-                                    <Hidden>=IIF(Globals!RenderFormat.Name = "EXCELOPENXML" or Globals!RenderFormat.Name = "EXCEL" or Globals!RenderFormat.Name = "PDF", false, true)</Hidden>
-                                    <ToggleItem>Textbox30</ToggleItem>
-                                  </Visibility>
-                                  <Style>
-                                    <Border>
-                                      <Style>None</Style>
-                                    </Border>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox33">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>No of Records:</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Right</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>3.59077cm</Top>
-                                  <Left>0.23254in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>1.3889in</Width>
-                                  <ZIndex>17</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="tbl_comments4">
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>=Lookup(Fields!table_name.Value, Fields!tablename.Value, Fields!count_of_rows.Value, "SQL_Table_no_of_records")</Value>
-                                          <Style />
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Left</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>tbl_comments1</rd:DefaultName>
-                                  <Top>1.41369in</Top>
-                                  <Left>1.53809in</Left>
-                                  <Height>0.25in</Height>
-                                  <Width>15.70382in</Width>
-                                  <ZIndex>18</ZIndex>
-                                  <Style>
-                                    <Border>
-                                      <Color>#004f59</Color>
-                                      <Style>None</Style>
-                                      <Width>0.5pt</Width>
-                                    </Border>
-                                    <BottomBorder>
-                                      <Style>Solid</Style>
-                                    </BottomBorder>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Textbox Name="Textbox35">
-                                  <CanGrow>true</CanGrow>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Paragraphs>
-                                    <Paragraph>
-                                      <TextRuns>
-                                        <TextRun>
-                                          <Value>= "Table Overview - " &amp; Fields!table_name.Value</Value>
-                                          <Style>
-                                            <FontSize>16pt</FontSize>
-                                            <FontWeight>Bold</FontWeight>
-                                            <Color>#004f59</Color>
-                                          </Style>
-                                        </TextRun>
-                                      </TextRuns>
-                                      <Style>
-                                        <TextAlign>Left</TextAlign>
-                                      </Style>
-                                    </Paragraph>
-                                  </Paragraphs>
-                                  <rd:DefaultName>Textbox22</rd:DefaultName>
-                                  <Top>0.03526cm</Top>
-                                  <Left>1.13394cm</Left>
-                                  <Height>0.29564in</Height>
-                                  <Width>6.78082in</Width>
-                                  <ZIndex>19</ZIndex>
-                                  <Bookmark>=Fields!table_name.Value &amp; " - Overview"</Bookmark>
-                                  <Style>
-                                    <Border>
-                                      <Style>None</Style>
-                                    </Border>
-                                    <PaddingLeft>2pt</PaddingLeft>
-                                    <PaddingRight>2pt</PaddingRight>
-                                    <PaddingTop>2pt</PaddingTop>
-                                    <PaddingBottom>2pt</PaddingBottom>
-                                  </Style>
-                                </Textbox>
-                                <Rectangle Name="Rectangle5">
-                                  <ReportItems>
-                                    <Subreport Name="Table_keys">
-                                      <ReportName>DWH Documentation_keys_SubReport</ReportName>
-                                      <Parameters>
-                                        <Parameter Name="Table">
-                                          <Value>=Fields!object_key.Value</Value>
-                                        </Parameter>
-                                      </Parameters>
-                                      <Top>0.09881in</Top>
-                                      <Left>0.59065cm</Left>
-                                      <Height>0.80239in</Height>
-                                      <Width>17.1576in</Width>
-                                      <Style>
-                                        <Border>
-                                          <Style>None</Style>
-                                        </Border>
-                                      </Style>
-                                    </Subreport>
-                                  </ReportItems>
-                                  <PageBreak>
-                                    <BreakLocation>Start</BreakLocation>
-                                  </PageBreak>
-                                  <PageName>="Keys - " &amp; Fields!table_name.Value</PageName>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Top>4.11669in</Top>
-                                  <Height>1.02198in</Height>
-                                  <Width>17.3993in</Width>
-                                  <ZIndex>20</ZIndex>
-                                  <DocumentMapLabel>Keys</DocumentMapLabel>
-                                  <Bookmark>=Fields!table_name.Value &amp; " - Keys"</Bookmark>
-                                  <Style>
-                                    <Border>
                                       <Style>None</Style>
                                     </Border>
                                   </Style>
-                                </Rectangle>
-                                <Rectangle Name="Rectangle7">
-                                  <ReportItems>
-                                    <Subreport Name="table_attributues">
-                                      <ReportName>DWH Documentation_attributes_SubReport</ReportName>
-                                      <Parameters>
-                                        <Parameter Name="Table">
-                                          <Value>=Fields!object_key.Value</Value>
-                                        </Parameter>
-                                      </Parameters>
-                                      <Top>0.1032in</Top>
-                                      <Left>0.55081cm</Left>
-                                      <Height>0.7936in</Height>
-                                      <Width>17.13928in</Width>
-                                      <Style>
-                                        <Border>
-                                          <Style>None</Style>
-                                        </Border>
-                                      </Style>
-                                    </Subreport>
-                                  </ReportItems>
-                                  <PageBreak>
-                                    <BreakLocation>Start</BreakLocation>
-                                  </PageBreak>
-                                  <PageName>="Attributes - " &amp; Fields!table_name.Value</PageName>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Top>5.41418in</Top>
-                                  <Left>0.03984cm</Left>
-                                  <Height>1in</Height>
-                                  <Width>17.36072in</Width>
-                                  <ZIndex>21</ZIndex>
-                                  <DocumentMapLabel>Attributes</DocumentMapLabel>
-                                  <Bookmark>=Fields!table_name.Value &amp; " - Attributes"</Bookmark>
-                                  <Style>
-                                    <Border>
-                                      <Style>None</Style>
-                                    </Border>
-                                  </Style>
-                                </Rectangle>
-                                <Rectangle Name="Rectangle8">
-                                  <ReportItems>
-                                    <Subreport Name="table_attributues2">
-                                      <ReportName>DWH Documentation_jobs_SubReport</ReportName>
-                                      <Parameters>
-                                        <Parameter Name="Table">
-                                          <Value>=Fields!object_key.Value</Value>
-                                        </Parameter>
-                                      </Parameters>
-                                      <Top>0.1032in</Top>
-                                      <Left>0.48101cm</Left>
-                                      <Height>0.7936in</Height>
-                                      <Width>17.16677in</Width>
-                                      <Style>
-                                        <Border>
-                                          <Style>None</Style>
-                                        </Border>
-                                      </Style>
-                                    </Subreport>
-                                  </ReportItems>
-                                  <PageBreak>
-                                    <BreakLocation>StartAndEnd</BreakLocation>
-                                  </PageBreak>
-                                  <PageName>="Jobs - " &amp; Fields!table_name.Value</PageName>
-                                  <KeepTogether>true</KeepTogether>
-                                  <Top>6.62726in</Top>
-                                  <Left>0.10964cm</Left>
-                                  <Height>1in</Height>
-                                  <Width>17.36072in</Width>
-                                  <ZIndex>22</ZIndex>
-                                  <DocumentMapLabel>Jobs</DocumentMapLabel>
-                                  <Bookmark>=Fields!table_name.Value &amp; " - Jobs"</Bookmark>
-                                  <Style>
-                                    <Border>
-                                      <Style>None</Style>
-                                    </Border>
-                                  </Style>
-                                </Rectangle>
+                                </Tablix>
                               </ReportItems>
-                              <PageName>="Overview - " &amp; Fields!table_name.Value</PageName>
                               <KeepTogether>true</KeepTogether>
-                              <DocumentMapLabel>=Fields!table_name.Value</DocumentMapLabel>
                               <Style>
                                 <Border>
                                   <Style>None</Style>
@@ -3715,24 +3871,19 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                 <TablixRowHierarchy>
                   <TablixMembers>
                     <TablixMember>
-                      <Group Name="Details">
+                      <Group Name="Category">
+                        <DocumentMapLabel>=Fields!Category.Value</DocumentMapLabel>
                         <GroupExpressions>
-                          <GroupExpression>=Fields!table_type.Value</GroupExpression>
-                          <GroupExpression>=Fields!table_name.Value</GroupExpression>
+                          <GroupExpression>=Fields!Category.Value</GroupExpression>
                         </GroupExpressions>
                       </Group>
-                      <SortExpressions>
-                        <SortExpression>
-                          <Value>=Fields!table_name.Value</Value>
-                        </SortExpression>
-                      </SortExpressions>
                     </TablixMember>
                   </TablixMembers>
                 </TablixRowHierarchy>
                 <DataSetName>SQL_Table_Info</DataSetName>
-                <Left>0.02326cm</Left>
-                <Height>8.43526in</Height>
-                <Width>17.54753in</Width>
+                <Top>0.3175cm</Top>
+                <Height>8.62081in</Height>
+                <Width>17.93823in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -3740,10 +3891,9 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                 </Style>
               </Tablix>
             </ReportItems>
-            <Top>19.08091cm</Top>
-            <Left>0.02952cm</Left>
-            <Height>11.15552in</Height>
-            <Width>17.88953in</Width>
+            <Top>20.03341cm</Top>
+            <Height>8.74581in</Height>
+            <Width>17.93823in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -3756,7 +3906,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                 <TablixBody>
                   <TablixColumns>
                     <TablixColumn>
-                      <Width>6.5291in</Width>
+                      <Width>5.00827in</Width>
                     </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
@@ -3807,7 +3957,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value> Dimension &amp; Fact Matrix</Value>
+                                      <Value xml:space="preserve"> </Value>
                                       <Style />
                                     </TextRun>
                                   </TextRuns>
@@ -3815,13 +3965,6 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>bookmark</rd:DefaultName>
-                              <ActionInfo>
-                                <Actions>
-                                  <Action>
-                                    <BookmarkLink>Dimension &amp; Fact Matrix</BookmarkLink>
-                                  </Action>
-                                </Actions>
-                              </ActionInfo>
                               <Visibility>
                                 <Hidden>=iif(len(First(Fields!type.Value, "SQL_Dim_Fact_Matrix"))&gt;0,False,True)</Hidden>
                               </Visibility>
@@ -3852,7 +3995,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value> Dimension Matrix</Value>
+                                      <Value xml:space="preserve"> </Value>
                                       <Style />
                                     </TextRun>
                                   </TextRuns>
@@ -3860,13 +4003,76 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox7</rd:DefaultName>
-                              <ActionInfo>
-                                <Actions>
-                                  <Action>
-                                    <BookmarkLink>Dimension Matrix</BookmarkLink>
-                                  </Action>
-                                </Actions>
-                              </ActionInfo>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox32">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style />
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox32</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox13">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value />
+                                      <Style />
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox13</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>LightGrey</Color>
@@ -3935,7 +4141,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                   <TablixMembers>
                     <TablixMember>
                       <TablixHeader>
-                        <Size>2.40825in</Size>
+                        <Size>2.29019in</Size>
                         <CellContents>
                           <Textbox Name="Textbox83">
                             <CanGrow>true</CanGrow>
@@ -3970,13 +4176,51 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                         </CellContents>
                       </TablixHeader>
                       <TablixMembers>
-                        <TablixMember />
+                        <TablixMember>
+                          <TablixHeader>
+                            <Size>2.91667in</Size>
+                            <CellContents>
+                              <Textbox Name="Textbox47">
+                                <CanGrow>true</CanGrow>
+                                <KeepTogether>true</KeepTogether>
+                                <Paragraphs>
+                                  <Paragraph>
+                                    <TextRuns>
+                                      <TextRun>
+                                        <Value />
+                                        <Style>
+                                          <FontSize>16pt</FontSize>
+                                          <FontWeight>Bold</FontWeight>
+                                          <Color>#004f59</Color>
+                                        </Style>
+                                      </TextRun>
+                                    </TextRuns>
+                                    <Style />
+                                  </Paragraph>
+                                </Paragraphs>
+                                <rd:DefaultName>Textbox47</rd:DefaultName>
+                                <Style>
+                                  <Border>
+                                    <Color>LightGrey</Color>
+                                    <Style>None</Style>
+                                  </Border>
+                                  <PaddingLeft>2pt</PaddingLeft>
+                                  <PaddingRight>2pt</PaddingRight>
+                                  <PaddingTop>2pt</PaddingTop>
+                                  <PaddingBottom>2pt</PaddingBottom>
+                                </Style>
+                              </Textbox>
+                            </CellContents>
+                          </TablixHeader>
+                          <TablixMembers>
+                            <TablixMember />
+                          </TablixMembers>
+                        </TablixMember>
                       </TablixMembers>
-                      <KeepWithGroup>After</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
                       <TablixHeader>
-                        <Size>2.40825in</Size>
+                        <Size>2.29019in</Size>
                         <CellContents>
                           <Textbox Name="table_name3">
                             <CanGrow>true</CanGrow>
@@ -3986,7 +4230,9 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                                 <TextRuns>
                                   <TextRun>
                                     <Value>Overview</Value>
-                                    <Style />
+                                    <Style>
+                                      <FontWeight>Bold</FontWeight>
+                                    </Style>
                                   </TextRun>
                                 </TextRuns>
                                 <Style>
@@ -4012,13 +4258,56 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                         </CellContents>
                       </TablixHeader>
                       <TablixMembers>
-                        <TablixMember />
+                        <TablixMember>
+                          <TablixHeader>
+                            <Size>2.91667in</Size>
+                            <CellContents>
+                              <Textbox Name="Textbox66">
+                                <CanGrow>true</CanGrow>
+                                <KeepTogether>true</KeepTogether>
+                                <Paragraphs>
+                                  <Paragraph>
+                                    <TextRuns>
+                                      <TextRun>
+                                        <Value>Dimension &amp; Fact Matrix</Value>
+                                        <Style />
+                                      </TextRun>
+                                    </TextRuns>
+                                    <Style>
+                                      <TextAlign>Right</TextAlign>
+                                    </Style>
+                                  </Paragraph>
+                                </Paragraphs>
+                                <rd:DefaultName>Textbox66</rd:DefaultName>
+                                <ActionInfo>
+                                  <Actions>
+                                    <Action>
+                                      <BookmarkLink>Dimension &amp; Fact Matrix</BookmarkLink>
+                                    </Action>
+                                  </Actions>
+                                </ActionInfo>
+                                <Style>
+                                  <Border>
+                                    <Color>LightGrey</Color>
+                                    <Style>None</Style>
+                                  </Border>
+                                  <PaddingLeft>2pt</PaddingLeft>
+                                  <PaddingRight>2pt</PaddingRight>
+                                  <PaddingTop>2pt</PaddingTop>
+                                  <PaddingBottom>2pt</PaddingBottom>
+                                </Style>
+                              </Textbox>
+                            </CellContents>
+                          </TablixHeader>
+                          <TablixMembers>
+                            <TablixMember />
+                          </TablixMembers>
+                        </TablixMember>
                       </TablixMembers>
-                      <KeepWithGroup>After</KeepWithGroup>
                     </TablixMember>
                     <TablixMember>
                       <TablixHeader>
-                        <Size>2.40825in</Size>
+                        <Size>2.29019in</Size>
                         <CellContents>
                           <Textbox Name="Textbox1">
                             <CanGrow>true</CanGrow>
@@ -4048,68 +4337,331 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                               <PaddingBottom>2pt</PaddingBottom>
                             </Style>
                           </Textbox>
-                        </CellContents>
-                      </TablixHeader>
-                      <TablixMembers>
-                        <TablixMember />
-                      </TablixMembers>
-                      <Visibility>
-                        <Hidden>=iif(len(First(Fields!type.Value, "SQL_Dim_Dim_Matrix"))&gt;1, FALSE,TRUE)</Hidden>
-                      </Visibility>
-                      <KeepWithGroup>After</KeepWithGroup>
-                    </TablixMember>
-                    <TablixMember>
-                      <Group Name="object_key">
-                        <GroupExpressions>
-                          <GroupExpression>=Fields!object_key.Value</GroupExpression>
-                        </GroupExpressions>
-                      </Group>
-                      <SortExpressions>
-                        <SortExpression>
-                          <Value>=Fields!table_name.Value</Value>
-                        </SortExpression>
-                      </SortExpressions>
-                      <TablixHeader>
-                        <Size>2.40825in</Size>
-                        <CellContents>
-                          <Textbox Name="table_name">
-                            <CanGrow>true</CanGrow>
-                            <KeepTogether>true</KeepTogether>
-                            <Paragraphs>
-                              <Paragraph>
-                                <TextRuns>
-                                  <TextRun>
-                                    <Value>=Fields!table_name.Value</Value>
-                                    <Style />
-                                  </TextRun>
-                                </TextRuns>
-                                <Style>
-                                  <TextAlign>Right</TextAlign>
-                                </Style>
-                              </Paragraph>
-                            </Paragraphs>
-                            <rd:DefaultName>table_name</rd:DefaultName>
-                            <Style>
-                              <Border>
-                                <Color>LightGrey</Color>
-                                <Style>None</Style>
-                              </Border>
-                              <PaddingLeft>2pt</PaddingLeft>
-                              <PaddingRight>2pt</PaddingRight>
-                              <PaddingTop>2pt</PaddingTop>
-                              <PaddingBottom>2pt</PaddingBottom>
-                            </Style>
-                          </Textbox>
+                          <rd:Selected>true</rd:Selected>
                         </CellContents>
                       </TablixHeader>
                       <TablixMembers>
                         <TablixMember>
-                          <Group Name="Details1" />
+                          <TablixHeader>
+                            <Size>2.91667in</Size>
+                            <CellContents>
+                              <Textbox Name="Textbox64">
+                                <CanGrow>true</CanGrow>
+                                <KeepTogether>true</KeepTogether>
+                                <Paragraphs>
+                                  <Paragraph>
+                                    <TextRuns>
+                                      <TextRun>
+                                        <Value>Dimension Matrix</Value>
+                                        <Style />
+                                      </TextRun>
+                                    </TextRuns>
+                                    <Style>
+                                      <TextAlign>Right</TextAlign>
+                                    </Style>
+                                  </Paragraph>
+                                </Paragraphs>
+                                <rd:DefaultName>Textbox64</rd:DefaultName>
+                                <ActionInfo>
+                                  <Actions>
+                                    <Action>
+                                      <BookmarkLink>Dimension Matrix</BookmarkLink>
+                                    </Action>
+                                  </Actions>
+                                </ActionInfo>
+                                <Style>
+                                  <Border>
+                                    <Color>LightGrey</Color>
+                                    <Style>None</Style>
+                                  </Border>
+                                  <PaddingLeft>2pt</PaddingLeft>
+                                  <PaddingRight>2pt</PaddingRight>
+                                  <PaddingTop>2pt</PaddingTop>
+                                  <PaddingBottom>2pt</PaddingBottom>
+                                </Style>
+                              </Textbox>
+                            </CellContents>
+                          </TablixHeader>
+                          <TablixMembers>
+                            <TablixMember />
+                          </TablixMembers>
+                        </TablixMember>
+                      </TablixMembers>
+                      <Visibility>
+                        <Hidden>=iif(len(First(Fields!type.Value, "SQL_Dim_Dim_Matrix"))&gt;1, FALSE,TRUE)</Hidden>
+                      </Visibility>
+                    </TablixMember>
+                    <TablixMember>
+                      <Group Name="Category1">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!Category.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!Category.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                      <TablixMembers>
+                        <TablixMember>
+                          <TablixHeader>
+                            <Size>2.29019in</Size>
+                            <CellContents>
+                              <Textbox Name="Category1">
+                                <CanGrow>true</CanGrow>
+                                <KeepTogether>true</KeepTogether>
+                                <Paragraphs>
+                                  <Paragraph>
+                                    <TextRuns>
+                                      <TextRun>
+                                        <Value>=Fields!Category.Value</Value>
+                                        <Style>
+                                          <FontWeight>Bold</FontWeight>
+                                        </Style>
+                                      </TextRun>
+                                    </TextRuns>
+                                    <Style>
+                                      <TextAlign>Left</TextAlign>
+                                    </Style>
+                                  </Paragraph>
+                                </Paragraphs>
+                                <rd:DefaultName>Category1</rd:DefaultName>
+                                <Style>
+                                  <Border>
+                                    <Color>LightGrey</Color>
+                                    <Style>None</Style>
+                                  </Border>
+                                  <PaddingLeft>2pt</PaddingLeft>
+                                  <PaddingRight>2pt</PaddingRight>
+                                  <PaddingTop>2pt</PaddingTop>
+                                  <PaddingBottom>2pt</PaddingBottom>
+                                </Style>
+                              </Textbox>
+                            </CellContents>
+                          </TablixHeader>
+                          <TablixMembers>
+                            <TablixMember>
+                              <TablixHeader>
+                                <Size>2.91667in</Size>
+                                <CellContents>
+                                  <Textbox Name="Textbox50">
+                                    <CanGrow>true</CanGrow>
+                                    <KeepTogether>true</KeepTogether>
+                                    <Paragraphs>
+                                      <Paragraph>
+                                        <TextRuns>
+                                          <TextRun>
+                                            <Value />
+                                            <Style />
+                                          </TextRun>
+                                        </TextRuns>
+                                        <Style>
+                                          <TextAlign>Left</TextAlign>
+                                        </Style>
+                                      </Paragraph>
+                                    </Paragraphs>
+                                    <rd:DefaultName>Textbox50</rd:DefaultName>
+                                    <Style>
+                                      <Border>
+                                        <Color>LightGrey</Color>
+                                        <Style>None</Style>
+                                      </Border>
+                                      <PaddingLeft>2pt</PaddingLeft>
+                                      <PaddingRight>2pt</PaddingRight>
+                                      <PaddingTop>2pt</PaddingTop>
+                                      <PaddingBottom>2pt</PaddingBottom>
+                                    </Style>
+                                  </Textbox>
+                                </CellContents>
+                              </TablixHeader>
+                            </TablixMember>
+                          </TablixMembers>
+                        </TablixMember>
+                        <TablixMember>
+                          <Group Name="Subcategory">
+                            <GroupExpressions>
+                              <GroupExpression>=Fields!Subcategory.Value</GroupExpression>
+                            </GroupExpressions>
+                          </Group>
                           <SortExpressions>
                             <SortExpression>
-                              <Value>=Fields!table_name.Value</Value>
+                              <Value>=Fields!Subcategory.Value</Value>
                             </SortExpression>
                           </SortExpressions>
+                          <TablixMembers>
+                            <TablixMember>
+                              <TablixHeader>
+                                <Size>2.29019in</Size>
+                                <CellContents>
+                                  <Textbox Name="Subcategory">
+                                    <CanGrow>true</CanGrow>
+                                    <KeepTogether>true</KeepTogether>
+                                    <Paragraphs>
+                                      <Paragraph>
+                                        <TextRuns>
+                                          <TextRun>
+                                            <Value>=Fields!Subcategory.Value</Value>
+                                            <Style>
+                                              <FontWeight>Normal</FontWeight>
+                                            </Style>
+                                          </TextRun>
+                                        </TextRuns>
+                                        <LeftIndent>60pt</LeftIndent>
+                                        <Style>
+                                          <TextAlign>Left</TextAlign>
+                                        </Style>
+                                      </Paragraph>
+                                    </Paragraphs>
+                                    <rd:DefaultName>Subcategory</rd:DefaultName>
+                                    <Style>
+                                      <Border>
+                                        <Color>LightGrey</Color>
+                                        <Style>None</Style>
+                                      </Border>
+                                      <PaddingLeft>2pt</PaddingLeft>
+                                      <PaddingRight>2pt</PaddingRight>
+                                      <PaddingTop>2pt</PaddingTop>
+                                      <PaddingBottom>2pt</PaddingBottom>
+                                    </Style>
+                                  </Textbox>
+                                </CellContents>
+                              </TablixHeader>
+                              <TablixMembers>
+                                <TablixMember>
+                                  <TablixHeader>
+                                    <Size>2.91667in</Size>
+                                    <CellContents>
+                                      <Textbox Name="Textbox51">
+                                        <CanGrow>true</CanGrow>
+                                        <KeepTogether>true</KeepTogether>
+                                        <Paragraphs>
+                                          <Paragraph>
+                                            <TextRuns>
+                                              <TextRun>
+                                                <Value />
+                                                <Style />
+                                              </TextRun>
+                                            </TextRuns>
+                                            <Style>
+                                              <TextAlign>Left</TextAlign>
+                                            </Style>
+                                          </Paragraph>
+                                        </Paragraphs>
+                                        <rd:DefaultName>Textbox51</rd:DefaultName>
+                                        <Style>
+                                          <Border>
+                                            <Color>LightGrey</Color>
+                                            <Style>None</Style>
+                                          </Border>
+                                          <PaddingLeft>2pt</PaddingLeft>
+                                          <PaddingRight>2pt</PaddingRight>
+                                          <PaddingTop>2pt</PaddingTop>
+                                          <PaddingBottom>2pt</PaddingBottom>
+                                        </Style>
+                                      </Textbox>
+                                    </CellContents>
+                                  </TablixHeader>
+                                </TablixMember>
+                              </TablixMembers>
+                              <KeepWithGroup>After</KeepWithGroup>
+                            </TablixMember>
+                            <TablixMember>
+                              <Group Name="object_key">
+                                <GroupExpressions>
+                                  <GroupExpression>=Fields!object_key.Value</GroupExpression>
+                                </GroupExpressions>
+                              </Group>
+                              <SortExpressions>
+                                <SortExpression>
+                                  <Value>=Fields!table_name.Value</Value>
+                                </SortExpression>
+                              </SortExpressions>
+                              <TablixHeader>
+                                <Size>2.29019in</Size>
+                                <CellContents>
+                                  <Textbox Name="Textbox53">
+                                    <CanGrow>true</CanGrow>
+                                    <KeepTogether>true</KeepTogether>
+                                    <Paragraphs>
+                                      <Paragraph>
+                                        <TextRuns>
+                                          <TextRun>
+                                            <Value />
+                                            <Style />
+                                          </TextRun>
+                                        </TextRuns>
+                                        <Style>
+                                          <TextAlign>Right</TextAlign>
+                                        </Style>
+                                      </Paragraph>
+                                    </Paragraphs>
+                                    <rd:DefaultName>Textbox53</rd:DefaultName>
+                                    <Style>
+                                      <Border>
+                                        <Color>LightGrey</Color>
+                                        <Style>None</Style>
+                                      </Border>
+                                      <PaddingLeft>2pt</PaddingLeft>
+                                      <PaddingRight>2pt</PaddingRight>
+                                      <PaddingTop>2pt</PaddingTop>
+                                      <PaddingBottom>2pt</PaddingBottom>
+                                    </Style>
+                                  </Textbox>
+                                </CellContents>
+                              </TablixHeader>
+                              <TablixMembers>
+                                <TablixMember>
+                                  <TablixHeader>
+                                    <Size>2.91667in</Size>
+                                    <CellContents>
+                                      <Textbox Name="table_name">
+                                        <CanGrow>true</CanGrow>
+                                        <KeepTogether>true</KeepTogether>
+                                        <Paragraphs>
+                                          <Paragraph>
+                                            <TextRuns>
+                                              <TextRun>
+                                                <Value>=Fields!table_name.Value</Value>
+                                                <Style />
+                                              </TextRun>
+                                            </TextRuns>
+                                            <Style>
+                                              <TextAlign>Right</TextAlign>
+                                            </Style>
+                                          </Paragraph>
+                                        </Paragraphs>
+                                        <rd:DefaultName>table_name</rd:DefaultName>
+                                        <Style>
+                                          <Border>
+                                            <Color>LightGrey</Color>
+                                            <Style>None</Style>
+                                          </Border>
+                                          <PaddingLeft>2pt</PaddingLeft>
+                                          <PaddingRight>2pt</PaddingRight>
+                                          <PaddingTop>2pt</PaddingTop>
+                                          <PaddingBottom>2pt</PaddingBottom>
+                                        </Style>
+                                      </Textbox>
+                                    </CellContents>
+                                  </TablixHeader>
+                                  <TablixMembers>
+                                    <TablixMember>
+                                      <Group Name="Details1" />
+                                      <SortExpressions>
+                                        <SortExpression>
+                                          <Value>=Fields!table_name.Value</Value>
+                                        </SortExpression>
+                                      </SortExpressions>
+                                      <Visibility>
+                                        <Hidden>true</Hidden>
+                                        <ToggleItem>table_name</ToggleItem>
+                                      </Visibility>
+                                    </TablixMember>
+                                  </TablixMembers>
+                                </TablixMember>
+                              </TablixMembers>
+                            </TablixMember>
+                          </TablixMembers>
                         </TablixMember>
                       </TablixMembers>
                     </TablixMember>
@@ -4118,8 +4670,8 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
                 <DataSetName>SQL_Bookmarks</DataSetName>
                 <PageName>Contents</PageName>
                 <Left>0.40894in</Left>
-                <Height>1.24306in</Height>
-                <Width>8.93735in</Width>
+                <Height>1.74306in</Height>
+                <Width>10.21513in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -4134,7 +4686,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
             <KeepTogether>true</KeepTogether>
             <Top>0.06944in</Top>
             <Left>0.04104in</Left>
-            <Height>1.26892in</Height>
+            <Height>1.74306in</Height>
             <Width>14.06944in</Width>
             <ZIndex>1</ZIndex>
             <Style>
@@ -4520,7 +5072,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
             </PageBreak>
             <PageName>Dimension - Fact Matrix</PageName>
             <KeepTogether>true</KeepTogether>
-            <Top>1.38003in</Top>
+            <Top>1.75503in</Top>
             <Height>2.99306in</Height>
             <Width>17.48861in</Width>
             <ZIndex>2</ZIndex>
@@ -4916,7 +5468,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
             </PageBreak>
             <PageName>Dimension Matrix</PageName>
             <KeepTogether>true</KeepTogether>
-            <Top>4.44253in</Top>
+            <Top>4.81753in</Top>
             <Height>2.99306in</Height>
             <Width>17.48861in</Width>
             <ZIndex>3</ZIndex>
@@ -4932,7 +5484,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
             </Style>
           </Rectangle>
         </ReportItems>
-        <Height>18.66769in</Height>
+        <Height>16.63298in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4968,7 +5520,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>17.90115in</Width>
+      <Width>17.93823in</Width>
       <Page>
         <PageHeader>
           <Height>1.37219in</Height>
@@ -5211,7 +5763,7 @@ AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
           </Style>
         </PageHeader>
         <PageFooter>
-          <Height>1.23716in</Height>
+          <Height>1.01494in</Height>
           <PrintOnFirstPage>true</PrintOnFirstPage>
           <PrintOnLastPage>true</PrintOnLastPage>
           <ReportItems>
