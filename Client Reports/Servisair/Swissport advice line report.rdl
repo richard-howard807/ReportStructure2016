@@ -2807,34 +2807,14 @@ ORDER BY dim_client[client_code_trimmed]
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
---SELECT a.client_code AS Client
---,a.matter_number AS Matter
---,SUM(CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.edithrs,a.wiphrs) END)  AS Hrs
---,SUM(CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.editamt,a.wipamt) END)  AS Revenue
---,SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate
---THEN (CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.edithrs,a.wiphrs) END) ELSE 0 END) HrsDateRange
---,SUM(CASE WHEN transaction_calendar_date BETWEEN @StartDate AND @EndDate
---THEN (CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.editamt,a.wipamt) END) ELSE 0 END) RevenueDateRange
-
---FROM red_dw.dbo.fact_all_time_activity AS a
---INNER JOIN TE_3E_Prod.dbo.Timecard AS b
---  ON a.transaction_sequence_number=b.TimeIndex
---LEFT OUTER JOIN red_dw.dbo.dim_transaction_date 
--- ON dim_transaction_date.dim_transaction_date_key = a.dim_transaction_date_key
---WHERE a.client_code IN ('W15593','00696670')
-
---GROUP BY a.client_code,a.matter_number
-
-
-SELECT client_code AS Client
+        <CommandText>SELECT client_code AS Client
 	, matter_number AS Matter
 	, SUM(minutes_recorded)/60 AS Hrs
 FROM red_dw.dbo.fact_all_time_activity
-LEFT OUTER JOIN red_dw.dbo.dim_date TranDate
-ON dim_transaction_date_key=dim_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_posting_date
+ON dim_posting_date.dim_posting_date_key = fact_all_time_activity.dim_posting_date_key
 WHERE client_code IN ('W15593','00696670')
-AND TranDate.calendar_date BETWEEN @StartDate AND @EndDate
+AND red_dw.dbo.dim_posting_date.posting_date BETWEEN @StartDate AND @EndDate
 GROUP BY client_code,
          matter_number</CommandText>
       </Query>
