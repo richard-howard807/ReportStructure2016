@@ -2455,6 +2455,14 @@ WHERE  name ='Swissport advice line report.png'</CommandText>
     <DataSet Name="DaxCD">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE(
 CALCULATETABLE(
 SUMMARIZE(
@@ -2486,6 +2494,8 @@ fact_dimension_main
 ),PATHCONTAINS("W15593|00696670",dim_client[client_code])
 ,dim_matter_worktype[work_type_group]="EPI"
 ,dim_matter_worktype[work_type_name] = "Employment Advice Line"
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &gt;=VALUE(@StartDate)
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &lt;VALUE(@EndDate)
 
 )
 )
@@ -2659,6 +2669,8 @@ fact_dimension_main
 ),PATHCONTAINS("W15593|00696670",dim_client[client_code])
 ,dim_matter_worktype[work_type_group]="EPI"
 ,dim_matter_worktype[work_type_name] = "Employment Advice Line"
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &amp;gt;=VALUE(@StartDate)
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &amp;lt;VALUE(@EndDate)
 
 )
 )
@@ -2703,12 +2715,39 @@ fact_dimension_main
 ),PATHCONTAINS("W15593|00696670",dim_client[client_code])
 ,dim_matter_worktype[work_type_group]="EPI"
 ,dim_matter_worktype[work_type_name] = "Employment Advice Line"
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &gt;=VALUE(@StartDate)
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &lt;VALUE(@EndDate)
 
 )
 )
 ORDER BY dim_client[client_code_trimmed]
 ,dim_matter_header_current[matter_number_trimmed]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>StartDate</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>StartDate</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>EndDate</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>EndDate</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -2799,22 +2838,14 @@ ORDER BY dim_client[client_code_trimmed]
     <DataSet Name="HoursRecorded">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@StartDate">
-            <Value>=Parameters!StartDate.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@EndDate">
-            <Value>=Parameters!EndDate.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
         <CommandText>SELECT client_code AS Client
 	, matter_number AS Matter
 	, SUM(minutes_recorded)/60 AS Hrs
 FROM red_dw.dbo.fact_all_time_activity
-LEFT OUTER JOIN red_dw.dbo.dim_gl_date
-ON  dim_gl_date.dim_gl_date_key = fact_all_time_activity.dim_gl_date_key
+LEFT OUTER JOIN red_dw.dbo.dim_transaction_date
+ ON dim_transaction_date.dim_transaction_date_key = fact_all_time_activity.dim_transaction_date_key
 WHERE client_code IN ('W15593','00696670')
-AND red_dw.dbo.dim_gl_date.gl_calendar_date BETWEEN @StartDate AND @EndDate
+--AND red_dw.dbo.dim_gl_date.gl_calendar_date BETWEEN @StartDate AND @EndDate
 GROUP BY client_code,
          matter_number</CommandText>
       </Query>
@@ -6170,20 +6201,6 @@ GROUP BY client_code,
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>DaxCD</DataSetName>
-                <Filters>
-                  <Filter>
-                    <FilterExpression>=IIF(Lookup(TRIM(Fields!dim_client_client_code_.Value) &amp; TRIM(Fields!dim_matter_header_current_matter_number_.Value), 
-TRIM(Fields!Client.Value) &amp; TRIM(Fields!Matter.Value)
-,Fields!Hrs.Value, "HoursRecorded")=nothing,1,
-IIF(Lookup(TRIM(Fields!dim_client_client_code_.Value) &amp; TRIM(Fields!dim_matter_header_current_matter_number_.Value), 
-TRIM(Fields!Client.Value) &amp; TRIM(Fields!Matter.Value)
-,Fields!Hrs.Value, "HoursRecorded")=0,1,0))</FilterExpression>
-                    <Operator>Equal</Operator>
-                    <FilterValues>
-                      <FilterValue>=0</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                </Filters>
                 <Top>0.0441cm</Top>
                 <Height>1.01041in</Height>
                 <Width>33.35069in</Width>
