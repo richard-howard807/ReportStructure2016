@@ -167,13 +167,44 @@ CommandType,
 ProcedureCode, 
 Parameter, 
 ParameterValue, 
-ISNULL(definition,ProcedureCode) AS definition
+CASE 
+	WHEN DocumentStandardDataSets.CommandType = 'StoredProcedure' THEN  
 
+		COALESCE(	(SELECT     m.definition COLLATE Latin1_General_BIN
+			FROM       red_dw.sys.objects AS o
+			INNER JOIN red_dw.sys.schemas AS s ON o.schema_id = s.schema_id
+			INNER JOIN  red_dw.sys.sql_modules m ON m.object_id = o.object_id
+			WHERE      s.name = 'dbo'
+			AND        o.name = ProcedureCode COLLATE Latin1_General_BIN ),
+
+			(SELECT     m.definition
+			FROM       reporting.sys.objects AS o
+			INNER JOIN reporting.sys.schemas AS s ON o.schema_id = s.schema_id
+			INNER JOIN  reporting.sys.sql_modules m ON m.object_id = o.object_id
+			WHERE      s.name = IIF(ProcedureCode LIKE '%.%', LEFT(ProcedureCode, CHARINDEX('.',REPLACE(REPLACE(ProcedureCode,']',''),'[','')) -1 ), 'dbo')
+			AND        o.name = IIF(ProcedureCode LIKE '%.%', SUBSTRING(ProcedureCode, CHARINDEX('.',REPLACE(REPLACE(ProcedureCode,']',''),'[','')) +1, 1000), ProcedureCode)
+			),
+
+			(SELECT     m.definition COLLATE Latin1_General_BIN
+			FROM       Exceptions.sys.objects AS o
+			INNER JOIN Exceptions.sys.schemas AS s ON o.schema_id = s.schema_id
+			INNER JOIN  Exceptions.sys.sql_modules m ON m.object_id = o.object_id
+			WHERE      s.name = IIF(ProcedureCode LIKE '%.%', LEFT(ProcedureCode, CHARINDEX('.',REPLACE(REPLACE(ProcedureCode,']',''),'[','')) -1 ), 'dbo') COLLATE Latin1_General_BIN
+			AND        o.name = IIF(ProcedureCode LIKE '%.%', SUBSTRING(ProcedureCode, CHARINDEX('.',REPLACE(REPLACE(ProcedureCode,']',''),'[','')) +1, 1000), ProcedureCode COLLATE Latin1_General_BIN)
+			))
+
+
+	ELSE ISNULL(definition, ProcedureCode)  end
+
+			AS definition
+	
 
   FROM [ReportInventory].[dbo].[DocumentStandardDataSets]
 
+
   where name = @ReportName
-AND DataSet NOT  LIKE '%ReportTitle%'</CommandText>
+AND DataSet NOT  LIKE '%ReportTitle%'
+</CommandText>
       </Query>
       <Fields>
         <Field Name="name">
@@ -249,8 +280,8 @@ a.ItemID AS [InventortyID]
 
  b.CreatedDate,
  b.ModifiedDate,
- b.RanBy,
- b.DateLastRan,
+ x.RanBy,
+ x.DateLastRan,
  b.[Billing only],
  b.[Business Owner],
  b.[Governance Owner],
@@ -265,8 +296,14 @@ a.ItemID AS [InventortyID]
  b.[Checking Process/amendments made if report sent externally]
 
 FROM ReportInventory.[dbo].[ReportCatalogDefinition]  AS a
-LEFT OUTER JOIN ReportInventory.dbo.InventoryV2 AS b
- ON a.ItemID=b.ID
+LEFT OUTER JOIN ReportInventory.dbo.InventoryV2 AS b ON a.ItemID=b.ID
+LEFT OUTER JOIN 
+	(
+	SELECT Catalog.ItemID, ISNULL(dim_employee.forename + ' ' + dim_employee.surname, ExecutionLog2.UserName) RanBy, ExecutionLog2.TimeStart DateLastRan, ROW_NUMBER() OVER (PARTITION BY Catalog.ItemID ORDER BY ExecutionLog2.TimeStart DESC) rnk
+	FROM ReportServer.dbo.ExecutionLog2
+	INNER JOIN ReportServer..Catalog ON ExecutionLog2.ReportPath = Catalog.Path
+	LEFT OUTER JOIN red_dw..dim_employee ON dim_employee.windowsusername = REPLACE(ExecutionLog2.UserName, 'sbc\', '') COLLATE Latin1_General_BIN
+	) x ON x.ItemID = b.ID AND x.rnk = 1
 WHERE a.[Name]=@ReportName</CommandText>
       </Query>
       <Fields>
@@ -372,31 +409,47 @@ WHERE a.[Name]=@ReportName</CommandText>
             <Value>=Parameters!ReportName.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT AllData.[Report Name],
+        <CommandText>
+SELECT AllData.[Report Name],
        AllData.[Ran By],
-       AllData.[Time Ran]
-	   ,ROW_NUMBER() OVER (PARTITION BY AllData.[Report Name] ORDER BY AllData.[Time Ran]  DESC) AS RowNum
-	   FROM 
+       AllData.[Time Ran],
+       ROW_NUMBER() OVER (PARTITION BY AllData.[Report Name] ORDER BY AllData.[Time Ran] DESC) AS RowNum
+FROM
 (
-SELECT REPLACE([Name],'"','-') AS [Report Name]
-,CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' ELSE  Employee.forename + ' '+ Employee.surname END  AS [Ran By]
-,COUNT(1) AS [Time Ran]
-FROM ReportServer.dbo.ExecutionLog
-INNER JOIN ReportServer.dbo.Catalog
- ON ReportID=ItemID
-INNER JOIN red_dw.dbo.dim_date
- ON CONVERT(DATE,TimeStart,103)=CONVERT(DATE,calendar_date,103) 
-INNER JOIN  (SELECT UPPER('SBC\'+ windowsusername) AS [UserName],forename,surname,dim_employee_key,postid,worksforemail FROM red_dw.dbo.dim_employee) AS Employee
- ON Employee.UserName = UPPER(ExecutionLog.UserName) COLLATE DATABASE_DEFAULT
-WHERE CONVERT(DATE,TimeStart,103) BETWEEN DATEADD(YEAR,-1,GETDATE()) AND GETDATE()
-AND postid NOT  LIKE '%Business Intelligence%'
-AND postid NOT  LIKE '%MI Analyst%' 
-AND ISNULL(worksforemail,'')  &lt;&gt;'bob.hetherington@weightmans.com'
-AND Name=@ReportName
-GROUP BY ReportServer.dbo.Catalog.Name
-,ExecutionLog.UserName
-,Employee.forename + ' '+ Employee.surname
-) AS AllData</CommandText>
+    SELECT REPLACE([Name], '"', '-') AS [Report Name],
+           CASE
+               WHEN ExecutionLog.UserName = 'SBC\ssrssvcdw01' THEN
+                   'Subscription'
+               ELSE
+                   Employee.forename + ' ' + Employee.surname
+           END AS [Ran By],
+           COUNT(1) AS [Time Ran]
+    FROM ReportServer.dbo.ExecutionLog
+        INNER JOIN ReportServer.dbo.Catalog
+            ON ReportID = ItemID
+        INNER JOIN red_dw.dbo.dim_date
+            ON CONVERT(DATE, TimeStart, 103) = CONVERT(DATE, calendar_date, 103)
+        INNER JOIN
+        (
+            SELECT UPPER('SBC\' + windowsusername) AS [UserName],
+                   forename,
+                   surname,
+                   dim_employee_key,
+                   postid,
+                   worksforemail
+            FROM red_dw.dbo.dim_employee
+        ) AS Employee
+            ON Employee.UserName = UPPER(ExecutionLog.UserName) COLLATE DATABASE_DEFAULT
+    WHERE CONVERT(DATE, TimeStart, 103)
+          BETWEEN DATEADD(YEAR, -1, GETDATE()) AND GETDATE()
+          --AND postid NOT LIKE '%Business Intelligence%'
+          --AND postid NOT LIKE '%MI Analyst%'
+          --AND ISNULL(worksforemail, '') &lt;&gt; 'bob.hetherington@weightmans.com'
+          AND Name = @ReportName
+    GROUP BY ReportServer.dbo.Catalog.Name,
+             ExecutionLog.UserName,
+             Employee.forename + ' ' + Employee.surname
+) AS AllData;</CommandText>
       </Query>
       <Fields>
         <Field Name="Report_Name">
@@ -407,13 +460,13 @@ GROUP BY ReportServer.dbo.Catalog.Name
           <DataField>Ran By</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Time_Ran">
-          <DataField>Time Ran</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="RowNum">
           <DataField>RowNum</DataField>
           <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="Time_Ran">
+          <DataField>Time Ran</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -425,12 +478,18 @@ GROUP BY ReportServer.dbo.Catalog.Name
             <Value>=Parameters!ReportName.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT  REPLACE([Name],'"','-') AS [Report Name]
+        <CommandText>
+SELECT  REPLACE([Name],'"','-') AS [Report Name]
 ,cal_month_name AS [Month Name]
 ,cal_month_no AS [Month Number]
 ,cal_year AS [Year]
 ,cal_month_name + '-' + CAST(cal_year AS NVARCHAR(MAX)) AS [Period]
-,CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' ELSE  Employee.forename + ' '+ Employee.surname END  AS [Ran By]
+,
+	CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' 
+		 WHEN  postid LIKE '%Business Intelligence%'
+			   or postid LIKE '%MI Analyst%'
+			   or ISNULL(worksforemail,'') = 'bob.hetherington@weightmans.com' THEN 'Data Services Team'
+	ELSE  'Users' END  AS [Ran By]
 ,fin_year 
 ,COUNT(1) AS [Time Ran]
 
@@ -443,19 +502,28 @@ INNER JOIN  (SELECT UPPER('SBC\'+ windowsusername) AS [UserName],forename,surnam
  ON Employee.UserName = UPPER(ExecutionLog.UserName) COLLATE DATABASE_DEFAULT
 
 WHERE CONVERT(DATE,TimeStart,103) BETWEEN DATEADD(YEAR,-1,GETDATE()) AND GETDATE()
-AND postid NOT  LIKE '%Business Intelligence%'
-AND postid NOT  LIKE '%MI Analyst%'
-AND ISNULL(worksforemail,'')  &lt;&gt;'bob.hetherington@weightmans.com'
+--AND postid NOT  LIKE '%Business Intelligence%'
+--AND postid NOT  LIKE '%MI Analyst%'
+--AND ISNULL(worksforemail,'')  &lt;&gt;'bob.hetherington@weightmans.com'
 AND REPLACE([Name],'"','-')=@ReportName
 GROUP BY ReportServer.dbo.Catalog.Name
 ,ExecutionLog.UserName
-,Employee.forename + ' '+ Employee.surname
+,CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' 
+		 WHEN  postid LIKE '%Business Intelligence%'
+			   or postid LIKE '%MI Analyst%'
+			   or ISNULL(worksforemail,'') = 'bob.hetherington@weightmans.com' THEN 'Data Services Team'
+	ELSE 'Users' END 
 ,cal_month_name
 ,cal_month_no
 ,cal_year 
 ,fin_year
 ORDER BY [Report Name]
-,CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' ELSE  Employee.forename + ' '+ Employee.surname END</CommandText>
+,CASE WHEN ExecutionLog.UserName='SBC\ssrssvcdw01' THEN 'Subscription' 
+		 WHEN  postid LIKE '%Business Intelligence%'
+			   or postid LIKE '%MI Analyst%'
+			   or ISNULL(worksforemail,'') = 'bob.hetherington@weightmans.com' THEN 'Data Services Team'
+	ELSE  'Users' END 
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Report_Name">
@@ -470,24 +538,24 @@ ORDER BY [Report Name]
           <DataField>Month Number</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
+        <Field Name="Ran_By">
+          <DataField>Ran By</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Year">
           <DataField>Year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Time_Ran">
+          <DataField>Time Ran</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="Period">
           <DataField>Period</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Ran_By">
-          <DataField>Ran By</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="fin_year">
           <DataField>fin_year</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="Time_Ran">
-          <DataField>Time Ran</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
@@ -500,21 +568,26 @@ ORDER BY [Report Name]
             <Value>=Parameters!ReportName.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT ChangeSetId,
+        <CommandText>
+SELECT ChangeSetId,
        OwnerId,
        [Date Changed],
        [Changed By],
        [Change Description],
-       [Report Name]
-	   ,CASE WHEN ISNUMERIC(LEFT(RIGHT([Change Description],LEN([Change Description])-CHARINDEX('#',[Change Description])),5))=1
-	   THEN 'https://sdp.weightmans.com/WorkOrder.do?woMode=viewWO&amp;woID=' + LEFT(RIGHT([Change Description],LEN([Change Description])-CHARINDEX('#',[Change Description])),5)  ELSE NULL END AS Links
+	   REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'),
+          [Change Description Unedited],
+       [Report Name],
+          CASE WHEN ISNUMERIC(LEFT(RIGHT( REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'),LEN( REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'))-CHARINDEX('#', REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'))),5))=1
+          THEN 'https://sdp.weightmans.com/WorkOrder.do?woMode=viewWO&amp;woID=' + LEFT(RIGHT( REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'),LEN([Change Description])-CHARINDEX('#', REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'))),5)  ELSE NULL END AS Links
 FROM (SELECT  REPLACE([Report Name],'"','-') AS [Report Name]
 ,ChangeSetId
 ,OwnerId
 ,[Changed By]
-,REPLACE(REPLACE(REPLACE([Change Description],'request ','#') ,'Ticket','#'),'##','#') AS [Change Description]
+,[Change Description] [Change Description Unedited]
+,REPLACE(REPLACE(REPLACE(REPLACE(REPLACE([Change Description],'# #','#') ,'##','#'),'# ','#'), 'Ticket','#'), 'request', '#') AS [Change Description]
 ,[Date Changed]
-FROM ReportInventory.dbo.TFSReportChangeTracking) AS AllData
+
+FROM ReportInventory.dbo.TFSReportChangeTracking) AS AllData 
 WHERE [Report Name]=@ReportName</CommandText>
       </Query>
       <Fields>
@@ -536,6 +609,14 @@ WHERE [Report Name]=@ReportName</CommandText>
         </Field>
         <Field Name="Change_Description">
           <DataField>Change Description</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID">
+          <DataField />
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Change_Description_Unedited">
+          <DataField>Change Description Unedited</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Report_Name">
@@ -2838,25 +2919,26 @@ Colour,
                           <rd:DefaultName>Textbox37</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -2898,25 +2980,26 @@ Colour,
                           <rd:DefaultName>Textbox7</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -2957,7 +3040,8 @@ Colour,
                           <rd:DefaultName>Textbox142</rd:DefaultName>
                           <Style>
                             <Border>
-                              <Style>None</Style>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
                             </Border>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
@@ -3003,25 +3087,26 @@ Colour,
                         <rd:DefaultName>Textbox37</rd:DefaultName>
                         <Style>
                           <Border>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                           </Border>
                           <TopBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </TopBorder>
                           <BottomBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </BottomBorder>
                           <LeftBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </LeftBorder>
                           <RightBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </RightBorder>
@@ -3072,25 +3157,26 @@ Colour,
                         <rd:DefaultName>Ran_By</rd:DefaultName>
                         <Style>
                           <Border>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                           </Border>
                           <TopBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </TopBorder>
                           <BottomBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </BottomBorder>
                           <LeftBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </LeftBorder>
                           <RightBorder>
-                            <Color>Black</Color>
+                            <Color>LightGrey</Color>
                             <Style>Solid</Style>
                             <Width>1pt</Width>
                           </RightBorder>
@@ -3131,7 +3217,8 @@ Colour,
                         <rd:DefaultName>Textbox141</rd:DefaultName>
                         <Style>
                           <Border>
-                            <Style>None</Style>
+                            <Color>LightGrey</Color>
+                            <Style>Solid</Style>
                           </Border>
                           <PaddingLeft>2pt</PaddingLeft>
                           <PaddingRight>2pt</PaddingRight>
@@ -3147,13 +3234,14 @@ Colour,
             </TablixRowHierarchy>
             <DataSetName>ReportUsage</DataSetName>
             <PageName>Usage Last 12 Months</PageName>
-            <Top>31.15998in</Top>
-            <Left>0.01667in</Left>
+            <Top>21.32565in</Top>
+            <Left>0.05038in</Left>
             <Height>0.73622in</Height>
             <Width>4.75in</Width>
             <ZIndex>3</ZIndex>
             <Style>
               <Border>
+                <Color>LightGrey</Color>
                 <Style>None</Style>
               </Border>
             </Style>
@@ -3162,17 +3250,32 @@ Colour,
             <ChartCategoryHierarchy>
               <ChartMembers>
                 <ChartMember>
-                  <Group Name="Chart1_CategoryGroup">
+                  <Group Name="Chart1_CategoryGroup1">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!Report_Name.Value</GroupExpression>
+                      <GroupExpression>=Fields!Ran_By.Value</GroupExpression>
                     </GroupExpressions>
                   </Group>
                   <SortExpressions>
                     <SortExpression>
-                      <Value>=Fields!Time_Ran.Value</Value>
+                      <Value>=Fields!Ran_By.Value</Value>
                     </SortExpression>
                   </SortExpressions>
-                  <Label>=Fields!Report_Name.Value</Label>
+                  <ChartMembers>
+                    <ChartMember>
+                      <Group Name="Chart1_CategoryGroup">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!Report_Name.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!Time_Ran.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                      <Label>=Fields!Report_Name.Value</Label>
+                    </ChartMember>
+                  </ChartMembers>
+                  <Label>=Fields!Ran_By.Value</Label>
                 </ChartMember>
               </ChartMembers>
             </ChartCategoryHierarchy>
@@ -3526,8 +3629,8 @@ Colour,
               </Style>
             </ChartNoDataMessage>
             <DataSetName>UsageByPeriod</DataSetName>
-            <Top>26.71833in</Top>
-            <Left>0.02595cm</Left>
+            <Top>16.884in</Top>
+            <Left>0.11157cm</Left>
             <Height>4.22626in</Height>
             <Width>14.16194in</Width>
             <ZIndex>4</ZIndex>
@@ -3570,8 +3673,8 @@ Colour,
               </Image>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>65.81848cm</Top>
-            <Left>0.04235cm</Left>
+            <Top>40.83929cm</Top>
+            <Left>0.12797cm</Left>
             <Height>1.905cm</Height>
             <Width>45.38534cm</Width>
             <ZIndex>5</ZIndex>
@@ -3689,7 +3792,7 @@ Colour,
               </TablixColumns>
               <TablixRows>
                 <TablixRow>
-                  <Height>6.19465cm</Height>
+                  <Height>0.67368cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -4273,7 +4376,7 @@ Colour,
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
-                  <Height>20.6409cm</Height>
+                  <Height>1.11465cm</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -4358,7 +4461,7 @@ Colour,
             <PageName>Report Datasets</PageName>
             <Top>32.48149cm</Top>
             <Left>0.08562cm</Left>
-            <Height>28.50583cm</Height>
+            <Height>3.45861cm</Height>
             <Width>27.7274cm</Width>
             <ZIndex>8</ZIndex>
             <Style>
@@ -4414,8 +4517,8 @@ Colour,
               <BreakLocation>End</BreakLocation>
             </PageBreak>
             <KeepTogether>true</KeepTogether>
-            <Top>61.15216cm</Top>
-            <Left>0.04548cm</Left>
+            <Top>36.17297cm</Top>
+            <Left>0.1311cm</Left>
             <Height>0.29104cm</Height>
             <Width>47.09267cm</Width>
             <ZIndex>10</ZIndex>
@@ -4456,8 +4559,8 @@ Colour,
               </Image>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>61.58431cm</Top>
-            <Left>0.04235cm</Left>
+            <Top>36.60512cm</Top>
+            <Left>0.12797cm</Left>
             <Height>1.94028cm</Height>
             <Width>45.4559cm</Width>
             <ZIndex>11</ZIndex>
@@ -4488,7 +4591,8 @@ Colour,
               <BreakLocation>End</BreakLocation>
             </PageBreak>
             <KeepTogether>true</KeepTogether>
-            <Top>65.07737cm</Top>
+            <Top>40.09818cm</Top>
+            <Left>0.08562cm</Left>
             <Height>0.30396cm</Height>
             <Width>47.18428cm</Width>
             <ZIndex>13</ZIndex>
@@ -4573,25 +4677,26 @@ Colour,
                           <rd:DefaultName>Textbox10</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -4627,25 +4732,26 @@ Colour,
                           <rd:DefaultName>Textbox12</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -4681,25 +4787,26 @@ Colour,
                           <rd:DefaultName>Textbox14</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -4735,25 +4842,26 @@ Colour,
                           <rd:DefaultName>Textbox16</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -4870,14 +4978,14 @@ Colour,
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Change_Description">
+                        <Textbox Name="Change_Description_Unedited">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Change_Description.Value</Value>
+                                  <Value>=Fields!Change_Description_Unedited.Value</Value>
                                   <Style>
                                     <Color>=IIF(NOT ISNOTHING(Fields!Links.Value),"blue","Black")</Color>
                                     <Language>en-GB</Language>
@@ -4887,7 +4995,7 @@ Colour,
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Change_Description</rd:DefaultName>
+                          <rd:DefaultName>Change_Description_Unedited</rd:DefaultName>
                           <ActionInfo>
                             <Actions>
                               <Action>
@@ -4938,13 +5046,14 @@ Colour,
                 <Direction>Descending</Direction>
               </SortExpression>
             </SortExpressions>
-            <Top>63.70098cm</Top>
-            <Left>0.02395cm</Left>
+            <Top>38.72179cm</Top>
+            <Left>0.10957cm</Left>
             <Height>1.2cm</Height>
             <Width>27.91665cm</Width>
             <ZIndex>16</ZIndex>
             <Style>
               <Border>
+                <Color>LightGrey</Color>
                 <Style>None</Style>
               </Border>
             </Style>
@@ -4983,25 +5092,26 @@ Colour,
                           <rd:DefaultName>Textbox10</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -5038,25 +5148,26 @@ Colour,
                           <rd:DefaultName>TextBoxValue</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -5130,25 +5241,26 @@ Colour,
                             <rd:DefaultName>Textbox10</rd:DefaultName>
                             <Style>
                               <Border>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                               </Border>
                               <TopBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </TopBorder>
                               <BottomBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </BottomBorder>
                               <LeftBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </LeftBorder>
                               <RightBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </RightBorder>
@@ -5196,25 +5308,26 @@ Colour,
                             <rd:DefaultName>ColumnNumber</rd:DefaultName>
                             <Style>
                               <Border>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                               </Border>
                               <TopBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </TopBorder>
                               <BottomBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </BottomBorder>
                               <LeftBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </LeftBorder>
                               <RightBorder>
-                                <Color>Black</Color>
+                                <Color>LightGrey</Color>
                                 <Style>Solid</Style>
                                 <Width>1pt</Width>
                               </RightBorder>
@@ -5337,7 +5450,7 @@ Colour,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Description</Value>
+                                  <Value>Subscriptions</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -5351,25 +5464,26 @@ Colour,
                           <rd:DefaultName>Textbox56</rd:DefaultName>
                           <Style>
                             <Border>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                             </Border>
                             <TopBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </TopBorder>
                             <BottomBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </BottomBorder>
                             <LeftBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </LeftBorder>
                             <RightBorder>
-                              <Color>Black</Color>
+                              <Color>LightGrey</Color>
                               <Style>Solid</Style>
                               <Width>1pt</Width>
                             </RightBorder>
@@ -5536,7 +5650,7 @@ Colour,
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Description.Value</Value>
+                                  <Value>=iif(count(Fields!Description.Value) &gt; 0, Fields!Description.Value, "No subscriptions setup")</Value>
                                   <Style>
                                     <Language>en-GB</Language>
                                   </Style>
@@ -5729,7 +5843,7 @@ Colour,
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>33.97773in</Height>
+        <Height>22.06187in</Height>
         <Style />
       </Body>
       <Width>28.98384in</Width>
