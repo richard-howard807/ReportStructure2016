@@ -2457,6 +2457,9 @@ WHERE  name ='Zurich Final Bill Tracker.png'</CommandText>
           <QueryParameter Name="@EndDate">
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@FedCode">
+            <Value>=JOIN(Parameters!FedCode.Value,",")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>dbo.ZurichPaidBills</CommandText>
@@ -2476,6 +2479,10 @@ WHERE  name ='Zurich Final Bill Tracker.png'</CommandText>
         </Field>
         <Field Name="Fee_Earner_Name">
           <DataField>Fee Earner Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="fee_earner_code">
+          <DataField>fee_earner_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Work_Type">
@@ -2504,6 +2511,43 @@ WHERE  name ='Zurich Final Bill Tracker.png'</CommandText>
         </Field>
         <Field Name="Bill_Final_or_Interim">
           <DataField>Bill Final or Interim</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="FeeEarners">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT fed_code,name AS [FeeEarnerName]
+FROM red_dw.dbo.fact_bill
+INNER JOIN red_dw.dbo.dim_matter_header_current
+ ON dim_matter_header_current.dim_matter_header_curr_key = fact_bill.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fee_earner_code=fed_code COLLATE DATABASE_DEFAULT
+INNER JOIN red_dw.dbo.dim_bill
+ ON dim_bill.dim_bill_key = fact_bill.dim_bill_key
+INNER JOIN red_dw.dbo.dim_last_pay_date
+ ON dim_last_pay_date.dim_last_pay_date_key = fact_bill.dim_last_pay_date_key
+WHERE
+master_client_code='Z1001'
+AND last_pay_calendar_date BETWEEN @StartDate AND @EndDate
+ORDER BY name</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="fed_code">
+          <DataField>fed_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FeeEarnerName">
+          <DataField>FeeEarnerName</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -5443,11 +5487,29 @@ WHERE  name ='Zurich Final Bill Tracker.png'</CommandText>
       <DataType>DateTime</DataType>
       <Prompt>Bill Last Payment Date (end)</Prompt>
     </ReportParameter>
+    <ReportParameter Name="FedCode">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>FeeEarners</DataSetName>
+          <ValueField>fed_code</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Fee Earner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>FeeEarners</DataSetName>
+          <ValueField>fed_code</ValueField>
+          <LabelField>FeeEarnerName</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5463,6 +5525,11 @@ WHERE  name ='Zurich Final Bill Tracker.png'</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>EndDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>FedCode</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
