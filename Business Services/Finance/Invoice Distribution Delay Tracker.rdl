@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2010/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
   <AutoRefresh>0</AutoRefresh>
   <DataSources>
     <DataSource Name="SSAS_DEBT">
@@ -17,6 +17,14 @@
     <DataSet Name="sql_DebtAndEmails">
       <Query>
         <DataSourceName>DWH</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>select  distinct
 fd.client_code,
 dim_client.client_name,
@@ -47,9 +55,8 @@ left join MimecastData.dbo.MessageData md on md.InvoiceNumber = fd.bill_number c
 
 where 
 fd.bill_date &gt;= '2018-05-01'
---and fd.bill_number = '01823256'
-and isnull(md.TimeStamp, fd.bill_date) &gt;= fd.bill_date
---and lower(isnull(md.RecipientEmails, '')) not like '%@weightmans.com%'
+--and isnull(md.TimeStamp, fd.bill_date) &gt;= fd.bill_date
+and isnull(md.TimeStamp, fd.bill_date) BETWEEN @StartDate AND @EndDate
 and dim_client.client_code not in (
 'T1001,',
 '00004738',
@@ -1926,6 +1933,34 @@ drop table #tbl</CommandText>
       </Page>
     </ReportSection>
   </ReportSections>
+  <ReportParameters>
+    <ReportParameter Name="StartDate">
+      <DataType>DateTime</DataType>
+      <Prompt>Start Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="EndDate">
+      <DataType>DateTime</DataType>
+      <Prompt>End Date</Prompt>
+    </ReportParameter>
+  </ReportParameters>
+  <ReportParametersLayout>
+    <GridLayoutDefinition>
+      <NumberOfColumns>4</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
+      <CellDefinitions>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>StartDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>EndDate</ParameterName>
+        </CellDefinition>
+      </CellDefinitions>
+    </GridLayoutDefinition>
+  </ReportParametersLayout>
   <EmbeddedImages>
     <EmbeddedImage Name="company_logo">
       <MIMEType>image/png</MIMEType>
