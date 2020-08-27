@@ -2550,7 +2550,7 @@ WHERE  name ='Zurich_Claimant_Behaviour.png'</CommandText>
         <CommandText>
 SELECT 
 		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
-		, CASE WHEN client_group_name='Zurich' THEN 'Zurich' ELSE 'All' END AS [Client]
+		, 'All' AS [Client]
 		, SUM(1) AS [Number of Records]
 
 FROM red_dw.dbo.fact_dimension_main
@@ -2579,12 +2579,44 @@ AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','re
 AND dst_claimant_solicitor_firm IS NOT NULL
 AND dst_claimant_solicitor_firm &lt;&gt;''
 
-GROUP BY CASE
-         WHEN client_group_name = 'Zurich' THEN
-         'Zurich'
-         ELSE
-         'All'
-         END,
+GROUP BY dst_claimant_solicitor_firm
+
+
+UNION
+
+SELECT 
+		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
+		, 'Zurich' AS [Client]
+		, SUM(1) AS [Number of Records]
+
+FROM red_dw.dbo.fact_dimension_main
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court
+ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_previous_details
+ON dim_detail_previous_details.dim_detail_previous_details_key = fact_dimension_main.dim_detail_previous_details_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
+AND hierarchylevel3hist IN ('Motor','Large Loss','Casualty','Disease')
+AND date_opened_case_management&gt;='2017-01-01'
+AND reporting_exclusions=0
+AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','returned to client'))
+AND dst_claimant_solicitor_firm IS NOT NULL
+AND dst_claimant_solicitor_firm &lt;&gt;''
+AND client_group_name = 'Zurich'
+
+GROUP BY 
          dst_claimant_solicitor_firm
 
 ORDER BY [Number of Records] desc</CommandText>
@@ -2610,7 +2642,7 @@ ORDER BY [Number of Records] desc</CommandText>
         <CommandText>
 SELECT 
 		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
-		, CASE WHEN client_group_name='Zurich' THEN 'Zurich' ELSE 'All' END AS [Client]
+		, 'All' AS [Client]
 		, SUM(1) AS [Number of Records]
 		, AVG(DATEDIFF(DAY, incident_date, dim_detail_court.date_proceedings_issued)) AS [Days to Issue]
 
@@ -2640,12 +2672,45 @@ AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','re
 AND dst_claimant_solicitor_firm IS NOT NULL
 AND dst_claimant_solicitor_firm &lt;&gt;''
 
-GROUP BY CASE
-         WHEN client_group_name = 'Zurich' THEN
-         'Zurich'
-         ELSE
-         'All'
-         END,
+GROUP BY 
+         dst_claimant_solicitor_firm
+
+UNION
+
+SELECT 
+		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
+		, 'Zurich' AS [Client]
+		, SUM(1) AS [Number of Records]
+		, AVG(DATEDIFF(DAY, incident_date, dim_detail_court.date_proceedings_issued)) AS [Days to Issue]
+
+FROM red_dw.dbo.fact_dimension_main
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court
+ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_previous_details
+ON dim_detail_previous_details.dim_detail_previous_details_key = fact_dimension_main.dim_detail_previous_details_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
+AND hierarchylevel3hist IN ('Motor','Large Loss','Casualty','Disease')
+AND date_opened_case_management&gt;='2017-01-01'
+AND reporting_exclusions=0
+AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','returned to client'))
+AND dst_claimant_solicitor_firm IS NOT NULL
+AND dst_claimant_solicitor_firm &lt;&gt;''
+AND client_group_name = 'Zurich'
+
+GROUP BY 
          dst_claimant_solicitor_firm
 
 ORDER BY [Number of Records] desc</CommandText>
@@ -2675,7 +2740,7 @@ ORDER BY [Number of Records] desc</CommandText>
         <CommandText>
 SELECT 
 		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
-		, CASE WHEN client_group_name='Zurich' THEN 'Zurich' ELSE 'All' END AS [Client]
+		, 'All' AS [Client]
 		, SUM(damages_paid) AS [Damages Paid by Client]
 
 FROM red_dw.dbo.fact_dimension_main
@@ -2704,12 +2769,44 @@ AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','re
 AND dst_claimant_solicitor_firm IS NOT NULL
 AND dst_claimant_solicitor_firm &lt;&gt;''
 
-GROUP BY CASE
-         WHEN client_group_name = 'Zurich' THEN
-         'Zurich'
-         ELSE
-         'All'
-         END,
+GROUP BY 
+         dst_claimant_solicitor_firm
+
+UNION
+
+SELECT 
+		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
+		, 'Zurich' AS [Client]
+		, SUM(damages_paid) AS [Damages Paid by Client]
+
+FROM red_dw.dbo.fact_dimension_main
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court
+ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_previous_details
+ON dim_detail_previous_details.dim_detail_previous_details_key = fact_dimension_main.dim_detail_previous_details_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
+AND hierarchylevel3hist IN ('Motor','Large Loss','Casualty','Disease')
+AND date_opened_case_management&gt;='2017-01-01'
+AND reporting_exclusions=0
+AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','returned to client'))
+AND dst_claimant_solicitor_firm IS NOT NULL
+AND dst_claimant_solicitor_firm &lt;&gt;''
+AND client_group_name = 'Zurich'
+
+GROUP BY 
          dst_claimant_solicitor_firm
 
 ORDER BY [Damages Paid by Client] desc</CommandText>
@@ -2735,7 +2832,7 @@ ORDER BY [Damages Paid by Client] desc</CommandText>
         <CommandText>
 SELECT 
 		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
-		, CASE WHEN client_group_name='Zurich' THEN 'Zurich' ELSE 'All' END AS [Client]
+		, 'All' AS [Client]
 		, SUM(total_tp_costs_paid) AS [Total Third Party Costs Paid]
 
 FROM red_dw.dbo.fact_dimension_main
@@ -2764,12 +2861,44 @@ AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','re
 AND dst_claimant_solicitor_firm IS NOT NULL
 AND dst_claimant_solicitor_firm &lt;&gt;''
 
-GROUP BY CASE
-         WHEN client_group_name = 'Zurich' THEN
-         'Zurich'
-         ELSE
-         'All'
-         END,
+GROUP BY 
+         dst_claimant_solicitor_firm
+
+UNION
+
+SELECT 
+		 dst_claimant_solicitor_firm AS [Claimant's Solicitor]
+		, 'Zurich' AS [Client]
+		, SUM(total_tp_costs_paid) AS [Total Third Party Costs Paid]
+
+FROM red_dw.dbo.fact_dimension_main
+LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_court
+ON dim_detail_court.dim_detail_court_key = fact_dimension_main.dim_detail_court_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_previous_details
+ON dim_detail_previous_details.dim_detail_previous_details_key = fact_dimension_main.dim_detail_previous_details_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+
+WHERE hierarchylevel2hist='Legal Ops - Claims'
+AND hierarchylevel3hist IN ('Motor','Large Loss','Casualty','Disease')
+AND date_opened_case_management&gt;='2017-01-01'
+AND reporting_exclusions=0
+AND NOT (LOWER(RTRIM(ISNULL(outcome_of_case,''))) IN ('exclude from reports','returned to client'))
+AND dst_claimant_solicitor_firm IS NOT NULL
+AND dst_claimant_solicitor_firm &lt;&gt;''
+AND client_group_name = 'Zurich'
+
+GROUP BY 
          dst_claimant_solicitor_firm
 
 ORDER BY [Total Third Party Costs Paid] desc</CommandText>
@@ -7292,7 +7421,6 @@ ORDER BY [Total Third Party Costs Paid] desc</CommandText>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0cm</Top>
               <Height>0.25in</Height>
               <Width>26.09722in</Width>
               <Visibility>
