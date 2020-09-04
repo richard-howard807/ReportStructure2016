@@ -4466,7 +4466,9 @@ CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent IN
 ,'ENVIRM - Environmental Hourly'
 ,'RECVCA - Recovery'
 ,'AUTOEX - Motor Hourly'
-) AND ISNULL(header.fixed_fee,'')&lt;&gt;'Hourly' THEN 'Incorrect fee scale' END,
+) AND ISNULL(header.fixed_fee,'')&lt;&gt;'Hourly' 
+AND ISNULL(referral_reason,'')&lt;&gt;'Costs dispute'
+THEN 'Incorrect fee scale' END,
 
 CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent IN 
 (
@@ -4474,7 +4476,10 @@ CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent IN
 ,'CASUCA - Casualty Fixed Fee'
 ,'CASUMA - Casualty Fixed Fee'
 
-) AND ISNULL(header.fixed_fee,'')&lt;&gt;'Fixed Fee' THEN 'Incorrect fee scale' END,
+) 
+AND ISNULL(header.fixed_fee,'')&lt;&gt;'Fixed Fee' 
+AND ISNULL(referral_reason,'')&lt;&gt;'Costs dispute'
+THEN 'Incorrect fee scale' END,
              CASE WHEN detail_client.aig_litigation_number LIKE 'LIT-%'
                        AND detail_client.aig_litigation_number &lt;&gt; 'LIT-16777 UKSC'
                        AND ISNULL(budgeting.[aig_fixed_fee_budget_fees],0) = 0 
@@ -4518,7 +4523,9 @@ CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent IN
 ,'ENVIRM - Environmental Hourly'
 ,'RECVCA - Recovery'
 ,'AUTOEX - Motor Hourly'
-) AND ISNULL(header.fixed_fee,'')&lt;&gt;'Hourly' THEN 1
+) 
+AND ISNULL(referral_reason,'')&lt;&gt;'Costs dispute'
+AND ISNULL(header.fixed_fee,'')&lt;&gt;'Hourly' THEN 1
 
 WHEN dim_detail_client.aig_rates_assigned_in_ascent IN 
 (
@@ -4526,7 +4533,9 @@ WHEN dim_detail_client.aig_rates_assigned_in_ascent IN
 ,'CASUCA - Casualty Fixed Fee'
 ,'CASUMA - Casualty Fixed Fee'
 
-) AND ISNULL(header.fixed_fee,'')&lt;&gt;'Fixed Fee' THEN 1
+) 
+AND ISNULL(referral_reason,'')&lt;&gt;'Costs dispute'
+AND ISNULL(header.fixed_fee,'')&lt;&gt;'Fixed Fee' THEN 1
 
 
 
@@ -4559,6 +4568,8 @@ WHEN dim_detail_client.aig_rates_assigned_in_ascent IN
 			  
               ELSE 0
          END [exception_ind]
+		 ,referral_reason
+		
 
 FROM     red_dw.dbo.fact_dimension_main main
          INNER JOIN red_dw.dbo.dim_matter_header_current header ON header.dim_matter_header_curr_key = main.dim_matter_header_curr_key
@@ -4568,7 +4579,9 @@ FROM     red_dw.dbo.fact_dimension_main main
 		 LEFT OUTER JOIN red_dw.dbo.dim_detail_client
 		ON dim_detail_client.matter_number = header.matter_number
 		AND dim_detail_client.client_code = header.client_code
-
+	 LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+		ON dim_detail_core_details.matter_number = header.matter_number
+		AND dim_detail_core_details.client_code = header.client_code
 		 LEFT OUTER JOIN  (
 				SELECT dim_detail_client.aig_litigation_number
 					,MAX(dim_detail_client.date_budget_uploaded) date_budget_uploaded
@@ -4657,6 +4670,10 @@ WHERE    1 = 1
         <Field Name="date_budget_uploaded">
           <DataField>date_budget_uploaded</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="referral_reason">
+          <DataField>referral_reason</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
