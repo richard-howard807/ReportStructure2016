@@ -2462,6 +2462,9 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
           <QueryParameter Name="@Level">
             <Value>=Parameters!Level.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@ClientGroupName">
+            <Value>=Parameters!ClientGroupName.Value</Value>
+          </QueryParameter>
           <QueryParameter Name="@Status">
             <Value>=Parameters!Status.Value</Value>
           </QueryParameter>
@@ -2720,6 +2723,36 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
           </FilterValues>
         </Filter>
       </Filters>
+    </DataSet>
+    <DataSet Name="ParamClientGroup">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT CASE WHEN (client_group_name IS NULL OR client_group_name='') THEN  client_name ELSE client_group_name END AS [Client Group Name]
+FROM red_dw.dbo.dim_matter_header_current
+LEFT OUTER JOIN red_dw.dbo.fact_dimension_main
+ON fact_dimension_main.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype
+ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+
+WHERE reporting_exclusions=0
+--AND date_closed_case_management IS NULL
+AND date_opened_case_management&gt;= '2019-01-01'
+AND LOWER(referral_reason) LIKE '%dispute%'
+AND suspicion_of_fraud ='No'
+AND work_type_group IN ('EL','PL All','Motor','Disease')
+AND CASE WHEN (client_group_name IS NULL OR client_group_name='') THEN  client_name ELSE client_group_name END IS NOT NULL
+ORDER BY [Client Group Name]</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Client_Group_Name">
+          <DataField>Client Group Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
     </DataSet>
   </DataSets>
   <ReportSections>
@@ -5235,6 +5268,9 @@ Score &gt; 15</Value>
                                           <Parameter Name="Status">
                                             <Value>=Fields!Status.Value</Value>
                                           </Parameter>
+                                          <Parameter Name="ClientGroupName">
+                                            <Value>=Fields!Client_Group_Name.Value</Value>
+                                          </Parameter>
                                         </Parameters>
                                       </Drillthrough>
                                     </Action>
@@ -5866,6 +5902,24 @@ Score &gt; 15</Value>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
+    <ReportParameter Name="ClientGroupName">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ParamClientGroup</DataSetName>
+          <ValueField>Client_Group_Name</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Client Group Name</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ParamClientGroup</DataSetName>
+          <ValueField>Client_Group_Name</ValueField>
+          <LabelField>Client_Group_Name</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
     <ReportParameter Name="Status">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5892,7 +5946,7 @@ Score &gt; 15</Value>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>5</NumberOfRows>
+      <NumberOfRows>6</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5917,6 +5971,11 @@ Score &gt; 15</Value>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>4</RowIndex>
+          <ParameterName>ClientGroupName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>Status</ParameterName>
         </CellDefinition>
       </CellDefinitions>
