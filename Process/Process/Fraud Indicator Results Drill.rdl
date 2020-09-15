@@ -2457,6 +2457,9 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
           <QueryParameter Name="@Status">
             <Value>=Parameters!Status.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@ClientGroupName">
+            <Value>=Parameters!ClientGroupName.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>
 
@@ -2465,7 +2468,7 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
 
 	IF OBJECT_ID('tempdb..#FICProcess') IS NOT NULL   DROP TABLE #FICProcess
 
-	
+	IF OBJECT_ID('tempdb..#ClientGroupName') IS NOT NULL   DROP TABLE #ClientGroupName
 
 
 
@@ -2481,6 +2484,11 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
 	WHERE (tskDesc LIKE 'FIC Process'
 	OR tskDesc LIKE '%ADM: Complete fraud indicator checklist%')
 	AND tskActive=1
+
+	CREATE TABLE #ClientGroupName 
+	( ListValue NVARCHAR(200) collate Latin1_General_BIN)
+	INSERT INTO #ClientGroupName
+	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @ClientGroupName) 
 
 	 SELECT 
 		 [Client Code] = dim_matter_header_current.client_code
@@ -2510,8 +2518,8 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
 		 ,date_received 
 		 ,date_intel_report_sent
 		 ,FICProcess.tskDue
-		 ,FICProcess.tskCompleted
-		 ,FICProcess.tskDesc
+		 ,(CASE WHEN dim_detail_fraud.total_points_calc&gt;0 AND FICProcess.tskCompleted IS NULL THEN ScoreDate.dss_start_date ELSE FICProcess.tskCompleted END) AS [tskCompleted]
+		 ,CASE WHEN dim_detail_fraud.total_points_calc&gt;0 AND FICProcess.tskDesc IS NULL THEN 'FIC Process' ELSE FICProcess.tskDesc END AS [tskDesc]
 		 ,ms_fileid
 		 ,work_type_group
 		 ,ISNULL(client_group_name, client_name) AS [Client Group Name]
@@ -2521,10 +2529,10 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
 		,fact_finance_summary.defence_costs_reserve AS [Defence Costs Reserve]
 		,CASE WHEN FICProcess.tskDue IS NULL THEN 1 ELSE 0 END AS [CountNoprocessdue]
 	  
-		,CASE WHEN FICProcess.tskDue IS NOT NULL AND FICProcess.tskCompleted IS NULL THEN 1 ELSE 0 END AS [countcompleteddate]
-		,CASE WHEN FICProcess.tskCompleted IS NOT NULL AND dim_detail_fraud.total_points_calc IS NULL THEN 1 ELSE 0 END AS [countblankscore]
-		,CASE WHEN FICProcess.tskCompleted IS NOT NULL AND dim_detail_fraud.total_points_calc &lt; 15 THEN 1 ELSE 0 END AS [countless15]
-		,CASE WHEN FICProcess.tskCompleted IS NOT NULL AND dim_detail_fraud.total_points_calc &gt; 15 THEN 1 ELSE 0 END AS [countmore15]
+		,CASE WHEN FICProcess.tskDue IS NOT NULL AND (CASE WHEN dim_detail_fraud.total_points_calc&gt;0 AND FICProcess.tskCompleted IS NULL THEN ScoreDate.dss_start_date ELSE FICProcess.tskCompleted END) IS NULL THEN 1 ELSE 0 END AS [countcompleteddate]
+		,CASE WHEN (CASE WHEN dim_detail_fraud.total_points_calc&gt;0 AND FICProcess.tskCompleted IS NULL THEN ScoreDate.dss_start_date ELSE FICProcess.tskCompleted END) IS NOT NULL AND dim_detail_fraud.total_points_calc IS NULL THEN 1 ELSE 0 END AS [countblankscore]
+		,CASE WHEN (CASE WHEN dim_detail_fraud.total_points_calc&gt;0 AND FICProcess.tskCompleted IS NULL THEN ScoreDate.dss_start_date ELSE FICProcess.tskCompleted END) IS NOT NULL AND dim_detail_fraud.total_points_calc &lt; 15 THEN 1 ELSE 0 END AS [countless15]
+		,CASE WHEN (CASE WHEN dim_detail_fraud.total_points_calc&gt;0 AND FICProcess.tskCompleted IS NULL THEN ScoreDate.dss_start_date ELSE FICProcess.tskCompleted END) IS NOT NULL AND dim_detail_fraud.total_points_calc &gt; 15 THEN 1 ELSE 0 END AS [countmore15]
 	
 		, CASE WHEN (dim_matter_header_current.fee_arrangement = 'Fixed Fee/Fee Quote/Capped Fee ' AND ISNULL(fact_finance_summary.fixed_fee_amount, 0) = 0  ) OR (ISNULL(fact_finance_summary.defence_costs_reserve,0) = 0 ) THEN 1 ELSE 0
 		END AS [countfixeddefence]
@@ -2555,6 +2563,10 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
 	--INNER JOIN #Handler AS Handler ON Handler.ListValue = matter_owner_full_name 
 	--INNER JOIN #ClientGroupName AS ClientGroupName ON ClientGroupName.ListValue = ISNULL(client_group_name, client_name) 
 	
+	LEFT OUTER JOIN (SELECT totalpointscalc, ds_sh_ms_udficcommon_history.dss_start_date, ds_sh_ms_udficcommon_history.dss_end_date, ds_sh_ms_udficcommon_history.fileid
+					FROM red_dw.dbo.ds_sh_ms_udficcommon_history
+					WHERE ds_sh_ms_udficcommon_history.dss_current_flag='Y') AS [ScoreDate] ON [ScoreDate].fileID=dim_matter_header_current.ms_fileid
+
 	LEFT OUTER JOIN #FICProcess FICProcess ON FICProcess.fileID = ms_fileid
 
 	WHERE 
@@ -2574,6 +2586,7 @@ WHERE  name ='Fraud Indicator Results Report.png'</CommandText>
 	
 		AND dim_matter_header_current.matter_owner_full_name = @MatterOwner
 		AND CASE WHEN date_claim_concluded IS NULL THEN 'Open' else 'Closed' END = @Status
+		AND (CASE WHEN (client_group_name IS NULL OR client_group_name='') THEN  client_name ELSE client_group_name END) = @ClientGroupName
 	</CommandText>
       </Query>
       <Fields>
@@ -4485,6 +4498,11 @@ iif(Fields!fic.Value=nothing, "Red","Transparent"))</BackgroundColor>
       <Prompt>Matter Owner</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="ClientGroupName">
+      <DataType>String</DataType>
+      <Prompt>Client Group Name</Prompt>
+      <Hidden>true</Hidden>
+    </ReportParameter>
     <ReportParameter Name="Status">
       <DataType>String</DataType>
       <Prompt>Status</Prompt>
@@ -4506,7 +4524,7 @@ iif(Fields!fic.Value=nothing, "Red","Transparent"))</BackgroundColor>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4521,6 +4539,11 @@ iif(Fields!fic.Value=nothing, "Red","Transparent"))</BackgroundColor>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
+          <ParameterName>ClientGroupName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>Status</ParameterName>
         </CellDefinition>
       </CellDefinitions>
