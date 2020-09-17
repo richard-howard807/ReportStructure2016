@@ -2962,7 +2962,14 @@ ORDER BY dim_client[client_group_name]</Statement>
     <DataSet Name="PresentPosition">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT ISNULL([present_position],'Missing')  AS [present_position]
+        <CommandText>SELECT DISTINCT 
+	ISNULL([present_position],'Missing')  AS [present_position]
+	, CASE 
+		WHEN ISNULL([present_position],'Missing') IN ('Final bill due - claim and costs concluded', 'Final bill sent - unpaid', 'To be closed/minor balances to be clear                     ') THEN
+			NULL
+		ELSE 
+			ISNULL([present_position],'Missing')
+	  END									AS [pp_filtered]
 FROM red_dw.dbo.dim_detail_core_details</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
@@ -3021,6 +3028,10 @@ ORDER BY dim_detail_core_details[present_position]</Statement>
       <Fields>
         <Field Name="present_position">
           <DataField>present_position</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="pp_filtered">
+          <DataField>pp_filtered</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -3097,29 +3108,11 @@ fact_dimension_main
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="PP_param_default">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT ISNULL([present_position],'Missing')  AS [present_position]
-FROM red_dw.dbo.dim_detail_core_details
-WHERE ISNULL([present_position],'Missing') IN ('Claim and costs concluded but recovery outstanding',
-'Claim and costs outstanding',                                 
-'Claim concluded but costs outstanding',
-'Missing'
-)</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="present_position">
-          <DataField>present_position</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
     <DataSet Name="paramTestDate">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <CommandText>SELECT 
-	CAST('2020-02-24' AS DATE)  AS [start_date]
+	CAST('2020-07-24' AS DATE)  AS [start_date]
 	, CAST('2020-08-24' AS DATE)  AS [end_date]</CommandText>
       </Query>
       <Fields>
@@ -3153,7 +3146,7 @@ WHERE ISNULL([present_position],'Missing') IN ('Claim and costs concluded but re
                       <Width>1.17601in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>1in</Width>
+                      <Width>1.77598in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.18966in</Width>
@@ -6664,7 +6657,7 @@ WHERE ISNULL([present_position],'Missing') IN ('Claim and costs concluded but re
                 <DataSetName>SQLClaimsSLA</DataSetName>
                 <PageName>Summary</PageName>
                 <Height>1.85972in</Height>
-                <Width>16.78163in</Width>
+                <Width>17.55761in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -11930,10 +11923,12 @@ WHERE ISNULL([present_position],'Missing') IN ('Claim and costs concluded but re
     <ReportParameter Name="PresentPosition">
       <DataType>String</DataType>
       <DefaultValue>
-        <DataSetReference>
-          <DataSetName>PP_param_default</DataSetName>
-          <ValueField>present_position</ValueField>
-        </DataSetReference>
+        <Values>
+          <Value>="Claim and costs concluded but recovery outstanding"</Value>
+          <Value>="Claim and costs outstanding"</Value>
+          <Value>="Claim concluded but costs outstanding"</Value>
+          <Value>="Missing"</Value>
+        </Values>
       </DefaultValue>
       <AllowBlank>true</AllowBlank>
       <Prompt>Present Position</Prompt>
