@@ -1296,8 +1296,12 @@ strtomember(@MDXFEDCode)
           <QueryParameter Name="@Username">
             <Value>=Parameters!Username.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@Month">
+            <Value>=Parameters!Month.Value</Value>
+          </QueryParameter>
         </QueryParameters>
-        <CommandText>select top 1
+        <CommandText>
+select top 1
 fed_code,
 name,
 '[Dim Fed Hierarchy History].[Fed Code].[' + fed_code + ']' as 'MDXFEDCode',
@@ -1305,14 +1309,11 @@ name,
 
 from
 red_dw.dbo.dim_fed_hierarchy_history f
-
---left join red_dw.dbo.load_cascade_employee e
-	--on e.employeeid = f.employeeid
-
+INNER JOIN dbo.dim_date ON dim_date.calendar_date BETWEEN f.dss_start_date AND f.dss_end_date
 where
 lower(ltrim(f.windowsusername)) = lower(ltrim(@Username))
-
-order by dss_update_time desc</CommandText>
+AND cal_month_name + '-' + right(cal_year, 2) = @Month
+order by f.dss_version DESC</CommandText>
       </Query>
       <Fields>
         <Field Name="fed_code">
