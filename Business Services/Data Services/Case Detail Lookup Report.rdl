@@ -17,77 +17,113 @@
     <DataSet Name="SQLDataset">
       <Query>
         <DataSourceName>ReportMapping</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@FEDCode">
-            <Value>=Parameters!FEDCode.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@FieldName">
-            <Value>=Parameters!FieldName.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@FieldID">
-            <Value>=Parameters!FieldID.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Transformed">
-            <Value>=Parameters!Transformed.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>SELECT DISTINCT 
-                         ID AS field_id, field AS 'FED Detail Code', fieldname, dwh_group AS dwh_table, field AS dwh_field, msphere_detail_table AS msphere_table, msphere_fieldname AS msphere_field, 
-                         transformed_field_flag AS transformed_field, transformation
-FROM            (SELECT        ID, field, type, fieldname, msphere_fieldname, msphere_detail_table, transformation, transformed_field_flag, detail_flag, process_attribute, 
-                                                    CASE WHEN dwh_group = 'dim_fed_hierarchy_history' THEN 'dim_fed_hierarchy_history_matter_owner' ELSE CASE WHEN (dwh_group LIKE 'dim%' OR
-                                                    dwh_group LIKE 'fact%') THEN dwh_group ELSE 'dim_detail_' + dwh_group END END AS dwh_group, 'N' AS fact_finance_ind
-                          FROM            dimension_mapped_fields_master
-                          WHERE        (process_attribute IN ('Y','M'))
-                          UNION
-                          SELECT        ID, field, type, fieldname, msphere_fieldname, msphere_detail_table, transformation, transformed_field_flag, detail_flag, process_measure, CASE WHEN fact_finance_summary_flag = 'N' AND 
-                                                   dwh_group LIKE 'fact%' THEN dwh_group WHEN fact_finance_summary_flag = 'N' AND dwh_group LIKE 'dim%' THEN dwh_group WHEN fact_finance_summary_flag = 'Y' AND 
-                                                   dwh_group NOT LIKE 'fact%' THEN 'fact_finance_summary' ELSE 'fact_detail_' + dwh_group END AS dwh_group, fact_finance_summary_flag
-                          FROM            fact_mapped_fields_master
-                          WHERE        (process_measure IN ('Y','M'))) AS TMP
-WHERE        (detail_flag = 'Y') AND (CASE WHEN @FEDCode IS NULL THEN 1 WHEN @FEDCode = '' THEN 1 WHEN TMP.field LIKE '%' + @FEDCode + '%' THEN 1 ELSE 0 END = 1) AND (CASE WHEN @FieldName IS NULL 
-                         THEN 1 WHEN @FieldName = '' THEN 1 WHEN TMP.fieldname LIKE '%' + @FieldName + '%' THEN 1 ELSE 0 END = 1) AND (CASE WHEN @FieldID IS NULL 
-                         THEN 1 WHEN @FieldID = '' THEN 1 WHEN @FieldID = TMP.ID THEN 1 ELSE 0 END = 1) AND (transformed_field_flag IN (@Transformed))
-ORDER BY 'FED Detail Code'</CommandText>
+        <CommandText>SELECT DISTINCT
+       ID AS field_id,
+       field AS 'FED Detail Code',
+       fieldname,
+       dwh_group AS dwh_table,
+       field AS dwh_field,
+       msphere_detail_table AS msphere_table,
+       msphere_fieldname AS msphere_field,
+       transformed_field_flag AS transformed_field,
+       transformation
+FROM
+(
+    SELECT ID,
+           field,
+           type,
+           fieldname,
+           msphere_fieldname,
+           msphere_detail_table,
+           transformation,
+           transformed_field_flag,
+           detail_flag,
+           process_attribute,
+           CASE
+               WHEN dwh_group = 'dim_fed_hierarchy_history' THEN
+                   'dim_fed_hierarchy_history_matter_owner'
+               ELSE
+                   CASE
+                       WHEN
+                       (
+                           dwh_group LIKE 'dim%'
+                           OR dwh_group LIKE 'fact%'
+                       ) THEN
+                           dwh_group
+                       ELSE
+                           'dim_detail_' + dwh_group
+                   END
+           END AS dwh_group,
+           'N' AS fact_finance_ind
+    FROM dimension_mapped_fields_master
+    WHERE (process_attribute IN ( 'Y', 'M' ))
+    UNION
+    SELECT ID,
+           field,
+           type,
+           fieldname,
+           msphere_fieldname,
+           msphere_detail_table,
+           transformation,
+           transformed_field_flag,
+           detail_flag,
+           process_measure,
+           CASE
+               WHEN fact_finance_summary_flag = 'N'
+                    AND dwh_group LIKE 'fact%' THEN
+                   dwh_group
+               WHEN fact_finance_summary_flag = 'N'
+                    AND dwh_group LIKE 'dim%' THEN
+                   dwh_group
+               WHEN fact_finance_summary_flag = 'Y'
+                    AND dwh_group NOT LIKE 'fact%' THEN
+                   'fact_finance_summary'
+               ELSE
+                   'fact_detail_' + dwh_group
+           END AS dwh_group,
+           fact_finance_summary_flag
+    FROM fact_mapped_fields_master
+    WHERE (process_measure IN ( 'Y', 'M' ))
+) AS TMP
+WHERE (detail_flag = 'Y')
+      AND (CASE
+               WHEN @FEDCode IS NULL THEN
+                   1
+               WHEN @FEDCode = '' THEN
+                   1
+               WHEN TMP.field LIKE '%' + LOWER(@FEDCode) + '%' THEN
+                   1
+               ELSE
+                   0
+           END = 1
+          )
+      AND (CASE
+               WHEN @FieldName IS NULL THEN
+                   1
+               WHEN @FieldName = '' THEN
+                   1
+               WHEN TMP.fieldname LIKE '%' + LOWER(@FieldName) + '%' THEN
+                   1
+               ELSE
+                   0
+           END = 1
+          )
+      AND (CASE
+               WHEN @FieldID IS NULL THEN
+                   1
+               WHEN @FieldID = '' THEN
+                   1
+               WHEN @FieldID = TMP.ID THEN
+                   1
+               ELSE
+                   0
+           END = 1
+          )
+      AND (transformed_field_flag IN ( @Transformed ))
+ORDER BY 'FED Detail Code';</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
-        <Field Name="field_id">
-          <DataField>field_id</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
-        <Field Name="FED_Detail_Code">
-          <DataField>FED Detail Code</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="fieldname">
-          <DataField>fieldname</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="dwh_table">
-          <DataField>dwh_table</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="dwh_field">
-          <DataField>dwh_field</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="msphere_table">
-          <DataField>msphere_table</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="msphere_field">
-          <DataField>msphere_field</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="transformed_field">
-          <DataField>transformed_field</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="transformation">
-          <DataField>transformation</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="dax_string">
           <Value>=Fields!dwh_table.Value + "[" + Fields!fieldname.Value + "]"</Value>
         </Field>
