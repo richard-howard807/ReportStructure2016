@@ -2467,37 +2467,58 @@ WHERE  name ='Case_Audits_Trending_Report.png'</CommandText>
             <Value>=Parameters!Template.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT         Teams.TeamName, Auditee.Name, Audits.ClientCode + '-' + Audits.MatterCode AS Reference, Audits.[Matter Description] AS Description, 
-                         CASE WHEN Audits.OverallScore = 0 THEN 0 WHEN Audits.TotalPossibleScore = 0 THEN 0 ELSE CAST(Audits.OverallScore AS DECIMAL(10, 2)) 
-                         / CAST(Audits.TotalPossibleScore AS DECIMAL(10, 2)) * 100 END AS [Score %], Template.Name AS [Template Name], Audits.AuditID, QuestGroup.DisplayOrder, 
-                         QuestGroup.GroupName AS QuestGroup, Quest.QuestionID, Quest.QuestionText AS Question, AnsVal.DisplayValue AS Answer, Audits.OverallScore, 
-                         BCM.Name AS BCM_Name, Auditee2.Name AS Auditee2, Auditee3.Name AS Auditee3, AnsVal.Value AS AnswerValue, GroupedScores.Score AS GroupedScore, 
-                         Audits.[Matter Description], Audits.HasClientRaisedAComplaint, Audits.HasThereBeenAnyPositiveClientFeedback, Audits.ExceededEstimate, 
-                         ListQuest.DisplayOrder AS QuestDisplay
-FROM            Audits AS Audits INNER JOIN
-                         AuditTemplateListQuestion AS ListQuest ON ListQuest.AuditTemplateID = Audits.AuditTemplateID INNER JOIN
-                         AuditTemplates AS Template ON Template.AuditTemplateID = Audits.AuditTemplateID INNER JOIN
-                         AuditTemplateQuestions AS Quest ON Quest.QuestionID = ListQuest.AuditTemplateQuestionID INNER JOIN
-                         AuditQuestionGroups AS QuestGroup ON QuestGroup.AuditQuestionGroupID = Quest.AuditQuestionGroupID INNER JOIN
-                         AuditQuestionAnswers AS Answers ON Answers.AuditID = Audits.AuditID AND Answers.AuditQuestionID = Quest.QuestionID INNER JOIN
-                         GradingSchemeValues AS AnsVal ON AnsVal.GradingSchemeValueID = Answers.AuditQuestionAnswerValueID INNER JOIN
-                         Teams AS Teams ON Teams.TeamID = Audits.TeamID INNER JOIN
-                         Employees AS Auditee ON Auditee.EmployeeId = Audits.Auditee1 INNER JOIN
-                         Employees AS BCM ON BCM.EmployeeId = Audits.BCMorTL LEFT OUTER JOIN
-                         Employees AS Auditee2 ON Audits.Auditee2 = Auditee2.EmployeeId LEFT OUTER JOIN
-                         Employees AS Auditee3 ON Audits.Auditee3 = Auditee3.EmployeeId LEFT OUTER JOIN
-                             (SELECT        Audits.ClientCode, Audits.MatterCode, Audits.AuditID, QuestGroup.AuditQuestionGroupID, QuestGroup.GroupName AS QuestGroup, SUM(AnsVal.Value) 
-                                                         AS Answer, SUM(CASE WHEN ISNUMERIC(AnsVal.DisplayValue) = 1 THEN 1 ELSE 0 END) AS Count, CASE WHEN SUM(AnsVal.Value) 
-                                                         = 0 THEN 0 ELSE (SUM(AnsVal.Value) / SUM(CASE WHEN ISNUMERIC(AnsVal.DisplayValue) = 1 THEN 1.00 ELSE 0 END)) / 10 END AS Score
-                               FROM            Audits AS Audits INNER JOIN
-                                                         AuditTemplateListQuestion AS ListQuest ON ListQuest.AuditTemplateID = Audits.AuditTemplateID INNER JOIN
-                                                         AuditTemplateQuestions AS Quest ON Quest.QuestionID = ListQuest.AuditTemplateQuestionID INNER JOIN
-                                                         AuditQuestionGroups AS QuestGroup ON QuestGroup.AuditQuestionGroupID = Quest.AuditQuestionGroupID INNER JOIN
-                                                         AuditQuestionAnswers AS Answers ON Answers.AuditID = Audits.AuditID AND Answers.AuditQuestionID = Quest.QuestionID INNER JOIN
-                                                         GradingSchemeValues AS AnsVal ON AnsVal.GradingSchemeValueID = Answers.AuditQuestionAnswerValueID
-                               GROUP BY Audits.ClientCode, Audits.MatterCode, Audits.AuditID, QuestGroup.AuditQuestionGroupID, QuestGroup.GroupName) AS GroupedScores ON 
-                         GroupedScores.AuditID = Audits.AuditID AND GroupedScores.ClientCode = Audits.ClientCode AND GroupedScores.MatterCode = Audits.MatterCode AND 
-                         GroupedScores.AuditQuestionGroupID = Quest.AuditQuestionGroupID
+        <CommandText>
+
+SELECT 
+	Teams.TeamName, Auditee.Name, Audits.ClientCode + '-' + Audits.MatterCode AS Reference, Audits.[Matter Description] AS Description, 
+    CASE WHEN Audits.OverallScore = 0 THEN 0 WHEN Audits.TotalPossibleScore = 0 THEN 0 ELSE CAST(Audits.OverallScore AS DECIMAL(10, 2)) 
+    / CAST(Audits.TotalPossibleScore AS DECIMAL(10, 2)) * 100 END AS [Score %], Template.Name AS [Template Name], Audits.AuditID, QuestGroup.DisplayOrder, 
+    QuestGroup.GroupName AS QuestGroup, Quest.QuestionID, Quest.QuestionText AS Question, AnsVal.DisplayValue AS Answer, Audits.OverallScore, 
+    BCM.Name AS BCM_Name, Auditee2.Name AS Auditee2, Auditee3.Name AS Auditee3, AnsVal.Value AS AnswerValue, GroupedScores.Score AS GroupedScore, 
+    Audits.[Matter Description], Audits.HasClientRaisedAComplaint, Audits.HasThereBeenAnyPositiveClientFeedback, Audits.ExceededEstimate, 
+    ListQuest.DisplayOrder AS QuestDisplay
+FROM Audits AS Audits 
+	INNER JOIN AuditTemplateListQuestion AS ListQuest 
+		ON ListQuest.AuditTemplateID = Audits.AuditTemplateID 
+	INNER JOIN AuditTemplates AS Template 
+		ON Template.AuditTemplateID = Audits.AuditTemplateID 
+	INNER JOIN AuditTemplateQuestions AS Quest 
+		ON Quest.QuestionID = ListQuest.AuditTemplateQuestionID 
+	INNER JOIN AuditQuestionGroups AS QuestGroup 
+		ON QuestGroup.AuditQuestionGroupID = Quest.AuditQuestionGroupID
+	INNER JOIN AuditQuestionAnswers AS Answers 
+		ON Answers.AuditID = Audits.AuditID AND Answers.AuditQuestionID = Quest.QuestionID 
+	INNER JOIN GradingSchemeValues AS AnsVal 
+		ON AnsVal.GradingSchemeValueID = Answers.AuditQuestionAnswerValueID 
+	INNER JOIN Teams AS Teams 
+		ON Teams.TeamID = Audits.TeamID 
+	INNER JOIN Employees AS Auditee 
+		ON Auditee.EmployeeId = CAST(Audits.Auditee1 AS NVARCHAR(40))
+	INNER JOIN Employees AS BCM 
+		ON BCM.EmployeeId = CAST(Audits.BCMorTL AS NVARCHAR(40))
+	LEFT OUTER JOIN Employees AS Auditee2 
+		ON CAST(Audits.Auditee2 AS NVARCHAR(40)) = Auditee2.EmployeeId 
+	LEFT OUTER JOIN Employees AS Auditee3 
+		ON CAST(Audits.Auditee3 AS NVARCHAR(40)) = Auditee3.EmployeeId 
+	LEFT OUTER JOIN (
+						SELECT Audits.ClientCode, Audits.MatterCode, Audits.AuditID, QuestGroup.AuditQuestionGroupID, QuestGroup.GroupName AS QuestGroup, SUM(AnsVal.Value) 
+												AS Answer, SUM(CASE WHEN ISNUMERIC(AnsVal.DisplayValue) = 1 THEN 1 ELSE 0 END) AS Count, CASE WHEN SUM(AnsVal.Value) 
+												= 0 THEN 0 ELSE (SUM(AnsVal.Value) / SUM(CASE WHEN ISNUMERIC(AnsVal.DisplayValue) = 1 THEN 1.00 ELSE 0 END)) / 10 END AS Score
+						FROM Audits AS Audits 
+							INNER JOIN AuditTemplateListQuestion AS ListQuest 
+								ON ListQuest.AuditTemplateID = Audits.AuditTemplateID 
+							INNER JOIN AuditTemplateQuestions AS Quest 
+								ON Quest.QuestionID = ListQuest.AuditTemplateQuestionID 
+							INNER JOIN AuditQuestionGroups AS QuestGroup 
+								ON QuestGroup.AuditQuestionGroupID = Quest.AuditQuestionGroupID 
+							INNER JOIN AuditQuestionAnswers AS Answers 
+								ON Answers.AuditID = Audits.AuditID AND Answers.AuditQuestionID = Quest.QuestionID 
+							INNER JOIN GradingSchemeValues AS AnsVal 
+								ON AnsVal.GradingSchemeValueID = Answers.AuditQuestionAnswerValueID
+						GROUP BY Audits.ClientCode, Audits.MatterCode, Audits.AuditID, QuestGroup.AuditQuestionGroupID, QuestGroup.GroupName
+					) AS GroupedScores 
+		ON GroupedScores.AuditID = Audits.AuditID AND GroupedScores.ClientCode = Audits.ClientCode AND GroupedScores.MatterCode = Audits.MatterCode 
+			AND GroupedScores.AuditQuestionGroupID = Quest.AuditQuestionGroupID
 WHERE    Audits.ClientCode IN (@client) AND   ( (Teams.TeamName in (@Team)) AND (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND 
                          (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End) AND 
                          (Template.Name IN (@Template)) AND (Audits.Draft = 0) AND Audits.SentAcknowledgeEmail IS NOT NULL )
@@ -2609,9 +2630,9 @@ ORDER BY Audits.AuditID, QuestGroup.DisplayOrder</CommandText>
         <CommandText>SELECT distinct     Teams.TeamName AS [Team Name]
 FROM            Audits AS Audits INNER JOIN
                          Teams AS Teams ON Audits.TeamID = Teams.TeamID INNER JOIN
-                         Employees AS Auditor ON Audits.Auditor = Auditor.EmployeeId INNER JOIN
-                         Employees AS Auditee ON Audits.Auditee1 = Auditee.EmployeeId LEFT OUTER JOIN
-                         Employees AS AcknEmp ON Audits.AcknowledgingFE = AcknEmp.EmployeeId
+                         Employees AS Auditor ON CAST(Audits.Auditor AS NVARCHAR(40)) = Auditor.EmployeeId INNER JOIN
+                         Employees AS Auditee ON CAST(Audits.Auditee1 AS NVARCHAR(40)) = Auditee.EmployeeId LEFT OUTER JOIN
+                         Employees AS AcknEmp ON CAST(Audits.AcknowledgingFE AS NVARCHAR(40)) = AcknEmp.EmployeeId
 WHERE    Auditee.Department IN (@Department) AND 
 (    (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
                          --AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End)
@@ -2624,7 +2645,8 @@ WHERE    Auditee.Department IN (@Department) AND
 	
 
 GROUP BY  Teams.TeamName
-order by Teams.TeamName</CommandText>
+order by Teams.TeamName
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Team_Name">
@@ -2647,19 +2669,23 @@ order by Teams.TeamName</CommandText>
             <Value>=Parameters!End.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT       Template.Name AS [Template Name]
-
-FROM            Audits AS Audits  INNER JOIN
-                         AuditTemplates AS Template ON Template.AuditTemplateID = Audits.AuditTemplateID  INNER JOIN
-                         Teams AS Teams ON Teams.TeamID = Audits.TeamID INNER JOIN
-                         Employees AS Auditee ON Auditee.EmployeeId = Audits.Auditee1
-WHERE   (       (Teams.TeamName in (@Team)) AND 
-(Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND 
-                         (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
-						 AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End)
-						 )
-						
-GROUP BY Template.Name</CommandText>
+        <CommandText>SELECT Template.Name AS [Template Name]
+FROM Audits AS Audits
+    INNER JOIN AuditTemplates AS Template
+        ON Template.AuditTemplateID = Audits.AuditTemplateID
+    INNER JOIN Teams AS Teams
+        ON Teams.TeamID = Audits.TeamID
+    INNER JOIN Employees AS Auditee
+        ON Auditee.EmployeeId = CAST(Audits.Auditee1 AS NVARCHAR(40))
+WHERE (
+          (Teams.TeamName IN ( @Team ))
+          AND (Audits.IsDeleted = 0)
+          AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%')
+          AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%')
+          AND (Audits.AuditDate &gt;= @Start)
+          AND (Audits.AuditDate &lt; @End)
+      )
+GROUP BY Template.Name;</CommandText>
         <Timeout>9</Timeout>
       </Query>
       <Fields>
@@ -2685,9 +2711,9 @@ GROUP BY Template.Name</CommandText>
         </QueryParameters>
         <CommandText>SELECT        Auditee.Department
 FROM            Audits AS Audits INNER JOIN
-                         Employees AS Auditor ON Audits.Auditor = Auditor.EmployeeId INNER JOIN
-                         Employees AS Auditee ON Audits.Auditee1 = Auditee.EmployeeId LEFT OUTER JOIN
-                         Employees AS AcknEmp ON Audits.AcknowledgingFE = AcknEmp.EmployeeId
+                         Employees AS Auditor ON CAST(Audits.Auditor AS NVARCHAR(40)) = Auditor.EmployeeId INNER JOIN
+                         Employees AS Auditee ON CAST(Audits.Auditee1 AS NVARCHAR(40)) = Auditee.EmployeeId LEFT OUTER JOIN
+                         Employees AS AcknEmp ON CAST(Audits.AcknowledgingFE AS NVARCHAR(40)) = AcknEmp.EmployeeId
 WHERE    (    (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
                         AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End)
 					   ) AND  Audits.ClientCode IN (@client)
