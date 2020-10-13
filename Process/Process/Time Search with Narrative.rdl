@@ -46,9 +46,6 @@
           <QueryParameter Name="DateTo">
             <Value>=iif(isnothing(Parameters!DateTo.Value), "30000101", format(CDATE(Parameters!DateTo.Value), "yyyyMMdd"))</Value>
           </QueryParameter>
-          <QueryParameter Name="Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
           <QueryParameter Name="BusinessLine">
             <Value>=Parameters!BusinessLine.Value</Value>
           </QueryParameter>
@@ -60,6 +57,15 @@
           </QueryParameter>
           <QueryParameter Name="Grade">
             <Value>=Parameters!Grade.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="Division">
+            <Value>=join(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="Department">
+            <Value>=join(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="Team">
+            <Value>=join(Parameters!Team.Value,"|")</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>evaluate (
@@ -113,10 +119,13 @@ TimeTransactions[ChargeRate] = if(@Rate = blank(), TimeTransactions[ChargeRate],
 			dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
 			Matter[MatterNumber] = if(@MatterCode = blank(), Matter[MatterNumber], @MatterCode),
 			dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode] = if(@FedCode = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode], @FedCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
+			--dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
 			dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] = if(@BusinessLine = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine], @BusinessLine),
 			PATHCONTAINS(@ActivityType,dimTimeTransactionTimeActivity[TimeActivityDesc]),
 			--pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
+	PATHCONTAINS(@Division,dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine]),
+			PATHCONTAINS(@Department,dimTimeTransactionsFEDHierarchy[TimeTransactionsPracticeArea]),
+			PATHCONTAINS(@Team,dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam]),
 			--pathcontains(@Team, dimFEDHierarchy[Team]),
 			dimDateTransactionDate[TransactionDateKey] &gt; if(value(@DateFrom) = blank(), 19000101, value(@DateFrom)),
 			dimDateTransactionDate[TransactionDateKey] &lt;= if(value(@DateTo) = blank(), 30000101,  value(@DateTo))
@@ -373,10 +382,13 @@ TimeTransactions[ChargeRate] = if(@Rate = blank(), TimeTransactions[ChargeRate],
 			dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
 			Matter[MatterNumber] = if(@MatterCode = blank(), Matter[MatterNumber], @MatterCode),
 			dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode] = if(@FedCode = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode], @FedCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
+			--dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
 			dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] = if(@BusinessLine = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine], @BusinessLine),
 			PATHCONTAINS(@ActivityType,dimTimeTransactionTimeActivity[TimeActivityDesc]),
 			--pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
+	PATHCONTAINS(@Division,dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine]),
+			PATHCONTAINS(@Department,dimTimeTransactionsFEDHierarchy[TimeTransactionsPracticeArea]),
+			PATHCONTAINS(@Team,dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam]),
 			--pathcontains(@Team, dimFEDHierarchy[Team]),
 			dimDateTransactionDate[TransactionDateKey] &amp;gt; if(value(@DateFrom) = blank(), 19000101, value(@DateFrom)),
 			dimDateTransactionDate[TransactionDateKey] &amp;lt;= if(value(@DateTo) = blank(), 30000101,  value(@DateTo))
@@ -444,10 +456,13 @@ TimeTransactions[ChargeRate] = if(@Rate = blank(), TimeTransactions[ChargeRate],
 			dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
 			Matter[MatterNumber] = if(@MatterCode = blank(), Matter[MatterNumber], @MatterCode),
 			dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode] = if(@FedCode = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsFEDCode], @FedCode),
-			dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
+			--dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam] = if(@Team = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam], @Team),
 			dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine] = if(@BusinessLine = blank(), dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine], @BusinessLine),
 			PATHCONTAINS(@ActivityType,dimTimeTransactionTimeActivity[TimeActivityDesc]),
 			--pathcontains(@BusinessLine, dimFEDHierarchy[BusinessLine]),
+	PATHCONTAINS(@Division,dimTimeTransactionsFEDHierarchy[TimeTransactionsBusinessLine]),
+			PATHCONTAINS(@Department,dimTimeTransactionsFEDHierarchy[TimeTransactionsPracticeArea]),
+			PATHCONTAINS(@Team,dimTimeTransactionsFEDHierarchy[TimeTransactionsTeam]),
 			--pathcontains(@Team, dimFEDHierarchy[Team]),
 			dimDateTransactionDate[TransactionDateKey] &gt; if(value(@DateFrom) = blank(), 19000101, value(@DateFrom)),
 			dimDateTransactionDate[TransactionDateKey] &lt;= if(value(@DateTo) = blank(), 30000101,  value(@DateTo))
@@ -460,7 +475,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>BilNum</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>BilNum</Caption>
                   <ParameterValuesQuery>
@@ -472,7 +487,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>ClientCode</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>ClientCode</Caption>
                   <ParameterValuesQuery>
@@ -484,7 +499,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>MatterCode</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>MatterCode</Caption>
                   <ParameterValuesQuery>
@@ -496,7 +511,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>FedCode</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>FedCode</Caption>
                   <ParameterValuesQuery>
@@ -532,7 +547,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>TimeType</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>TimeType</Caption>
                   <ParameterValuesQuery>
@@ -544,7 +559,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>ChargeableTimeType</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>ChargeableTimeType</Caption>
                   <ParameterValuesQuery>
@@ -556,7 +571,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Team</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Team</Caption>
                   <ParameterValuesQuery>
@@ -568,7 +583,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>BusinessLine</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>BusinessLine</Caption>
                   <ParameterValuesQuery>
@@ -580,7 +595,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>ActivityType</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>ActivityType</Caption>
                   <ParameterValuesQuery>
@@ -592,7 +607,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Rate</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Rate</Caption>
                   <ParameterValuesQuery>
@@ -604,7 +619,7 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Client_Group</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Client_Group</Caption>
                   <ParameterValuesQuery>
@@ -616,9 +631,33 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
                 <ParameterDefinition>
                   <Name>Grade</Name>
                   <DefaultValues>
-                    <DefaultValue />
+                    <DefaultValue>0</DefaultValue>
                   </DefaultValues>
                   <Caption>Grade</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Division</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Division</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Department</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Department</Caption>
                   <ParameterValuesQuery>
                     <ParameterizedStatement>
                       <ReferencedParameters />
@@ -984,30 +1023,43 @@ order by dimMatterFEDHierarchy[MatterBusinessLine]</Statement>
     </DataSet>
     <DataSet Name="param_Team">
       <Query>
-        <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
-        <CommandText>evaluate (
-	summarize (
-				dimMatterFEDHierarchy,
-				dimMatterFEDHierarchy[MatterTeam]
-		)
-	)
-
-order by dimMatterFEDHierarchy[MatterTeam]</CommandText>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="Division">
+            <Value>=join(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="Department">
+            <Value>=join(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+),
+PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
+dim_fed_hierarchy_history_matter_owner[matter_owner_team] &lt;&gt; blank()
+)
+)
+order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</CommandText>
         <rd:DesignerState>
-          <QueryDefinition xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
             <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <QuerySpecification xsi:type="DMXQuerySpecification">
               <Select>
                 <Items>
                   <Item>
                     <ID xsi:type="Column">
-                      <ColumnName>dimMatterFEDHierarchy[MatterTeam]</ColumnName>
+                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_team]</ColumnName>
                     </ID>
-                    <ItemCaption>dimMatterFEDHierarchy[MatterTeam]</ItemCaption>
+                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_team]</ItemCaption>
                   </Item>
                 </Items>
               </Select>
+              <AutoExecute>false</AutoExecute>
               <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
   &lt;SelectTablesControlState&gt;
@@ -1015,14 +1067,18 @@ order by dimMatterFEDHierarchy[MatterTeam]</CommandText>
   &lt;/SelectTablesControlState&gt;
   &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
   &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;evaluate (
-	summarize (
-				dimMatterFEDHierarchy,
-				dimMatterFEDHierarchy[MatterTeam]
-		)
-	)
-
-order by dimMatterFEDHierarchy[MatterTeam]&lt;/QueryText&gt;
+  &lt;QueryText&gt;EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+),
+PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
+dim_fed_hierarchy_history_matter_owner[matter_owner_team] &amp;lt;&amp;gt; blank()
+)
+)
+order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]&lt;/QueryText&gt;
   &lt;DatabaseId /&gt;
   &lt;MiningStructureId /&gt;
   &lt;MiningModelId /&gt;
@@ -1031,22 +1087,51 @@ order by dimMatterFEDHierarchy[MatterTeam]&lt;/QueryText&gt;
 &lt;/DataminingQueryBuilderState&gt;</Data>
             </QuerySpecification>
             <Query>
-              <Statement>evaluate (
-	summarize (
-				dimMatterFEDHierarchy,
-				dimMatterFEDHierarchy[MatterTeam]
-		)
-	)
-
-order by dimMatterFEDHierarchy[MatterTeam]</Statement>
-              <ParameterDefinitions />
+              <Statement>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+),
+PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
+dim_fed_hierarchy_history_matter_owner[matter_owner_team] &lt;&gt; blank()
+)
+)
+order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>Division</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Division</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Department</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Department</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
       </Query>
       <Fields>
-        <Field Name="dimMatterFEDHierarchy_MatterTeam_">
-          <DataField>dimMatterFEDHierarchy[MatterTeam]</DataField>
+        <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_team_">
+          <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_team]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -1435,6 +1520,185 @@ dim_client[client_code],
         </Field>
         <Field Name="whitbread_brand">
           <DataField>dim_detail_client[whitbread_brand]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_division">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <CommandText>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]
+),
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] &lt;&gt; blank(),
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] &lt;&gt; "Public Sector"
+,PATHCONTAINS("Legal Ops - Claims|Legal Ops - LTA|Business Services|Client Relationships",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+
+)
+)</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]
+),
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] &amp;lt;&amp;gt; blank(),
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] &amp;lt;&amp;gt; "Public Sector"
+,PATHCONTAINS("Legal Ops - Claims|Legal Ops - LTA|Business Services|Client Relationships",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+
+)
+)&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]
+),
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] &lt;&gt; blank(),
+dim_fed_hierarchy_history_matter_owner[matter_owner_business_line] &lt;&gt; "Public Sector"
+,PATHCONTAINS("Legal Ops - Claims|Legal Ops - LTA|Business Services|Client Relationships",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+
+)
+)</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_business_line_">
+          <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_department">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="Division">
+            <Value>=join(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]
+),
+PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area] &lt;&gt; blank()
+)
+)
+order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]
+),
+PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area] &amp;lt;&amp;gt; blank()
+)
+)
+order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main,
+dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]
+),
+PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area] &lt;&gt; blank()
+)
+)
+order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Statement>
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>Division</Name>
+                  <DefaultValues>
+                    <DefaultValue>Business Services</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Division</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_">
+          <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4780,24 +5044,6 @@ dim_client[client_code],
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="Team">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>param_Team</DataSetName>
-          <ValueField>dimMatterFEDHierarchy_MatterTeam_</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Team</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>param_Team</DataSetName>
-          <ValueField>dimMatterFEDHierarchy_MatterTeam_</ValueField>
-          <LabelField>dimMatterFEDHierarchy_MatterTeam_</LabelField>
-        </DataSetReference>
-      </ValidValues>
-    </ReportParameter>
     <ReportParameter Name="ActivityType">
       <DataType>String</DataType>
       <DefaultValue>
@@ -4827,11 +5073,59 @@ dim_client[client_code],
       <AllowBlank>true</AllowBlank>
       <Prompt>Rate</Prompt>
     </ReportParameter>
+    <ReportParameter Name="Division">
+      <DataType>String</DataType>
+      <Prompt>Division</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_division</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_business_line_</ValueField>
+          <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_business_line_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Department">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_department</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Department</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_department</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_</ValueField>
+          <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_Team</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_Team</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</ValueField>
+          <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>7</NumberOfRows>
+      <NumberOfRows>8</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4891,17 +5185,27 @@ dim_client[client_code],
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>5</RowIndex>
-          <ParameterName>Team</ParameterName>
+          <ParameterName>ActivityType</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>6</RowIndex>
-          <ParameterName>ActivityType</ParameterName>
+          <ParameterName>Rate</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>6</RowIndex>
-          <ParameterName>Rate</ParameterName>
+          <ParameterName>Division</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>7</RowIndex>
+          <ParameterName>Department</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>7</RowIndex>
+          <ParameterName>Team</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
