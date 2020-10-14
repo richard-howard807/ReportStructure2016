@@ -30,17 +30,20 @@
           <QueryParameter Name="@Transformed">
             <Value>=Parameters!Transformed.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@MSDesc">
+            <Value>=Parameters!MSDesc.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT DISTINCT
-       ID AS field_id,
-       field AS 'FED Detail Code',
-       fieldname,
-       dwh_group AS dwh_table,
-       field AS dwh_field,
-       msphere_detail_table AS msphere_table,
-       msphere_fieldname AS msphere_field,
-       transformed_field_flag AS transformed_field,
-       transformation
+       TMP.ID AS field_id,
+       TMP.field AS 'FED Detail Code',
+       TMP.fieldname,
+       TMP.dwh_group AS dwh_table,
+       TMP.field AS dwh_field,
+       TMP.msphere_detail_table AS msphere_table,
+       TMP.msphere_fieldname AS msphere_field,
+       TMP.transformed_field_flag AS transformed_field,
+       TMP.transformation,udMapDetail.txtDesc AS [MSDesc]
 FROM
 (
     SELECT ID,
@@ -99,6 +102,9 @@ FROM
     FROM fact_mapped_fields_master
     WHERE (process_measure IN ( 'Y', 'M' ))
 ) AS TMP
+LEFT OUTER JOIN MS_Prod.dbo.udMapDetail
+ ON TMP.msphere_fieldname=txtMSCode COLLATE DATABASE_DEFAULT
+  AND TMP.msphere_detail_table=txtMSTable COLLATE DATABASE_DEFAULT
 WHERE (detail_flag = 'Y')
       AND (CASE
                WHEN @FEDCode IS NULL THEN
@@ -134,7 +140,18 @@ WHERE (detail_flag = 'Y')
            END = 1
           )
       AND (transformed_field_flag IN ( @Transformed ))
-ORDER BY 'FED Detail Code';</CommandText>
+AND (CASE
+               WHEN @MSDesc IS NULL THEN
+                   1
+               WHEN @MSDesc = '' THEN
+                   1
+               WHEN LOWER(txtDesc) LIKE '%' + LOWER(@MSDesc) + '%' THEN
+                   1
+               ELSE
+                   0
+           END = 1
+          )
+		  ORDER BY 'FED Detail Code';</CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -177,24 +194,8 @@ ORDER BY 'FED Detail Code';</CommandText>
           <DataField>transformation</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="DataSet1">
-      <Query>
-        <DataSourceName>SQL12</DataSourceName>
-        <CommandText>SELECT txtMSTable,txtMSCode,txtDesc FROM ms_prod.dbo.udMapDetail</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="txtMSTable">
-          <DataField>txtMSTable</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="txtMSCode">
-          <DataField>txtMSCode</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="txtDesc">
-          <DataField>txtDesc</DataField>
+        <Field Name="MSDesc">
+          <DataField>MSDesc</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -917,9 +918,7 @@ ORDER BY 'FED Detail Code';</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=lookup(TRIM(Fields!msphere_table.Value) &amp; TRIM(Fields!msphere_field.Value)
-,TRIM(Fields!txtMSTable.Value) &amp; TRIM(Fields!txtMSCode.Value)
-,Fields!txtDesc.Value, "DataSet1")</Value>
+                                  <Value>=Fields!MSDesc.Value</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -941,6 +940,7 @@ ORDER BY 'FED Detail Code';</CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -1509,11 +1509,16 @@ ORDER BY 'FED Detail Code';</CommandText>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="MSDesc">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Mattersphere Description</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -1534,6 +1539,11 @@ ORDER BY 'FED Detail Code';</CommandText>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Transformed</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>MSDesc</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
