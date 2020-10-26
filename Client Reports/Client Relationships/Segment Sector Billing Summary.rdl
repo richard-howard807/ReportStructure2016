@@ -3428,6 +3428,14 @@ strtomember(@DateTo)</Statement>
     <DataSet Name="NewcastleRevenue">
       <Query>
         <DataSourceName>Data_Warehouse_Server_SQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@DateFrom">
+            <Value>=Parameters!DateFrom.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@DateTo">
+            <Value>=Parameters!DateTo.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>SELECT segment,sector,SUM(bill_amount) AS RevenueYTD
 FROM red_dw.dbo.fact_bill_activity
 INNER JOIN red_dw.dbo.dim_bill_date
@@ -3436,9 +3444,9 @@ INNER JOIN red_dw.dbo.dim_client
  ON dim_client.dim_client_key = fact_bill_activity.dim_client_key
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
  ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_activity.dim_fed_hierarchy_history_key
-WHERE bill_fin_year= '2021'
+WHERE red_dw.dbo.dim_bill_date.bill_date BETWEEN @DateFrom AND @DateTo
 AND hierarchylevel3hist='Newcastle'
-GROUP BY sector,segment</CommandText>
+GROUP BY segment,sector</CommandText>
       </Query>
       <Fields>
         <Field Name="segment">
@@ -3447,6 +3455,42 @@ GROUP BY sector,segment</CommandText>
         </Field>
         <Field Name="sector">
           <DataField>sector</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="RevenueYTD">
+          <DataField>RevenueYTD</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="SegmentRevenue">
+      <Query>
+        <DataSourceName>Data_Warehouse_Server_SQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@DateFrom">
+            <Value>=Parameters!DateFrom.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@DateTo">
+            <Value>=Parameters!DateTo.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT segment,SUM(bill_amount) AS RevenueYTD
+FROM red_dw.dbo.fact_bill_activity
+INNER JOIN red_dw.dbo.dim_bill_date
+ ON dim_bill_date.bill_date = fact_bill_activity.bill_date
+INNER JOIN red_dw.dbo.dim_client
+ ON dim_client.dim_client_key = fact_bill_activity.dim_client_key
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_activity.dim_fed_hierarchy_history_key
+WHERE red_dw.dbo.dim_bill_date.bill_date BETWEEN @DateFrom AND @DateTo
+AND hierarchylevel3hist='Newcastle'
+
+
+GROUP BY segment</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="segment">
+          <DataField>segment</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="RevenueYTD">
@@ -5897,16 +5941,15 @@ GROUP BY sector,segment</CommandText>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox17">
+                            <Textbox Name="Textbox26">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Lookup(TRIM(Fields!Segment.Value)
-,TRIM(Fields!segment.Value)
-,Fields!RevenueYTD.Value, "NewcastleRevenue")</Value>
+                                      <Value>=Lookup(Fields!Segment.Value,Fields!segment.Value
+,Fields!RevenueYTD.Value, "SegmentRevenue")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5914,7 +5957,6 @@ GROUP BY sector,segment</CommandText>
                                         <FontWeight>Bold</FontWeight>
                                         <Format>'£'#,0.00;('£'#,0.00)</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
                                         <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
                                         <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
@@ -5926,7 +5968,7 @@ GROUP BY sector,segment</CommandText>
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox17</rd:DefaultName>
+                              <rd:DefaultName>Textbox26</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5961,9 +6003,9 @@ GROUP BY sector,segment</CommandText>
                                 <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                                 <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                                <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -7203,7 +7245,6 @@ GROUP BY sector,segment</CommandText>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
                                         <Format>'£'#,0.00;('£'#,0.00)</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
                                         <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
                                         <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
@@ -7250,9 +7291,9 @@ GROUP BY sector,segment</CommandText>
                                 <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                                 <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                                <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
