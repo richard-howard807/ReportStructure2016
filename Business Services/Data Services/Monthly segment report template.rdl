@@ -2559,6 +2559,9 @@ WHERE bill_fin_period=@Period)
 PRINT @StartDate
 PRINT @EndDate
 
+IF @SegmentName ='Individuals'
+
+BEGIN 
 
 SELECT TOP 10 
 RTRIM(client_name)AS [Client Name]
@@ -2579,7 +2582,34 @@ GROUP BY dim_client_key) AS Revenue
 WHERE open_date BETWEEN  @StartDate AND @EndDate
 AND segment IS NOT NULL
 AND segment=@SegmentName
-ORDER BY Revenue DESC</CommandText>
+ORDER BY Revenue DESC
+
+END 
+
+ELSE 
+
+BEGIN 
+SELECT TOP 3 
+RTRIM(client_name)AS [Client Name]
+,RTRIM(segment) AS segment
+,RTRIM(sector) AS [Sector]
+,RTRIM(sub_sector) AS [WorkType]
+,Revenue AS Revenue
+,@StartDate  AS MonthDate
+FROM red_dw.dbo.dim_client
+LEFT OUTER JOIN (SELECT dim_client_key,SUM(fees_total) AS Revenue
+FROM red_dw.dbo.fact_bill
+INNER JOIN red_dw.dbo.dim_bill_date
+ ON dim_bill_date.dim_bill_date_key = fact_bill.dim_bill_date_key
+WHERE bill_fin_year= @FinYear
+AND bill_fin_month_no&lt;=@FinMonth
+GROUP BY dim_client_key) AS Revenue
+ ON Revenue.dim_client_key = dim_client.dim_client_key
+WHERE open_date BETWEEN  @StartDate AND @EndDate
+AND segment IS NOT NULL
+AND segment=@SegmentName
+ORDER BY Revenue DESC
+END</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Name">
@@ -6874,7 +6904,9 @@ ORDER BY [Opportunity Value] DESC</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>="Top 10 New Client Opened in " &amp; FORMAT(Fields!MonthDate.Value,"MMMM") &amp;" by Segment"</Value>
+                                  <Value>=IIF(Parameters!SegmentName.Value="Individuals",
+"Top 10 New Client Opened in " &amp; FORMAT(Fields!MonthDate.Value,"MMMM") &amp;" by Segment"
+,"Top 3 New Client Opened in " &amp; FORMAT(Fields!MonthDate.Value,"MMMM") &amp;" by Segment")</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>11pt</FontSize>
@@ -8337,7 +8369,7 @@ ORDER BY [Opportunity Value] DESC</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>="Pipeline by sector for the next 3 months " &amp; FORMAT(DATEADD("m",1,First(Fields!ID.Value, "Financials")), "MMMM") &amp; " by Segment"</Value>
+                                  <Value>="Pipeline by sector for the next 3 months "</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>11pt</FontSize>
@@ -8361,6 +8393,7 @@ ORDER BY [Opportunity Value] DESC</CommandText>
                           </Style>
                         </Textbox>
                         <ColSpan>8</ColSpan>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell />
@@ -9192,7 +9225,7 @@ ORDER BY [Opportunity Value] DESC</CommandText>
                   </TablixCells>
                 </TablixRow>
                 <TablixRow>
-                  <Height>0.97917in</Height>
+                  <Height>0.23958in</Height>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
@@ -9306,7 +9339,7 @@ ORDER BY [Opportunity Value] DESC</CommandText>
             </TablixRowHierarchy>
             <DataSetName>RealisticOpp</DataSetName>
             <Top>14.36564in</Top>
-            <Height>2.19792in</Height>
+            <Height>1.45833in</Height>
             <Width>11.08787in</Width>
             <ZIndex>4</ZIndex>
             <Visibility>
