@@ -23,7 +23,7 @@
             <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
           <QueryParameter Name="FEDCodes">
-            <Value>=replace(Parameters!FEDCode.Value, ",","|")</Value>
+            <Value>=replace(Parameters!FEDCodes_Calculated.Value, ",","|")</Value>
             <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
         </QueryParameters>
@@ -296,7 +296,7 @@ ELSE iF (SELECT dim_bill_date.bill_trading_days_so_far_desc FROM dbo.dim_bill_da
             <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
           <QueryParameter Name="FEDCodes">
-            <Value>=replace(Parameters!FEDCode.Value, ",","|")</Value>
+            <Value>=replace(Parameters!FEDCodes_Calculated.Value, ",","|")</Value>
             <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
         </QueryParameters>
@@ -2779,6 +2779,49 @@ pathcontains(if(@Level = "Firm", dim_fed_hierarchy_history[dim_fed_hierarchy_his
         </Field>
         <Field Name="txtTotalPages_VerticalAlign">
           <DataField>txtTotalPages_VerticalAlign</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_fedcodes_calculated">
+      <Query>
+        <DataSourceName>SQL12</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@FEDCode">
+            <Value>=Parameters!FEDCode.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>DECLARE @fed_codes NVARCHAR(max) = @FEDCode
+
+IF LOWER(@fed_codes) like '%select%'
+ 
+	begin 
+		SET @fed_codes = 'Insert into #tempTable (id) ' + @fed_codes 
+		
+		DROP TABLE IF EXISTS #tempTable
+
+		CREATE TABLE #tempTable(id int)
+
+
+		--SELECT @fed_codes
+		EXEC	sp_executesql @fed_codes
+		
+		SELECT STRING_AGG(CAST(id AS VARCHAR(max)), ',') id
+		FROM #tempTable
+	   
+	END
+
+	ELSE
+    
+	begin
+		
+	select	@fed_codes AS id
+
+	end</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="id">
+          <DataField>id</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -7355,6 +7398,25 @@ pathcontains(if(@Level = "Firm", dim_fed_hierarchy_history[dim_fed_hierarchy_his
       <Prompt>Group Id</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="FEDCodes_Calculated">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_fedcodes_calculated</DataSetName>
+          <ValueField>id</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>FEDCodes_Calculated</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_fedcodes_calculated</DataSetName>
+          <ValueField>id</ValueField>
+          <LabelField>id</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -7385,6 +7447,11 @@ pathcontains(if(@Level = "Firm", dim_fed_hierarchy_history[dim_fed_hierarchy_his
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>FEDCodes_Calculated</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
