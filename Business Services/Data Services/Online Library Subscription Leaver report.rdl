@@ -2450,7 +2450,18 @@ WHERE  name ='Online Library Subscription Leaver report.png'</CommandText>
     <DataSet Name="SQLDataset">
       <Query>
         <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
-        <CommandText>SELECT
+        <QueryParameters>
+          <QueryParameter Name="@start_date">
+            <Value>=Parameters!start_date.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@end_date">
+            <Value>=Parameters!end_date.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>--DECLARE @start_date AS DATE = DATEADD(MONTH, -1, GETDATE()-DAY(GETDATE())+1)
+--		, @end_date AS DATE = DATEADD(DAY, -DAY(GETDATE()), GETDATE())
+
+SELECT
 forename,
 surname,
 workemail,
@@ -2469,11 +2480,13 @@ locationidud
 inner JOIN red_Dw.dbo.dim_employee ON dim_employee.dim_employee_key = dim_employee_online_subscriptions.dim_employee_key --AND dim_employee.dim_employee_key &lt;&gt; 0
 
 WHERE 
-(LOWER(other) LIKE '%pendragon%'
-OR LOWER(other) LIKE '%professional pensions%'
-OR LOWER(other) LIKE '%legal business%')
-AND leaverlastworkdate IS NOT NULL
-AND MONTH(leaverlastworkdate) = month(DATEADD(month,-1,GETDATE()))
+--(LOWER(other) LIKE '%pendragon%'
+--OR LOWER(other) LIKE '%professional pensions%'
+--OR LOWER(other) LIKE '%legal business%')
+--AND 
+leaverlastworkdate IS NOT NULL
+--AND MONTH(leaverlastworkdate) = MONTH(DATEADD(month,-1,GETDATE()))
+AND leaverlastworkdate BETWEEN @start_date AND @end_date
 </CommandText>
       </Query>
       <Fields>
@@ -2532,6 +2545,24 @@ AND MONTH(leaverlastworkdate) = month(DATEADD(month,-1,GETDATE()))
         <Field Name="locationidud">
           <DataField>locationidud</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="date_param">
+      <Query>
+        <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
+        <CommandText>SELECT 
+	CAST(DATEADD(MONTH, -1, GETDATE()-DAY(GETDATE())+1) AS DATE) AS [start_date]
+	, CAST(DATEADD(DAY, -DAY(GETDATE()), GETDATE()) AS DATE) AS [end_date]</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="start_date">
+          <DataField>start_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="end_date">
+          <DataField>end_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -5262,16 +5293,46 @@ AND MONTH(leaverlastworkdate) = month(DATEADD(month,-1,GETDATE()))
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="start_date">
+      <DataType>DateTime</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>date_param</DataSetName>
+          <ValueField>start_date</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Start Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="end_date">
+      <DataType>DateTime</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>date_param</DataSetName>
+          <ValueField>end_date</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>End Date</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>start_date</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>end_date</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
