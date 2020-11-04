@@ -2472,8 +2472,25 @@ SELECT
 	'Weightmans'		AS [Supplier Name]
 	, ''		AS [Zurich Team/Client Name]
 	, dim_detail_core_details.zurich_branch		AS [Zurich Branch/Team Code]
-	--This field being used as it is almost a match for what Zurich require in their report
-	, dim_fed_hierarchy_history.hierarchylevel3hist AS [Work Type] 
+	
+	, CASE	
+		WHEN dim_detail_client.zurich_debt_department IN ('London Financial Lines - CB', 'London Financial Lines - GC') THEN
+			'Financial Lines'
+		WHEN dim_detail_client.zurich_debt_department IN ('London GC Property &amp; Speciality') THEN
+			'Specialty'
+		WHEN dim_detail_core_details.injury_type_code LIKE 'D%' THEN
+			'Disease'
+		WHEN RTRIM(dim_detail_core_details.zurich_referral_reason) = 'FRD' THEN
+			'Fraud'
+		WHEN dim_detail_core_details.zurich_line_of_business = 'PRP' THEN
+			'Property'
+		WHEN dim_detail_core_details.zurich_line_of_business = 'MOT' AND RTRIM(dim_detail_core_details.zurich_referral_reason) = 'REC' THEN
+			'Motor Recovery'
+		WHEN dim_detail_core_details.zurich_line_of_business = 'MOT' THEN
+			'Motor'
+		ELSE
+			'Casualty'
+	 END					AS [Work Type] 
 	, dim_detail_core_details.clients_claims_handler_surname_forename		AS [Zurich Claims Handler]
 	, dim_detail_core_details.zurich_policy_holdername_of_insured				AS [Zurich Insured/Customer Name]
 	, CASE 
@@ -2557,6 +2574,8 @@ FROM  TE_3E_Prod.dbo.InvPayor
 				AND dim_fed_hierarchy_history.activeud = 1
 	LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details	
 		ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+	LEFT OUTER JOIN red_dw.dbo.dim_detail_client
+		ON dim_detail_client.dim_detail_client_key = fact_dimension_main.dim_detail_client_key
 	LEFT OUTER JOIN red_dw.dbo.dim_client_involvement		
 		ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
 	LEFT OUTER JOIN red_dw.dbo.dim_bill_debt_narrative	
