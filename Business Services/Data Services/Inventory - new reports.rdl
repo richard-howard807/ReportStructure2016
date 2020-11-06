@@ -2434,7 +2434,7 @@
         <DataSourceName>ReportStylingOnDWH01</DataSourceName>
         <CommandText>SELECT stream_id, file_stream, name
 FROM dbo.ReportImages
-WHERE  name ='Weightmans_Report_Template.png'</CommandText>
+WHERE  name ='Inventory New Report.png'</CommandText>
       </Query>
       <Fields>
         <Field Name="stream_id">
@@ -2475,7 +2475,7 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
 
 
 SELECT distinct 
-developer, [Change Description], [Report Name]
+developer, [Change Description], [Report Name], Links
 from(
 
 
@@ -2486,6 +2486,8 @@ cast([Date Changed] as date) as [Date Created]
 ,[Changed By] as [Developer]
 ,[Change Description]
 ,[Report Name]
+, CASE WHEN ISNUMERIC(LEFT(RIGHT( REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'),LEN( REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'))-CHARINDEX('#', REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'))),5))=1
+          THEN 'https://sdp.weightmans.com/WorkOrder.do?woMode=viewWO&amp;woID=' + LEFT(RIGHT( REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'),LEN([Change Description])-CHARINDEX('#', REPLACE(REPLACE(REPLACE([Change Description],'# #','#'),'##',''),'# ','#'))),5)  ELSE NULL END AS Links
 
 
 FROM ReportInventory.dbo.TFSReportChangeTracking
@@ -2506,6 +2508,10 @@ and [Report Name] not like '%\%'
         </Field>
         <Field Name="Report_Name">
           <DataField>Report Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Links">
+          <DataField>Links</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -2890,7 +2896,7 @@ and [Report Name] not like '%\%'
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Color>=IIF(NOT ISNOTHING(Fields!Links.Value),"blue","Black")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
                                         <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
                                         <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
@@ -2903,6 +2909,13 @@ and [Report Name] not like '%\%'
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Change_Description</rd:DefaultName>
+                              <ActionInfo>
+                                <Actions>
+                                  <Action>
+                                    <Hyperlink>=Fields!Links.Value</Hyperlink>
+                                  </Action>
+                                </Actions>
+                              </ActionInfo>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
