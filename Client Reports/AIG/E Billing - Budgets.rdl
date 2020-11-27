@@ -2569,6 +2569,7 @@ dim_detail_client[uksc]
 ,dim_matter_header_current[master_matter_number]
 ,dim_matter_header_current[master_client_code]
 ,dim_matter_header_current[fee_arrangement]
+,dim_matter_header_current[ms_fileid]
 ,"exceptions",
 if( 
 	dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &gt;= value("2014-10-24") &amp;&amp; 
@@ -3196,6 +3197,12 @@ dim_matter_header_current[matter_number]</CommandText>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
+                      <ColumnName>dim_matter_header_current[ms_fileid]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_matter_header_current[ms_fileid]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
                       <ColumnName>[exceptions]</ColumnName>
                     </ID>
                     <ItemCaption>[exceptions]</ItemCaption>
@@ -3319,6 +3326,7 @@ dim_detail_client[uksc]
 ,dim_matter_header_current[master_matter_number]
 ,dim_matter_header_current[master_client_code]
 ,dim_matter_header_current[fee_arrangement]
+,dim_matter_header_current[ms_fileid]
 ,"exceptions",
 if( 
 	dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &amp;gt;= value("2014-10-24") &amp;amp;&amp;amp; 
@@ -3466,6 +3474,7 @@ dim_detail_client[uksc]
 ,dim_matter_header_current[master_matter_number]
 ,dim_matter_header_current[master_client_code]
 ,dim_matter_header_current[fee_arrangement]
+,dim_matter_header_current[ms_fileid]
 ,"exceptions",
 if( 
 	dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &gt;= value("2014-10-24") &amp;&amp; 
@@ -3894,6 +3903,10 @@ dim_matter_header_current[matter_number]</Statement>
         </Field>
         <Field Name="dim_matter_header_current_fee_arrangement_">
           <DataField>dim_matter_header_current[fee_arrangement]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dim_matter_header_current_ms_fileid_">
+          <DataField>dim_matter_header_current[ms_fileid]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="lookupbd">
@@ -4569,7 +4582,7 @@ THEN 'Insufficient budget' END
 			 
 			 [exception]
 		 ,referral_reason
-		
+			 ,header .ms_fileid AS FileID
 
 FROM     red_dw.dbo.fact_dimension_main main
          INNER JOIN red_dw.dbo.dim_matter_header_current header ON header.dim_matter_header_curr_key = main.dim_matter_header_curr_key
@@ -4696,6 +4709,235 @@ WHERE    1 = 1
         </Field>
         <Field Name="referral_reason">
           <DataField>referral_reason</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FileID">
+          <DataField>FileID</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="ReadyToBill">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT AllData.FileID,
+       AllData.exception
+	   ,CASE WHEN RTRIM(AllData.exception)='' THEN 'Yes' ELSE 'unable to bill' END AS ReadyToBill
+	   FROM 
+(
+
+SELECT dim_matter_header_current.ms_fileid AS FileID
+,         CONCAT_WS(',',
+             CASE WHEN dim_detail_client.aig_litigation_number IS NULL
+                       OR dim_detail_client.aig_litigation_number = '' THEN
+                      'No LIT Number'
+             END ,
+			 CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent='LIT not in ASCENT' THEN 'LIT not in ASCENT' END,
+
+CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent IN 
+(
+--'FRAUDC - Fraud Hourly'
+--,'AUTOCO - Motor Hourly'
+--,
+'CASUAM - Casualty Major Loss'
+--,'CASUAC - Casualty Hourly'
+,'AUTOML - Motor Major Loss'
+,'HLTHCR - Healthcare Hourly'
+,'ENVIRC - Environmental Hourly'
+,'ENVIRM - Environmental Hourly'
+,'RECVCA - Recovery'
+--,'AUTOEX - Motor Hourly'
+) AND ISNULL(dim_matter_header_current.fixed_fee,'')&lt;&gt;'Hourly' 
+AND ISNULL(referral_reason,'')&lt;&gt;'Costs dispute'
+THEN 'Incorrect fee scale' END,
+
+CASE WHEN dim_detail_client.aig_rates_assigned_in_ascent IN 
+(
+'AUTOCA - Motor Fixed Fee'
+--,'CASUCA - Casualty Fixed Fee'
+,'CASUMA - Casualty Fixed Fee'
+,'CASUCA - Casualty Fixed Fee'
+
+) 
+AND ISNULL(dim_matter_header_current.fixed_fee,'')&lt;&gt;'Fixed Fee' 
+AND ISNULL(referral_reason,'')&lt;&gt;'Costs dispute'
+THEN 'Incorrect fee scale' END,
+             CASE WHEN dim_detail_client.aig_litigation_number LIKE 'LIT-%'
+                       AND dim_detail_client.aig_litigation_number &lt;&gt; 'LIT-16777 UKSC'
+                       AND ISNULL(fact_detail_cost_budgeting.[aig_fixed_fee_budget_fees],0) = 0 
+                       AND ISNULL(fact_detail_cost_budgeting.[aig_costs_practice_area_only_budget],0) =0 
+                       AND ISNULL(fact_detail_cost_budgeting.[aigtotalbudgethourlyrate],0) = 0 
+					   AND ISNULL(lead_budget_details.budget_approved,'') = ''
+					   AND ISNULL(lead_budget_details.total_budget_uploaded,0) = 0
+                       AND ISNULL(lead_budget_details.date_budget_uploaded,'') ='' 
+					  					   
+					   THEN
+                      'No budget figures'
+             END,
+             CASE WHEN ISNULL(dim_detail_client.has_budget_been_approved, '') = 'Rejected' THEN
+                      'Rejected Budget'
+             END--,
+,CASE WHEN  ISNULL(is_insured_vat_registered,'Yes')='Yes' 
+AND ISNULL(dim_matter_header_current.fee_arrangement,'')='Fixed Fee/Fee Quote/Capped Fee'
+AND 
+(ISNULL(fact_detail_cost_budgeting.[aigtotalbudgetfixedfee],0) + 
+--ISNULL(fact_detail_cost_budgeting.[aigtotalbudgethourlyrate],0) + 
+ISNULL(fact_detail_cost_budgeting.[aig_costs_practice_area_only_budget],0)
+) &lt; 
+(ISNULL(total_amount_billed,0) - ISNULL(vat_billed,0)) + ISNULL(fact_detail_cost_budgeting.[aig_fixed_fee_budget_fees],0)+ISNULL(disbursement_balance,0)
+THEN 'Insufficient budget' END 
+
+,CASE WHEN  ISNULL(is_insured_vat_registered,'Yes')='No' 
+AND ISNULL(dim_matter_header_current.fee_arrangement,'')='Fixed Fee/Fee Quote/Capped Fee'
+AND 
+(ISNULL(fact_detail_cost_budgeting.[aigtotalbudgetfixedfee],0) + 
+--ISNULL(fact_detail_cost_budgeting.[aigtotalbudgethourlyrate],0) + 
+ISNULL(fact_detail_cost_budgeting.[aig_costs_practice_area_only_budget],0)
+) &lt; 
+ISNULL(total_amount_billed,0)  + ISNULL(fact_detail_cost_budgeting.[aig_fixed_fee_budget_fees] ,0)+ISNULL(disbursement_balance,0)
+THEN 'Insufficient budget' END
+-------------- Fixed Fee (Above) ------------------
+,CASE WHEN  ISNULL(is_insured_vat_registered,'Yes')='Yes' 
+AND ISNULL(dim_matter_header_current.fee_arrangement,'')&lt;&gt;'Fixed Fee/Fee Quote/Capped Fee'
+AND 
+(
+--ISNULL(fact_detail_cost_budgeting.[aigtotalbudgetfixedfee],0) + 
+ISNULL(fact_detail_cost_budgeting.[aigtotalbudgethourlyrate],0) + 
+ISNULL(fact_detail_cost_budgeting.[aig_costs_practice_area_only_budget],0)
+) &lt; 
+(ISNULL(total_amount_billed,0) - ISNULL(vat_billed,0))  + ISNULL(wip,0)+ISNULL(disbursement_balance,0)
+THEN 'Insufficient budget' END 
+
+,CASE WHEN  ISNULL(is_insured_vat_registered,'Yes')='No' 
+AND ISNULL(dim_matter_header_current.fee_arrangement,'')&lt;&gt;'Fixed Fee/Fee Quote/Capped Fee'
+AND 
+(--ISNULL(fact_detail_cost_budgeting.[aigtotalbudgetfixedfee],0) + 
+ISNULL(fact_detail_cost_budgeting.[aigtotalbudgethourlyrate],0) + 
+ISNULL(fact_detail_cost_budgeting.[aig_costs_practice_area_only_budget],0)
+) &lt; 
+ISNULL(total_amount_billed,0)  + ISNULL(wip,0)+ISNULL(disbursement_balance,0)
+THEN 'Insufficient budget' END
+-------------- Hourly (Above) ------------------
+--CASE WHEN ISNULL(dim_detail_client.has_budget_been_approved, '') = 'No' THEN
+             --         'Awaiting budget approval'
+             --END
+			 --,
+    --         CASE WHEN ISNULL(dim_detail_client.aig_litigation_number, '') LIKE '%[*]LIT-%' THEN
+    --                  'Incorrect fee scale'
+    --         END,
+    --         CASE WHEN ISNULL(dim_detail_client.aig_litigation_number, '') LIKE '%[#]LIT-%' THEN
+    --                  'LIT not on Collaborati'
+    --         END
+	) 
+			 
+			 [exception]
+
+
+
+
+
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+LEFT JOIN red_dw.dbo.fact_finance_summary
+ ON fact_finance_summary.client_code = dim_matter_header_current.client_code
+ AND fact_finance_summary.matter_number = dim_matter_header_current.matter_number
+LEFT JOIN red_dw.dbo.dim_detail_client
+ ON dim_detail_client.client_code = dim_matter_header_current.client_code
+ AND dim_detail_client.matter_number = dim_matter_header_current.matter_number
+LEFT JOIN red_dw.dbo.fact_detail_cost_budgeting
+ ON fact_detail_cost_budgeting.client_code = dim_matter_header_current.client_code
+ AND fact_detail_cost_budgeting.matter_number = dim_matter_header_current.matter_number
+LEFT JOIN red_dw.dbo.dim_detail_core_details
+ ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
+ AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number
+  LEFT OUTER JOIN  (
+				SELECT dim_detail_client.aig_litigation_number
+					,MAX(dim_detail_client.date_budget_uploaded) date_budget_uploaded
+					,MAX(cost_budgeting.total_budget_uploaded) total_budget_uploaded
+					,MAX(dim_detail_client.has_budget_been_approved) budget_approved
+				FROM red_dw.dbo.fact_dimension_main main
+				INNER JOIN red_dw.dbo.dim_matter_header_current header ON header.dim_matter_header_curr_key = main.dim_matter_header_curr_key
+				INNER JOIN red_dw.dbo.dim_detail_client dim_detail_client ON dim_detail_client.dim_detail_client_key = main.dim_detail_client_key
+				INNER JOIN red_dw.dbo.fact_detail_cost_budgeting cost_budgeting ON cost_budgeting.master_fact_key = main.master_fact_key
+
+				WHERE 1=1
+					--AND dim_detail_client.aig_litigation_number = 'LIT-21253'
+					AND header.client_group_code = '00000013'
+					AND header.reporting_exclusions &lt;&gt; 1
+					AND UPPER(dim_detail_client.aig_litigation_number) LIKE '%LIT%'
+					AND dim_detail_client.aig_litigation_number &lt;&gt; 'No LIT'
+					AND dim_detail_client.aig_litigation_number IS NOT NULL 
+				GROUP BY dim_detail_client.aig_litigation_number
+						) lead_budget_details ON lead_budget_details.aig_litigation_number = dim_detail_client.aig_litigation_number
+
+ 
+ 
+LEFT OUTER  JOIN 
+(
+SELECT fileID AS ms_fileid
+,profstatus.[description]  AS  [Proforma Status]
+,DATEDIFF(DAY,prof.ProfDate,GETDATE()) AS [Proforma Elapsed Days]
+,prof.ProfDate AS [Proforma Date]
+FROM   [TE_3E_Prod].[dbo].TRE_WfHistoryHdr AS WfHistoryHdr
+       INNER JOIN [TE_3E_Prod].[dbo].TRE_WfHistory AS WfHistory ON WfHistoryHdr.WfID  =  WfHistory.TRE_WfHistoryHdr 
+       INNER JOIN [TE_3E_Prod].[dbo].TRE_WfRuleSet AS WFRuleSet ON WfHistory.TRE_WfRuleSet = WFRuleSet.Code
+       INNER JOIN [TE_3E_Prod].[dbo].TRE_WfAction AS WfAction   ON WFRuleSet.TRE_WfAction =  WfAction.Code
+       
+	   INNER JOIN [TE_3E_Prod].[dbo].[ProfMaster] prof ON WfHistory.joinid = prof.profmasterid  
+          LEFT JOIN [TE_3E_Prod].[dbo].[ProfStatus] profstatus ON profstatus.code = prof.profstatus
+          LEFT JOIN [TE_3E_Prod].[dbo].[Matter] matter ON matter.mattindex = prof.leadmatter
+          LEFT JOIN [TE_3E_Prod].[dbo].[Client] client ON matter.client = client.clientindex
+		  LEFT JOIN MS_Prod.config.dbFile ON matter.MattIndex=fileExtLinkID
+
+	
+WHERE WfHistory.CompletedDate IS NULL  
+              AND WfHistory.IsHide  =  0
+              AND prof.InvMaster IS NULL
+) AS Proforma
+ ON Proforma.ms_fileid = dim_matter_header_current.ms_fileid
+LEFT OUTER JOIN (SELECT client_code,matter_number,MAX(bill_date) AS LastBillDate
+FROM red_dw.dbo.dim_bill
+INNER JOIN red_dw.dbo.fact_bill
+ ON fact_bill.dim_bill_key = dim_bill.dim_bill_key
+INNER JOIN red_dw.dbo.dim_bill_date
+ ON dim_bill_date.dim_bill_date_key = fact_bill.dim_bill_date_key
+WHERE client_code='A2002'
+AND fees_total &lt;&gt;0
+AND dim_bill.bill_number &lt;&gt;'PURGE'
+AND bill_reversed=0
+GROUP BY client_code,matter_number) AS LastBillNonDisbBill
+ ON LastBillNonDisbBill.client_code = dim_matter_header_current.client_code
+ AND LastBillNonDisbBill.matter_number = dim_matter_header_current.matter_number
+WHERE master_client_code='A2002'
+AND date_opened_case_management&gt;='2019-02-01'
+AND date_closed_practice_management IS NULL
+AND 
+(
+ISNULL(dim_matter_header_current.fee_arrangement,'') &lt;&gt;'Fixed Fee/Fee Quote/Capped Fee'
+OR (dim_matter_header_current.fee_arrangement='Fixed Fee/Fee Quote/Capped Fee' AND ISNULL(red_dw.dbo.dim_detail_core_details.present_position,'')='Final bill due - claim and costs concluded')
+)                                                 
+AND wip&gt;=500
+AND (CASE WHEN LastBillNonDisbBill.LastBillDate IS NULL THEN DATEDIFF(DAY,date_opened_case_management,GETDATE()) ELSE 
+DATEDIFF(DAY,LastBillNonDisbBill.LastBillDate,GETDATE())
+END)&gt;=90
+
+
+
+
+) AS AllData</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="FileID">
+          <DataField>FileID</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="exception">
+          <DataField>exception</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ReadyToBill">
+          <DataField>ReadyToBill</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -11052,7 +11294,7 @@ WHERE    1 = 1
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=iif(lookup(Fields!lookupbd.Value,Fields!lkp_ref.Value,Fields!exception_ind.Value,"sqlAIG")=1,Lookup(Fields!lookupbd.Value, Fields!lkp_ref.Value, Fields!exception.Value, "sqlAIG"),"")</Value>
+                                      <Value>=Lookup(Fields!lookupbd.Value, Fields!lkp_ref.Value, Fields!exception.Value, "sqlAIG")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -11118,7 +11360,11 @@ WHERE    1 = 1
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=IIF(ISNOTHING(Lookup(Fields!dim_matter_header_current_ms_fileid_.Value, Fields!FileID.Value, Fields!ReadyToBill.Value, "ReadyToBill")), "No", Lookup(Fields!dim_matter_header_current_ms_fileid_.Value, Fields!FileID.Value, Fields!ReadyToBill.Value, "ReadyToBill"))</Value>
+                                      <Value>=IIF(ISNOTHING(Lookup(Fields!dim_matter_header_current_ms_fileid_.Value
+, Fields!FileID.Value, Fields!ReadyToBill.Value, "ReadyToBill"))
+, "No"
+, Lookup(Fields!dim_matter_header_current_ms_fileid_.Value
+, Fields!FileID.Value, Fields!ReadyToBill.Value, "ReadyToBill"))</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -17880,7 +18126,6 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
                                 <WritingMode>=First(Fields!tblDataFooter_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
@@ -23351,7 +23596,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=lookup(Fields!lookupbd.Value,Fields!lkp_ref.Value,Fields!exception.Value,"sqlAIG")</Value>
+                                  <Value>=Lookup(Fields!lookupbd.Value, Fields!lkp_ref.Value, Fields!exception.Value, "sqlAIG")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -25609,7 +25854,7 @@ lookup(fields!LitNumber.Value,Fields!dim_detail_client_aig_litigation_number_.Va
             <PageName>E Billing - Issues</PageName>
             <Filters>
               <Filter>
-                <FilterExpression>=lookup(Fields!lookupbd.Value,Fields!lkp_ref.Value,Fields!exception_ind.Value,"sqlAIG")</FilterExpression>
+                <FilterExpression>=lookup(Fields!lookupbd.Value,Fields!lkp_ref.Value,Fields!exception.Value,"sqlAIG")</FilterExpression>
                 <Operator>Equal</Operator>
                 <FilterValues>
                   <FilterValue DataType="Float">1</FilterValue>
