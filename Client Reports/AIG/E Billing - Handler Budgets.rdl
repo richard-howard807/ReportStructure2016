@@ -2460,6 +2460,14 @@ WHERE  name ='E Billing – Handler Budgets'</CommandText>
     <DataSet Name="dax_case_detail_model">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="Team">
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="FeeEarner">
+            <Value>=JOIN(Parameters!FeeEarner.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE (
 filter(
 CALCULATETABLE (
@@ -2586,6 +2594,8 @@ dim_date_matter_closed_case_management[matter_closed_case_management_calendar_da
 NOT PATHCONTAINS("To be closed/minor balances to be clear|Final bill sent - unpaid",dim_detail_core_details[present_position]),
 dim_client[client_group_name] = "AIG",
 dim_matter_header_current[reporting_exclusions] &lt;&gt; 1
+,PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+,PATHCONTAINS(@FeeEarner,dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code])
 // testing account number
 //,dim_client[client_code] = "00006864"
 //,dim_matter_header_current[matter_number]="00005488"
@@ -3354,6 +3364,8 @@ dim_date_matter_closed_case_management[matter_closed_case_management_calendar_da
 NOT PATHCONTAINS("To be closed/minor balances to be clear|Final bill sent - unpaid",dim_detail_core_details[present_position]),
 dim_client[client_group_name] = "AIG",
 dim_matter_header_current[reporting_exclusions] &amp;lt;&amp;gt; 1
+,PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+,PATHCONTAINS(@FeeEarner,dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code])
 // testing account number
 //,dim_client[client_code] = "00006864"
 //,dim_matter_header_current[matter_number]="00005488"
@@ -3501,6 +3513,8 @@ dim_date_matter_closed_case_management[matter_closed_case_management_calendar_da
 NOT PATHCONTAINS("To be closed/minor balances to be clear|Final bill sent - unpaid",dim_detail_core_details[present_position]),
 dim_client[client_group_name] = "AIG",
 dim_matter_header_current[reporting_exclusions] &lt;&gt; 1
+,PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+,PATHCONTAINS(@FeeEarner,dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code])
 // testing account number
 //,dim_client[client_code] = "00006864"
 //,dim_matter_header_current[matter_number]="00005488"
@@ -3514,7 +3528,32 @@ not( dim_client[client_code] = "00054852" &amp;&amp; dim_matter_header_current[m
 ORDER BY
 dim_client[client_code],
 dim_matter_header_current[matter_number]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>Team</Name>
+                  <DefaultValues>
+                    <DefaultValue />
+                  </DefaultValues>
+                  <Caption>Team</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>FeeEarner</Name>
+                  <DefaultValues>
+                    <DefaultValue />
+                  </DefaultValues>
+                  <Caption>FeeEarner</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -4931,6 +4970,7 @@ GROUP BY client_code,matter_number) AS LastBillNonDisbBill
  ON LastBillNonDisbBill.client_code = dim_matter_header_current.client_code
  AND LastBillNonDisbBill.matter_number = dim_matter_header_current.matter_number
 WHERE master_client_code='A2002'
+AND ISNULL(dim_detail_client.aig_litigation_number,'')&lt;&gt;'Recovery'
 AND date_opened_case_management&gt;='2019-02-01'
 AND date_closed_practice_management IS NULL
 AND 
@@ -4959,6 +4999,57 @@ END)&gt;=90
         </Field>
         <Field Name="ReadyToBill">
           <DataField>ReadyToBill</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Team">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT hierarchylevel4hist AS Team
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT
+WHERE master_client_code='A2002'
+AND date_opened_case_management&gt;='2019-02-01'
+AND date_closed_practice_management IS NULL
+ORDER BY  hierarchylevel4hist  </CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Team">
+          <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="FeeEarner">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Team">
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>IF OBJECT_ID('tempdb..#Team') IS NOT NULL   DROP TABLE #Team
+SELECT ListValue  INTO #Team FROM 	dbo.udt_TallySplit('|', @Team)
+
+SELECT DISTINCT fed_code AS FeeEarner,name AS FeeEarnername
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT
+INNER JOIN #Team AS Team ON Team.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel4hist COLLATE DATABASE_DEFAULT
+WHERE master_client_code='A2002'
+AND date_opened_case_management&gt;='2019-02-01'
+AND date_closed_practice_management IS NULL
+ORDER BY  name  </CommandText>
+      </Query>
+      <Fields>
+        <Field Name="FeeEarner">
+          <DataField>FeeEarner</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FeeEarnername">
+          <DataField>FeeEarnername</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -8161,7 +8252,6 @@ END)&gt;=90
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
@@ -12810,16 +12900,62 @@ END)&gt;=90
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>Team</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>Team</ValueField>
+          <LabelField>Team</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="FeeEarner">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>FeeEarner</DataSetName>
+          <ValueField>FeeEarner</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Fee Earner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>FeeEarner</DataSetName>
+          <ValueField>FeeEarner</ValueField>
+          <LabelField>FeeEarnername</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Team</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>FeeEarner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
