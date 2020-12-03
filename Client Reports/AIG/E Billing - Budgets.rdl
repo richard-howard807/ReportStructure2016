@@ -4603,17 +4603,19 @@ FROM     red_dw.dbo.fact_dimension_main main
          LEFT OUTER JOIN red_dw.dbo.fact_detail_cost_budgeting budgeting ON main.master_fact_key = budgeting.master_fact_key
 		 LEFT OUTER JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.client_code = header.client_code
 		 AND fact_finance_summary.matter_number = header.matter_number
-		 LEFT OUTER JOIN (SELECT client_code,matter_number,MAX(bill_date) AS LastBillDate
+		 LEFT OUTER JOIN (SELECT fact_bill.client_code,fact_bill.matter_number,MAX(bill_date) AS LastBillDate
 FROM red_dw.dbo.dim_bill
 INNER JOIN red_dw.dbo.fact_bill
  ON fact_bill.dim_bill_key = dim_bill.dim_bill_key
 INNER JOIN red_dw.dbo.dim_bill_date
  ON dim_bill_date.dim_bill_date_key = fact_bill.dim_bill_date_key
-WHERE client_code='A2002'
+INNER JOIN red_dw.dbo.dim_matter_header_current
+ON  dim_matter_header_current.dim_matter_header_curr_key = fact_bill.dim_matter_header_curr_key
+WHERE master_client_code='A2002'
 AND fees_total &lt;&gt;0
 AND dim_bill.bill_number &lt;&gt;'PURGE'
 AND bill_reversed=0
-GROUP BY client_code,matter_number) AS LastBillNonDisbBill
+GROUP BY fact_bill.client_code,fact_bill.matter_number) AS LastBillNonDisbBill
  ON LastBillNonDisbBill.client_code = header.client_code
  AND LastBillNonDisbBill.matter_number = header.matter_number
 		 LEFT OUTER JOIN red_dw.dbo.dim_detail_client
@@ -4647,8 +4649,7 @@ WHERE    1 = 1
          AND header.client_group_code = '00000013'
          AND header.date_closed_case_management IS NULL
          AND header.reporting_exclusions &lt;&gt; 1
-         AND ISNULL(header.case_id, 0) &lt;&gt; '464543'
---AND TRIM(header.master_client_code) + '/' + header.master_matter_number  = 'A2002/10505'</CommandText>
+         AND ISNULL(header.case_id, 0) &lt;&gt; '464543'</CommandText>
       </Query>
       <Fields>
         <Field Name="lkp_ref">
