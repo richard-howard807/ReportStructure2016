@@ -2454,6 +2454,15 @@ WHERE  name ='Entity Search.png'</CommandText>
           <QueryParameter Name="@Client">
             <Value>=Parameters!Client.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@FeeEarner">
+            <Value>=JOIN(Parameters!FeeEarner.Value,"|")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>dbo.MotorOpsDocs</CommandText>
@@ -2719,6 +2728,171 @@ GROUP BY date_instructions_received
         <Field Name="EndDate">
           <DataField>EndDate</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="DepartmentFilter">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Client">
+            <Value>=Parameters!Client.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT hierarchylevel3hist AS [Department]
+--,hierarchylevel4hist AS [Team]
+--,fed_code AS [FeeEarnerCode]
+--,name AS [FeeEarner]
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
+ AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ ON dim_detail_outcome.client_code = dim_matter_header_current.client_code
+ AND dim_detail_outcome.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ ON dim_detail_claim.client_code = dim_matter_header_current.client_code
+ AND dim_detail_claim.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ ON fact_finance_summary.client_code = dim_matter_header_current.client_code
+ AND fact_finance_summary.matter_number = dim_matter_header_current.matter_number
+
+WHERE master_client_code IN ('A3003','T3003','W15564','A1001')
+AND reporting_exclusions=0
+AND (date_closed_case_management IS NULL OR date_closed_case_management&gt;='2018-01-01')
+AND (CASE WHEN master_client_code='W15564' THEN 'Sabre' 
+WHEN master_client_code='A1001' THEN 'AXA XL'
+WHEN master_client_code='T3003' THEN 'Tesco'
+WHEN master_client_code='A3003'  AND dim_detail_claim.[name_of_instructing_insurer]='Tesco Underwriting (TU)' THEN 'Tesco'
+WHEN master_client_code='A3003' THEN 'Ageas' END)=@Client
+AND ISNULL(outcome_of_case,'')&lt;&gt;'Returned to Client'
+
+ORDER BY hierarchylevel3hist</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Department">
+          <DataField>Department</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Teams">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Client">
+            <Value>=Parameters!Client.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>IF OBJECT_ID('tempdb..#Department') IS NOT NULL   DROP TABLE #Department
+SELECT ListValue  INTO #Department FROM 	dbo.udt_TallySplit('|', @Department)
+
+
+SELECT DISTINCT hierarchylevel4hist AS [Team]
+--,fed_code AS [FeeEarnerCode]
+--,name AS [FeeEarner]
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+INNER JOIN #Department AS Department ON Department.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel3hist COLLATE DATABASE_DEFAULT
+
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
+ AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ ON dim_detail_outcome.client_code = dim_matter_header_current.client_code
+ AND dim_detail_outcome.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ ON dim_detail_claim.client_code = dim_matter_header_current.client_code
+ AND dim_detail_claim.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ ON fact_finance_summary.client_code = dim_matter_header_current.client_code
+ AND fact_finance_summary.matter_number = dim_matter_header_current.matter_number
+
+WHERE master_client_code IN ('A3003','T3003','W15564','A1001')
+AND reporting_exclusions=0
+AND (date_closed_case_management IS NULL OR date_closed_case_management&gt;='2018-01-01')
+AND (CASE WHEN master_client_code='W15564' THEN 'Sabre' 
+WHEN master_client_code='A1001' THEN 'AXA XL'
+WHEN master_client_code='T3003' THEN 'Tesco'
+WHEN master_client_code='A3003'  AND dim_detail_claim.[name_of_instructing_insurer]='Tesco Underwriting (TU)' THEN 'Tesco'
+WHEN master_client_code='A3003' THEN 'Ageas' END)=@Client
+AND ISNULL(outcome_of_case,'')&lt;&gt;'Returned to Client'
+
+ORDER BY hierarchylevel4hist</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Team">
+          <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="FeeEarners">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Client">
+            <Value>=Parameters!Client.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>IF OBJECT_ID('tempdb..#Department') IS NOT NULL   DROP TABLE #Department
+SELECT ListValue  INTO #Department FROM 	dbo.udt_TallySplit('|', @Department)
+
+IF OBJECT_ID('tempdb..#Team') IS NOT NULL   DROP TABLE #Team
+SELECT ListValue  INTO #Team FROM 	dbo.udt_TallySplit('|', @Team)
+
+SELECT DISTINCT fed_code AS [FeeEarnerCode]
+,name AS [FeeEarner]
+FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+INNER JOIN #Department AS Department ON Department.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel3hist COLLATE DATABASE_DEFAULT
+INNER JOIN #Team AS Team ON Team.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel4hist COLLATE DATABASE_DEFAULT
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+ ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
+ AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
+ ON dim_detail_outcome.client_code = dim_matter_header_current.client_code
+ AND dim_detail_outcome.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+ ON dim_detail_claim.client_code = dim_matter_header_current.client_code
+ AND dim_detail_claim.matter_number = dim_matter_header_current.matter_number
+LEFT OUTER JOIN red_dw.dbo.fact_finance_summary
+ ON fact_finance_summary.client_code = dim_matter_header_current.client_code
+ AND fact_finance_summary.matter_number = dim_matter_header_current.matter_number
+
+WHERE master_client_code IN ('A3003','T3003','W15564','A1001')
+AND reporting_exclusions=0
+AND (date_closed_case_management IS NULL OR date_closed_case_management&gt;='2018-01-01')
+AND (CASE WHEN master_client_code='W15564' THEN 'Sabre' 
+WHEN master_client_code='A1001' THEN 'AXA XL'
+WHEN master_client_code='T3003' THEN 'Tesco'
+WHEN master_client_code='A3003'  AND dim_detail_claim.[name_of_instructing_insurer]='Tesco Underwriting (TU)' THEN 'Tesco'
+WHEN master_client_code='A3003' THEN 'Ageas' END)=@Client
+AND ISNULL(outcome_of_case,'')&lt;&gt;'Returned to Client'
+
+ORDER BY name</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="FeeEarnerCode">
+          <DataField>FeeEarnerCode</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FeeEarner">
+          <DataField>FeeEarner</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -4981,7 +5155,7 @@ GROUP BY date_instructions_received
             </TablixRowHierarchy>
             <DataSetName>sqlEntitySearch</DataSetName>
             <Height>0.5in</Height>
-            <Width>35.15625in</Width>
+            <Width>35.15623in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -5075,11 +5249,65 @@ GROUP BY date_instructions_received
         </ParameterValues>
       </ValidValues>
     </ReportParameter>
+    <ReportParameter Name="Department">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>DepartmentFilter</DataSetName>
+          <ValueField>Department</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Department</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>DepartmentFilter</DataSetName>
+          <ValueField>Department</ValueField>
+          <LabelField>Department</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Teams</DataSetName>
+          <ValueField>Team</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Teams</DataSetName>
+          <ValueField>Team</ValueField>
+          <LabelField>Team</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="FeeEarner">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>FeeEarners</DataSetName>
+          <ValueField>FeeEarnerCode</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Fee Earner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>FeeEarners</DataSetName>
+          <ValueField>FeeEarnerCode</ValueField>
+          <LabelField>FeeEarner</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>3</NumberOfRows>
+      <NumberOfRows>4</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5090,6 +5318,21 @@ GROUP BY date_instructions_received
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>Client</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>Department</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>Team</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>FeeEarner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
