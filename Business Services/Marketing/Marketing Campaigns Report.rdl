@@ -2586,19 +2586,27 @@ WHERE  name ='Marketing Campaigns Report.png'</CommandText>
         <DataSourceName>ReportingOnSQL2016</DataSourceName>
         <CommandText>SELECT DISTINCT
 CASE
-WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber'
+WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber, Privacy &amp; Data'
 WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
 WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
 ELSE is_this_part_of_a_campaign
 END Campaign
+
+,CASE
+WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cyber%' THEN 'Cyber, Privacy &amp; Data'
+WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
+WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
+WHEN is_this_part_of_a_campaign LIKE '%BSF%' THEN 'Building a Safer Future'
+ELSE is_this_part_of_a_campaign
+END CampaignNames
+
+
 FROM red_dw.dbo.dim_matter_header_current
 LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype
 ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
 LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
 ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
 AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number
-
-
 
 
 WHERE 
@@ -2613,13 +2621,17 @@ WHEN LOWER(work_type_name) LIKE '%cyber%' OR LOWER(matter_description) LIKE '%cy
 WHEN LOWER(work_type_name) LIKE '%gdpr%' OR LOWER(matter_description) LIKE '%gdpr%' THEN 'GDPR'
 WHEN LOWER(work_type_name) LIKE '%prof risk - construction - contentious%'  THEN 'Construction'
 ELSE is_this_part_of_a_campaign
-END NOT IN ('No', 'Pro Bono')
+END NOT IN ('No', 'Pro Bono', 'GDPR', 'Construction')
 
 </CommandText>
       </Query>
       <Fields>
         <Field Name="Campaign">
           <DataField>Campaign</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="CampaignNames">
+          <DataField>CampaignNames</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4722,7 +4734,7 @@ END NOT IN ('No', 'Pro Bono')
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Campaign.Value</Value>
+                                      <Value>=IIF(IIF(Fields!Campaign.Value = "Cyber", "Cyber, Privacy &amp; Data", Fields!Campaign.Value) = "BSF", "Building a Safer Future", IIF(Fields!Campaign.Value = "Cyber", "Cyber, Privacy &amp; Data", Fields!Campaign.Value))</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4789,7 +4801,7 @@ END NOT IN ('No', 'Pro Bono')
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!is_this_part_of_a_campaign.Value</Value>
+                                      <Value>=IIF(IIF(Fields!is_this_part_of_a_campaign.Value = "Cyber", "Cyber, Privacy &amp; Data", Fields!is_this_part_of_a_campaign.Value) = "BSF","Building a Safer Future",  IIF(Fields!is_this_part_of_a_campaign.Value = "Cyber", "Cyber, Privacy &amp; Data", Fields!is_this_part_of_a_campaign.Value))</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -7234,7 +7246,7 @@ END NOT IN ('No', 'Pro Bono')
         <DataSetReference>
           <DataSetName>Campaign</DataSetName>
           <ValueField>Campaign</ValueField>
-          <LabelField>Campaign</LabelField>
+          <LabelField>CampaignNames</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
