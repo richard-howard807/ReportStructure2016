@@ -2589,9 +2589,14 @@ WHERE bill_cal_month_name + ' - ' + CAST(bill_cal_year AS NVARCHAR(4)) =@Period<
     <DataSet Name="Periods">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Year">
+            <Value>=Parameters!Year.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>SELECT  DISTINCT bill_cal_month_no,
     bill_cal_year,bill_cal_month_name + ' - ' + CAST(bill_cal_year AS NVARCHAR(4)) AS Period FROM red_dw.dbo.dim_bill_date 
-WHERE bill_cal_year=YEAR(GETDATE())</CommandText>
+WHERE bill_cal_year=@Year</CommandText>
       </Query>
       <Fields>
         <Field Name="bill_cal_month_no">
@@ -2611,7 +2616,9 @@ WHERE bill_cal_year=YEAR(GETDATE())</CommandText>
     <DataSet Name="CurrentPeriod">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT      bill_cal_year,bill_cal_month_name + ' - ' + CAST(bill_cal_year AS NVARCHAR(4)) FROM red_dw.dbo.dim_bill_date 
+        <CommandText>SELECT      bill_cal_year,bill_cal_month_name + ' - ' + CAST(bill_cal_year AS NVARCHAR(4))
+,bill_cal_year AS [Reporting Year]
+FROM red_dw.dbo.dim_bill_date 
 WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103)</CommandText>
       </Query>
       <Fields>
@@ -2623,11 +2630,20 @@ WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103)</CommandText>
           <DataField />
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Reporting_Year">
+          <DataField>Reporting Year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="AnnualSummary">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Year">
+            <Value>=Parameters!Year.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>dbo.EsureAnnualSummary</CommandText>
       </Query>
@@ -2734,6 +2750,21 @@ WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103)</CommandText>
         </Field>
         <Field Name="Period">
           <Value>=Fields!bill_cal_month_name.Value &amp; " - " &amp; Fields!bill_cal_year.Value</Value>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Years">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT  DISTINCT bill_cal_year AS [Reporting Year]
+FROM red_dw.dbo.dim_bill_date 
+WHERE CONVERT(DATE,bill_date,103)&gt;='2020-12-01'
+AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Reporting_Year">
+          <DataField>Reporting Year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -12657,6 +12688,23 @@ WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103)</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Year">
+      <DataType>Integer</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>CurrentPeriod</DataSetName>
+          <ValueField>Reporting_Year</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Year</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Years</DataSetName>
+          <ValueField>Reporting_Year</ValueField>
+          <LabelField>Reporting_Year</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
     <ReportParameter Name="Period">
       <DataType>String</DataType>
       <DefaultValue>
@@ -12688,6 +12736,11 @@ WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103)</CommandText>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
+          <ParameterName>Year</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
           <ParameterName>Period</ParameterName>
         </CellDefinition>
       </CellDefinitions>
