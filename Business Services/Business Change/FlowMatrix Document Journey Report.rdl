@@ -2458,7 +2458,7 @@ WHERE  name ='FlowMatrix_Document_Journey.png'</CommandText>
             <Value>=Parameters!quickdrop_id.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>--DECLARE @quickdrop_id AS BIGINT = 86199
+        <CommandText>--DECLARE @quickdrop_id AS BIGINT = 68617
 --		, @ms_doc_id AS VARCHAR(10) = NULL --'27891716'
 
 SELECT
@@ -2484,9 +2484,32 @@ WHERE
 								WHERE
 									RecentAuditLog.filter8 = @ms_doc_id
 								)
-ORDER BY
-	RecentAuditLog.job_id
-	, event_time ASC</CommandText>
+
+UNION 
+
+SELECT
+	ArchiveAuditLog.event_time
+	, ArchiveAuditLog.event
+	, ArchiveAuditLog.username
+	, ArchiveAuditLog.description
+	, ArchiveAuditLog.comment
+	, ArchiveAuditLog.owner_type
+	, owner_name.fullname				AS [Owner]
+	, user_queue_name.fullname			AS [User Queue]
+FROM [SVR-LIV-3PTY-01].[PaperRiverAudit].[dbo].[ArchiveAuditLog]
+	LEFT OUTER JOIN [SVR-LIV-3PTY-01].[FlowMatrix].[dbo].[Users] AS [owner_name]
+		ON owner_name.username = ArchiveAuditLog.owner
+	LEFT OUTER JOIN [SVR-LIV-3PTY-01].[FlowMatrix].[dbo].[Users] AS [user_queue_name]
+		ON user_queue_name.username = ArchiveAuditLog.user_queue
+WHERE 
+	ArchiveAuditLog.job_id = @quickdrop_id 
+	OR ArchiveAuditLog.job_id = (
+								SELECT 
+									ArchiveAuditLog.job_id
+								FROM [SVR-LIV-3PTY-01].[PaperRiverAudit].[dbo].[ArchiveAuditLog]
+								WHERE
+									ArchiveAuditLog.filter8 = @ms_doc_id
+								)</CommandText>
       </Query>
       <Fields>
         <Field Name="event_time">
