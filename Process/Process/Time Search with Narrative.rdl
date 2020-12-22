@@ -101,6 +101,8 @@ dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
 dimOriginalMatter[ClientCode],
 dimOriginalMatter[MatterNumber],
 TimeTransactions[TransactionType],
+dimDateMatterOpened[DateMatterOpenedDate],
+dimDateMatterClosed[DateMatterClosedDate],
 "Client Transferred", IF (
                 dimClient[ClientCode] = dimOriginalMatter[ClientCode],
                 "",
@@ -293,6 +295,18 @@ dimDateTransactionDate[TransactionDateDate]</CommandText>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
+                      <ColumnName>dimDateMatterOpened[DateMatterOpenedDate]</ColumnName>
+                    </ID>
+                    <ItemCaption>dimDateMatterOpened[DateMatterOpenedDate]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dimDateMatterClosed[DateMatterClosedDate]</ColumnName>
+                    </ID>
+                    <ItemCaption>dimDateMatterClosed[DateMatterClosedDate]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
                       <ColumnName>[Client Transferred]</ColumnName>
                     </ID>
                     <ItemCaption>[Client Transferred]</ItemCaption>
@@ -346,6 +360,8 @@ dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
 dimOriginalMatter[ClientCode],
 dimOriginalMatter[MatterNumber],
 TimeTransactions[TransactionType],
+dimDateMatterOpened[DateMatterOpenedDate],
+dimDateMatterClosed[DateMatterClosedDate],
 "Client Transferred", IF (
                 dimClient[ClientCode] = dimOriginalMatter[ClientCode],
                 "",
@@ -420,6 +436,8 @@ dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel],
 dimOriginalMatter[ClientCode],
 dimOriginalMatter[MatterNumber],
 TimeTransactions[TransactionType],
+dimDateMatterOpened[DateMatterOpenedDate],
+dimDateMatterClosed[DateMatterClosedDate],
 "Client Transferred", IF (
                 dimClient[ClientCode] = dimOriginalMatter[ClientCode],
                 "",
@@ -756,8 +774,16 @@ dimDateTransactionDate[TransactionDateDate]</Statement>
           <DataField>[Client Transferred]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="dimDateMatterOpened_DateMatterOpenedDate_">
+          <DataField>dimDateMatterOpened[DateMatterOpenedDate]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="ID_Matter_Transferred_">
           <DataField>[Matter Transferred]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dimDateMatterClosed_DateMatterClosedDate_">
+          <DataField>dimDateMatterClosed[DateMatterClosedDate]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="TimeTransactions_TransactionType">
@@ -1363,6 +1389,8 @@ order by dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel]</Statement>
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
         <CommandText>evaluate (
+filter(
+
 	calculatetable(
 			summarize (
 			    fact_dimension_main,
@@ -1370,12 +1398,18 @@ order by dimTimeTransactionsEmployee[TimeTransactionsEmployeeLevel]</Statement>
 			    dim_matter_header_current[matter_number],
 			    dim_matter_header_current[master_client_code],
 			    dim_matter_header_current[master_matter_number],
-dim_detail_client[whitbread_brand]
+dim_detail_client[whitbread_brand],
+dim_detail_finance[output_wip_fee_arrangement],
+dim_detail_outcome[outcome_of_case],
+dim_matter_worktype[work_type_group],
+dim_detail_core_details[track]
+)
 
 					),
-					dim_detail_client[whitbread_brand] &lt;&gt; blank()
+					dim_detail_client[whitbread_brand] &lt;&gt; blank() || dim_detail_finance[output_wip_fee_arrangement] &lt;&gt; blank() || dim_detail_outcome[outcome_of_case] &lt;&gt; blank()
 				)
 		)
+		
 order by 
 dim_client[client_code],
 			    dim_matter_header_current[matter_number]</CommandText>
@@ -1436,6 +1470,46 @@ dim_client[client_code],
                     </ID>
                     <ItemCaption>whitbread_brand</ItemCaption>
                   </Item>
+                  <Item>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_finance</DimensionName>
+                      <HierarchyName>output_wip_fee_arrangement</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_finance].[output_wip_fee_arrangement]</HierarchyUniqueName>
+                      <LevelName>output_wip_fee_arrangement</LevelName>
+                      <UniqueName>[dim_detail_finance].[output_wip_fee_arrangement].[output_wip_fee_arrangement]</UniqueName>
+                    </ID>
+                    <ItemCaption>output_wip_fee_arrangement</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_outcome</DimensionName>
+                      <HierarchyName>outcome_of_case</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_outcome].[outcome_of_case]</HierarchyUniqueName>
+                      <LevelName>outcome_of_case</LevelName>
+                      <UniqueName>[dim_detail_outcome].[outcome_of_case].[outcome_of_case]</UniqueName>
+                    </ID>
+                    <ItemCaption>outcome_of_case</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_matter_worktype</DimensionName>
+                      <HierarchyName>work_type_group</HierarchyName>
+                      <HierarchyUniqueName>[dim_matter_worktype].[work_type_group]</HierarchyUniqueName>
+                      <LevelName>work_type_group</LevelName>
+                      <UniqueName>[dim_matter_worktype].[work_type_group].[work_type_group]</UniqueName>
+                    </ID>
+                    <ItemCaption>work_type_group</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>track</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[track]</HierarchyUniqueName>
+                      <LevelName>track</LevelName>
+                      <UniqueName>[dim_detail_core_details].[track].[track]</UniqueName>
+                    </ID>
+                    <ItemCaption>track</ItemCaption>
+                  </Item>
                 </Items>
               </Select>
               <AutoExecute>false</AutoExecute>
@@ -1449,6 +1523,8 @@ dim_client[client_code],
             </QuerySpecification>
             <Query>
               <Statement>evaluate (
+filter(
+
 	calculatetable(
 			summarize (
 			    fact_dimension_main,
@@ -1456,16 +1532,21 @@ dim_client[client_code],
 			    dim_matter_header_current[matter_number],
 			    dim_matter_header_current[master_client_code],
 			    dim_matter_header_current[master_matter_number],
-dim_detail_client[whitbread_brand]
+dim_detail_client[whitbread_brand],
+dim_detail_finance[output_wip_fee_arrangement],
+dim_detail_outcome[outcome_of_case],
+dim_matter_worktype[work_type_group],
+dim_detail_core_details[track]
+)
 
 					),
-					dim_detail_client[whitbread_brand] &lt;&gt; blank()
+					dim_detail_client[whitbread_brand] &lt;&gt; blank() || dim_detail_finance[output_wip_fee_arrangement] &lt;&gt; blank() || dim_detail_outcome[outcome_of_case] &lt;&gt; blank()
 				)
 		)
+		
 order by 
 dim_client[client_code],
-			    dim_matter_header_current[matter_number]
-</Statement>
+			    dim_matter_header_current[matter_number]</Statement>
               <ParameterDefinitions />
             </Query>
           </QueryDefinition>
@@ -1490,6 +1571,22 @@ dim_client[client_code],
         </Field>
         <Field Name="whitbread_brand">
           <DataField>dim_detail_client[whitbread_brand]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="output_wip_fee_arrangement">
+          <DataField>dim_detail_finance[output_wip_fee_arrangement]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="outcome_of_case">
+          <DataField>dim_detail_outcome[outcome_of_case]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="work_type_group">
+          <DataField>dim_matter_worktype[work_type_group]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="track">
+          <DataField>dim_detail_core_details[track]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -1703,6 +1800,24 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
                   <Width>2.54cm</Width>
                 </TablixColumn>
                 <TablixColumn>
+                  <Width>4.25979cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.75708cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.22792cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.54cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.54cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>2.54cm</Width>
+                </TablixColumn>
+                <TablixColumn>
                   <Width>6.81458cm</Width>
                 </TablixColumn>
                 <TablixColumn>
@@ -1833,9 +1948,15 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
                             </Border>
                           </Style>
                         </Image>
-                        <ColSpan>28</ColSpan>
+                        <ColSpan>34</ColSpan>
                       </CellContents>
                     </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
                     <TablixCell />
                     <TablixCell />
                     <TablixCell />
@@ -2034,6 +2155,222 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox12</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox60">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Date Opened</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox60</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox71">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Date Closed</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox71</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox76">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Fee Arrangement</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox76</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox79">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Outcome</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox79</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox82">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Matter Type Group</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox82</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox85">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Track</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox85</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3123,6 +3460,204 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox74">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox74</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox75">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox75</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox77">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox77</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox80">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox80</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox83">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox83</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox86">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox86</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox15">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -4153,6 +4688,212 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="dimDateMatterOpened_DateMatterOpenedDate_">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!dimDateMatterOpened_DateMatterOpenedDate_.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>dd/MM/yyyy</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>dimDateMatterOpened_DateMatterOpenedDate_</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "White", "Whitesmoke")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="dimDateMatterClosed_DateMatterClosedDate_">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!dimDateMatterClosed_DateMatterClosedDate_.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>dd/MM/yyyy</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>dimDateMatterClosed_DateMatterClosedDate_</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "White", "Whitesmoke")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox78">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=lookup(trim(fields!ClientCode.Value)+"-"+trim(fields!MatterNumber.Value),trim(fields!client_code.Value)+"-"+trim(fields!matter_number.Value),Fields!output_wip_fee_arrangement.Value, "DAXCD")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox78</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "White", "Whitesmoke")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox81">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=lookup(trim(fields!ClientCode.Value)+"-"+trim(fields!MatterNumber.Value),trim(fields!client_code.Value)+"-"+trim(fields!matter_number.Value),Fields!outcome_of_case.Value, "DAXCD")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox81</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "White", "Whitesmoke")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox84">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=lookup(trim(fields!ClientCode.Value)+"-"+trim(fields!MatterNumber.Value),trim(fields!client_code.Value)+"-"+trim(fields!matter_number.Value),Fields!work_type_group.Value, "DAXCD")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox84</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "White", "Whitesmoke")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox87">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=lookup(trim(fields!ClientCode.Value)+"-"+trim(fields!MatterNumber.Value),trim(fields!client_code.Value)+"-"+trim(fields!matter_number.Value),Fields!track.Value, "DAXCD")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox87</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "White", "Whitesmoke")</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="ID_Client_Transferred_">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -5047,6 +5788,24 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
                 </TablixMember>
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
+                <TablixMember>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
+                </TablixMember>
+                <TablixMember>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
+                </TablixMember>
+                <TablixMember>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
+                </TablixMember>
+                <TablixMember />
+                <TablixMember />
                 <TablixMember>
                   <Visibility>
                     <Hidden>=iif(Parameters!ChargeableTimeType.Value = "Non Chargeable Time", true, false)</Hidden>
@@ -5130,7 +5889,7 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
             </TablixRowHierarchy>
             <DataSetName>DAXDataset</DataSetName>
             <Height>4.78979cm</Height>
-            <Width>89.88799cm</Width>
+            <Width>108.75278cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -5164,7 +5923,7 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
             </Paragraphs>
             <Top>5.82279cm</Top>
             <Height>0.58264cm</Height>
-            <Width>69.75384cm</Width>
+            <Width>108.75278cm</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -5195,9 +5954,9 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox3</rd:DefaultName>
-            <Top>4.9309cm</Top>
+            <Top>4.89562cm</Top>
             <Height>0.63527cm</Height>
-            <Width>69.75384cm</Width>
+            <Width>108.75278cm</Width>
             <ZIndex>2</ZIndex>
             <Style>
               <Border>
@@ -5213,7 +5972,7 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Sta
         <Height>2.52182in</Height>
         <Style />
       </Body>
-      <Width>35.38897in</Width>
+      <Width>42.81606in</Width>
       <Page>
         <PageHeight>8.27in</PageHeight>
         <PageWidth>11.69in</PageWidth>
