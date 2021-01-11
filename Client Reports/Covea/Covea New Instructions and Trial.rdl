@@ -3252,6 +3252,49 @@ WHERE task_desccription = 'Trial date - today'</CommandText>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="KeyDatesv2">
+      <Query>
+        <DataSourceName>DWH</DataSourceName>
+        <CommandText>SELECT 
+MAX(CAST(dbKeyDates.kdDate AS DATE)) AS TrialDate
+, dbKeyDates.kdActive
+, RTRIM(header.client_code ) AS Client_code
+,header.matter_number
+
+FROM MS_Prod..dbKeyDates
+INNER JOIN red_dw.dbo.dim_matter_header_current header
+ON dbKeyDates.fileID = header.ms_fileid
+
+WHERE 
+--fileID = 5022661
+ dbKeyDates.kdType = 'Trial'
+ AND header.client_code IN ('W15396', '00162924')
+ AND kdActive = 1
+
+ GROUP BY
+   dbKeyDates.kdActive
+,header.client_code
+,header.matter_number</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="TrialDate">
+          <DataField>TrialDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="kdActive">
+          <DataField>kdActive</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
+        </Field>
+        <Field Name="client_code">
+          <DataField>Client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="matter_number">
+          <DataField>matter_number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -5918,7 +5961,9 @@ WHERE task_desccription = 'Trial date - today'</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!TrialDate.Value</Value>
+                                  <Value>=Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
+Fields!client_code.Value &amp; Fields!matter_number.Value, 
+Fields!TrialDate.Value, "KeyDatesv2")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
