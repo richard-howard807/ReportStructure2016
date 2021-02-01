@@ -3232,10 +3232,13 @@ dim_client_involvement[insuredclient_reference],
     <DataSet Name="DateKey">
       <Query>
         <DataSourceName>DWH</DataSourceName>
-        <CommandText>SELECT RTRIM(dim_tasks.client_code) client_code, dim_tasks.matter_number, calendar_date [Trial Date] FROM red_dw.dbo.dim_tasks
+        <CommandText>SELECT RTRIM(dim_tasks.client_code) client_code, dim_tasks.matter_number, calendar_date [Trial Date]
+,CASE WHEN calendar_date IS NULL OR calendar_date&lt;CONVERT(DATE,GETDATE(),103) THEN 1 ELSE 0 END AS Exclusion
+FROM red_dw.dbo.dim_tasks
 LEFT OUTER JOIN red_dw.dbo.fact_tasks ON fact_tasks.dim_tasks_key = dim_tasks.dim_tasks_key
 LEFT OUTER JOIN red_dw.dbo.dim_date ON dim_date_key=dim_task_due_date_key
-WHERE task_desccription = 'Trial date - today'</CommandText>
+WHERE task_desccription = 'Trial date - today'
+AND RTRIM(dim_tasks.client_code) IN ('0162924','W15396')</CommandText>
       </Query>
       <Fields>
         <Field Name="client_code">
@@ -3250,17 +3253,27 @@ WHERE task_desccription = 'Trial date - today'</CommandText>
           <DataField>Trial Date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
+        <Field Name="Exclusion">
+          <DataField>Exclusion</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="KeyDatesv2">
       <Query>
         <DataSourceName>DWH</DataSourceName>
-        <CommandText>SELECT 
+        <CommandText>SELECT Dates.TrialDate,
+       Dates.kdActive,
+       Dates.Client_code,
+       Dates.matter_number,
+	   CASE WHEN TrialDate IS NULL OR CONVERT(DATE,TrialDate,103)&lt;CONVERT(DATE,GETDATE(),103) THEN 1 ELSE 0 END  AS Exclusion
+	   FROM 
+(
+SELECT 
 MAX(CAST(dbKeyDates.kdDate AS DATE)) AS TrialDate
 , dbKeyDates.kdActive
 , RTRIM(header.client_code ) AS Client_code
 ,header.matter_number
-
 FROM MS_Prod..dbKeyDates
 INNER JOIN red_dw.dbo.dim_matter_header_current header
 ON dbKeyDates.fileID = header.ms_fileid
@@ -3274,7 +3287,8 @@ WHERE
  GROUP BY
    dbKeyDates.kdActive
 ,header.client_code
-,header.matter_number</CommandText>
+,header.matter_number
+) AS Dates</CommandText>
       </Query>
       <Fields>
         <Field Name="TrialDate">
@@ -3292,6 +3306,10 @@ WHERE
         <Field Name="matter_number">
           <DataField>matter_number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Exclusion">
+          <DataField>Exclusion</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -6746,6 +6764,26 @@ Fields!TrialDate.Value, "KeyDatesv2")),true,false)</Hidden>
               <BreakLocation>End</BreakLocation>
             </PageBreak>
             <PageName>="Trial Date"</PageName>
+            <Filters>
+              <Filter>
+                <FilterExpression>=Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
+Fields!client_code.Value &amp; Fields!matter_number.Value, 
+Fields!Exclusion.Value, "KeyDatesv2") + Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
+Fields!client_code.Value &amp; Fields!matter_number.Value, 
+Fields!Exclusion.Value, "DateKey")</FilterExpression>
+                <Operator>NotEqual</Operator>
+                <FilterValues>
+                  <FilterValue>=2</FilterValue>
+                </FilterValues>
+              </Filter>
+              <Filter>
+                <FilterExpression>=IIF(ISNOTHING(Fields!dim_detail_outcome_date_claim_concluded_.Value),0,1)</FilterExpression>
+                <Operator>Equal</Operator>
+                <FilterValues>
+                  <FilterValue>=0</FilterValue>
+                </FilterValues>
+              </Filter>
+            </Filters>
             <SortExpressions>
               <SortExpression>
                 <Value>=Fields!TrialDate.Value</Value>
@@ -6802,7 +6840,7 @@ Fields!TrialDate.Value, "KeyDatesv2")),true,false)</Hidden>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>14.37222in</Width>
+      <Width>16.86875in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
