@@ -2618,7 +2618,7 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
 */
 
  --   DECLARE @current_fin_from INT = '201801'
-	--DECLARE @current_fin_to INT = '201811'
+	--DECLARE @current_fin_to INT = '202111'
 DECLARE @DateFrom DATE 
 	SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
 	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
@@ -2628,6 +2628,7 @@ DECLARE @DateFrom DATE
 
 		
 	SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+
 	SELECT  DISTINCT 
 				
 		NULLIF(udClientGroup.[description],'') [group_name]
@@ -2645,13 +2646,13 @@ DECLARE @DateFrom DATE
 	--WHEN [cboGenClientStatus] IS NULL THEN ''
 	--	 END + ' : ' +
 		 ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) display_name 
-			
-			
+		
 	FROM [MS_Prod].[dbo].[udExtClient] udExtClient
 	INNER JOIN MS_Prod.config.dbClient dbClient ON dbClient.clID = udExtClient.clID
 	LEFT JOIN MS_Prod.dbo.udClientGroup udClientGroup ON udClientGroup.code = udExtClient.cboClientGroup
 	INNER JOIN MS_Prod.config.dbFile dbfile ON dbfile.clID = dbClient.clID
-	INNER JOIN MS_Prod.dbo.udExtFile udextfile ON udextfile.fileID = dbfile.fileID AND udextfile.FEDCodeNoZeros IS NOT NULL 
+	--Commented out the below as it was preventing Northern Powergrid client pulling in, client from Newcastle office
+	--INNER JOIN MS_Prod.dbo.udExtFile udextfile ON udextfile.fileID = dbfile.fileID AND udextfile.FEDCodeNoZeros IS NOT NULL 
 	INNER JOIN (SELECT DISTINCT client_code 
 					FROM [red_dw].[dbo].[fact_bill_activity] bill 
 					WHERE bill.bill_date &gt;= @PreviousDateFrom ) billed_client 
@@ -2686,18 +2687,17 @@ N'Metropolitan Police',
 N'Sovini Group',
 N'Business Energy Solutions Ltd' ,                                                
 N'BES Utilities Holding Ltd',                                                    
-N'BES Metering Services Limited'  
+N'BES Metering Services Limited',  
+N'BES Group',
+N'Northern Powergrid'
+)
+
+OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '%Northern Electric%'
 
 )
 
-OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '% : Northern Electrical Facilities Limited'
-OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) = 'BES Group')
-
-
-
 --	AND ISNULL(udClientGroup.[description],dbClient.clName) = @generator_client
-	ORDER BY ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) 
-		</CommandText>
+	ORDER BY ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) </CommandText>
       </Query>
       <Fields>
         <Field Name="group_name">
@@ -2733,7 +2733,8 @@ OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) = 'BES Group'
 	This is the MS_Prod query .... need to see if I can replicate in the warehouse. Unlikely at the moment.
 
 */
-
+	--DECLARE @current_fin_from INT = '201801'
+	--DECLARE @generator_client AS VARCHAR(MAX) = 'Northern Powergrid'
 	
 -- used for current profit costs
 	DECLARE @DateFrom DATE 
@@ -2757,7 +2758,8 @@ OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) = 'BES Group'
 	INNER JOIN MS_Prod.config.dbClient dbClient ON dbClient.clID = udExtClient.clID
 	LEFT JOIN MS_Prod.dbo.udClientGroup udClientGroup ON udClientGroup.code = udExtClient.cboClientGroup
 	INNER JOIN MS_Prod.config.dbFile dbfile ON dbfile.clID = dbClient.clID
-	INNER JOIN MS_Prod.dbo.udExtFile udextfile ON udextfile.fileID = dbfile.fileID AND udextfile.FEDCodeNoZeros IS NOT NULL 
+	--Commented out the below as it was preventing Northern Powergrid client pulling in, client from Newcastle office
+	--INNER JOIN MS_Prod.dbo.udExtFile udextfile ON udextfile.fileID = dbfile.fileID AND udextfile.FEDCodeNoZeros IS NOT NULL 
 	INNER JOIN (SELECT DISTINCT client_code 
 					FROM [red_dw].[dbo].[fact_bill_activity] bill 
 					WHERE bill.bill_date &gt;= @PreviousDateFrom ) billed_client 
@@ -2794,12 +2796,14 @@ N'Metropolitan Police',
 N'Sovini Group',
 N'Business Energy Solutions Ltd' ,                                                
 N'BES Utilities Holding Ltd',                                                    
-N'BES Metering Services Limited' 
-
+N'BES Metering Services Limited', 
+N'BES Group',
+N'Northern Powergrid'
 )
 
-OR ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '% : Northern Electrical Facilities Limited'
-OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) = 'BES Group')
+OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '%Northern Electric%'
+
+)
 
 
 
