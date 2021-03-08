@@ -2462,6 +2462,9 @@ WHERE  name ='Client_Billing_SLA_Report.png'</CommandText>
           <QueryParameter Name="@FeeEarner">
             <Value>=Join(Parameters!Fee_earner.Value, "|")</Value>
           </QueryParameter>
+          <QueryParameter Name="@fee_arrangement">
+            <Value>=Join(Parameters!fee_arrangement.Value, "|")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>client_billing_sla_report</CommandText>
@@ -2890,6 +2893,36 @@ ORDER BY
         </Field>
         <Field Name="ID_IC_WIP_">
           <DataField>[IC WIP]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_fee_arrangement">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!Team.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT
+	ISNULL(RTRIM(dim_detail_finance.output_wip_fee_arrangement), 'Missing Data')		AS fee_arrangement
+FROM red_dw.dbo.fact_dimension_main
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_detail_finance
+		ON dim_detail_finance.dim_detail_finance_key = fact_dimension_main.dim_detail_finance_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+WHERE
+	dim_fed_hierarchy_history.hierarchylevel4hist IN (@Team)
+	AND dim_matter_header_current.date_closed_practice_management IS NULL
+ORDER BY
+	fee_arrangement</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="fee_arrangement">
+          <DataField>fee_arrangement</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -10974,15 +11007,6 @@ IIF(Fields!query_10.Value &lt;&gt; nothing, Chr(149) &amp; "  " &amp; Fields!que
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>client_billing_sla_report</DataSetName>
                 <PageName>Matter Data</PageName>
-                <Filters>
-                  <Filter>
-                    <FilterExpression>=Fields!Bill_Type.Value</FilterExpression>
-                    <Operator>In</Operator>
-                    <FilterValues>
-                      <FilterValue>=Parameters!bill_type.Value</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                </Filters>
                 <Top>0.0441cm</Top>
                 <Height>1.01041in</Height>
                 <Width>49.66945in</Width>
@@ -13532,32 +13556,15 @@ IIF(Fields!query_10.Value &lt;&gt; nothing, Chr(149) &amp; "  " &amp; Fields!que
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="bill_type">
+    <ReportParameter Name="fee_arrangement">
       <DataType>String</DataType>
-      <Prompt>Bill Type</Prompt>
+      <Prompt>Fee Arrangement</Prompt>
       <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>="disb only"</Value>
-            <Label>Disb Only</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>="40% fixed fee"</Value>
-            <Label>40% Fixed Fee</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>="fixed fee"</Value>
-            <Label>Fixed Fee</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>="hourly"</Value>
-            <Label>Hourly</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>="no bill"</Value>
-            <Label>No Bill</Label>
-          </ParameterValue>
-        </ParameterValues>
+        <DataSetReference>
+          <DataSetName>param_fee_arrangement</DataSetName>
+          <ValueField>fee_arrangement</ValueField>
+          <LabelField>fee_arrangement</LabelField>
+        </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
@@ -13585,7 +13592,7 @@ IIF(Fields!query_10.Value &lt;&gt; nothing, Chr(149) &amp; "  " &amp; Fields!que
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>3</RowIndex>
-          <ParameterName>bill_type</ParameterName>
+          <ParameterName>fee_arrangement</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
