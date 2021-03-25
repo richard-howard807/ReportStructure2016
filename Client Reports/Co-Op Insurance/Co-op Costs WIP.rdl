@@ -2458,6 +2458,10 @@ WHERE  name ='Co-op_Costs_WIP.png'</CommandText>
           <DataField>Client and Matter Number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="master_client_code">
+          <DataField>master_client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Matter_Owner">
           <DataField>Matter Owner</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -2592,6 +2596,35 @@ WHERE  name ='Co-op_Costs_WIP.png'</CommandText>
         </Field>
         <Field Name="instruction_type">
           <DataField>instruction_type</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_client">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>
+SELECT DISTINCT 
+	dim_matter_header_current.master_client_code
+	, CASE
+		WHEN ISNULL(dim_matter_header_current.client_group_name, '') = '' THEN
+			dim_matter_header_current.client_name
+		ELSE
+			dim_matter_header_current.client_group_name
+	END														AS client_name 
+FROM red_dw.dbo.dim_matter_header_current 
+WHERE 
+	dim_matter_header_current.master_client_code IN ('C1001','W24438', 'W20352')
+ORDER BY
+	client_name</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="master_client_code">
+          <DataField>master_client_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="client_name">
+          <DataField>client_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -9883,6 +9916,15 @@ WHERE  name ='Co-op_Costs_WIP.png'</CommandText>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>CoopCostHandlerTime</DataSetName>
+                <Filters>
+                  <Filter>
+                    <FilterExpression>=Fields!master_client_code.Value</FilterExpression>
+                    <Operator>In</Operator>
+                    <FilterValues>
+                      <FilterValue>=Parameters!Client.Value</FilterValue>
+                    </FilterValues>
+                  </Filter>
+                </Filters>
                 <Top>0.0441cm</Top>
                 <Height>1.01041in</Height>
                 <Width>41.43042in</Width>
@@ -10496,16 +10538,39 @@ WHERE  name ='Co-op_Costs_WIP.png'</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Client">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_client</DataSetName>
+          <ValueField>master_client_code</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Client</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_client</DataSetName>
+          <ValueField>master_client_code</ValueField>
+          <LabelField>client_name</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Client</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
