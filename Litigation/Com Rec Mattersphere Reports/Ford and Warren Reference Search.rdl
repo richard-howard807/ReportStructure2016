@@ -2460,25 +2460,29 @@ WHERE  name ='1st Central.png'</CommandText>
             <Value>=Parameters!SearchString.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT  RTRIM(CAST(maclin AS NVARCHAR(20))) + '-' + RTRIM(CAST(mamatn AS NVARCHAR(20))) AS SourceSystemID 
-,madesc AS MatterDescription
-,FE.fename AS MatterOwner
-,madtop AS DateOpened
-FROM [SVR-LIV-SQL-04\LEGACYREADONLY].[fwact].[dbo].[MAFILE] 
-LEFT OUTER JOIN [SVR-LIV-SQL-04\LEGACYREADONLY].[fwact].[dbo].[FEFILE] AS FE
- ON MAEACT=FE.feidnm
-
-
-WHERE UPPER(madesc) LIKE  '%' + @SearchString +'%'
-
-UNION
+        <CommandText>IF OBJECT_ID(N'tempdb..#AllData') IS NOT NULL BEGIN DROP TABLE #AllData END
 
 SELECT  RTRIM(CAST(arclin AS NVARCHAR(20))) + '-' + RTRIM(CAST(armatn AS NVARCHAR(20))) AS SourceSystemID 
 ,arfile.armnam AS MatterDescription
 ,arfile.arsrep AS MatterOwner
 ,ardtop AS DateOpened
-FROM [SVR-LIV-SQL-04\LEGACYREADONLY].fwact.dbo.arfile AS arfile
-WHERE UPPER(armnam) LIKE  '%' + @SearchString +'%'</CommandText>
+INTO #AllData
+FROM [SVR-LIV-SQL-04\LEGACYREADONLY].fwact.dbo.arfile AS arfile WITH(NOLOCK)
+
+SELECT  RTRIM(CAST(maclin AS NVARCHAR(20))) + '-' + RTRIM(CAST(mamatn AS NVARCHAR(20))) AS SourceSystemID 
+,madesc AS MatterDescription
+,FE.fename AS MatterOwner
+,madtop AS DateOpened
+FROM [SVR-LIV-SQL-04\LEGACYREADONLY].fwact.dbo.MAFILE WITH(NOLOCK)
+LEFT OUTER JOIN [SVR-LIV-SQL-04\LEGACYREADONLY].fwact.dbo.FEFILE AS FE WITH(NOLOCK)
+ ON MAEACT=FE.feidnm
+WHERE UPPER(madesc) LIKE  '%' + @SearchString +'%'
+UNION
+SELECT SourceSystemID,
+       MatterDescription,
+       MatterOwner,
+       DateOpened FROM #AllData
+WHERE UPPER(MatterDescription) LIKE  '%' + @SearchString +'%' </CommandText>
       </Query>
       <Fields>
         <Field Name="SourceSystemID">
@@ -3107,7 +3111,7 @@ WHERE UPPER(armnam) LIKE  '%' + @SearchString +'%'</CommandText>
             <Top>0.05556in</Top>
             <Left>0.00084in</Left>
             <Height>0.5in</Height>
-            <Width>8.48959in</Width>
+            <Width>8.48958in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
