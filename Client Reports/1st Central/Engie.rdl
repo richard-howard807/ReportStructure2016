@@ -2525,6 +2525,8 @@ dim_matter_header_current.matter_partner_full_name +'/'+ dim_fed_hierarchy_histo
 NULL AS [Lender Fees Applicable], 
 CounselFees.[Counsel inc VAT],
 CounselFees.[Counsel ex VAT], 
+CounselFeesqtr.[Counsel ex VAT] counselqtr, 
+--CounselFeesqtr.[Counsel ex VAT] counselqtr, 
 fact_finance_summary.[fixed_fee_amount] [Agreed Cap or Fixed Fee for this matter], 
 fact_finance_summary.defence_costs_billed [total fees invoiced on this matter-all years (ex VAT)], 
 fact_finance_summary.disbursements_billed [total disbursements invoiced on this matter -all years (ex VAT)], 
@@ -2588,7 +2590,7 @@ LEFT JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_ke
 	FROM red_dw.dbo.fact_bill_detail
 	INNER JOIN red_dw.dbo.dim_bill_cost_type
 	 ON dim_bill_cost_type.dim_bill_cost_type_key = fact_bill_detail.dim_bill_cost_type_key
-	WHERE fact_bill_detail.dim_bill_date_key BETWEEN '20210101' AND '20210430'
+	WHERE fact_bill_detail.dim_bill_date_key BETWEEN '20210101' AND '20210330'
 	AND 
 	
 	charge_type='disbursements'
@@ -2600,7 +2602,7 @@ LEFT JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_ke
 
 
 WHERE 
- dim_bill_date.bill_date BETWEEN '2021-01-01' AND '2021-04-30'
+ dim_bill_date.bill_date BETWEEN '2021-01-01' AND '2021-03-30'
  AND fact_bill.client_code IN ('WB171470', 'WB172015', 'WB172562' )
 
  GROUP BY	CounselFees.[Counsel ex VAT], CounselFees.[Counsel inc VAT], fact_bill.client_code, fact_bill.matter_number
@@ -2625,7 +2627,7 @@ LEFT JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_ke
 	FROM red_dw.dbo.fact_bill_detail
 	INNER JOIN red_dw.dbo.dim_bill_cost_type
 	 ON dim_bill_cost_type.dim_bill_cost_type_key = fact_bill_detail.dim_bill_cost_type_key
-	WHERE fact_bill_detail.dim_bill_date_key BETWEEN '20210101' AND '20210430'
+	WHERE fact_bill_detail.dim_bill_date_key BETWEEN '20210101' AND '20210330'
 	AND 
 	
 	charge_type='disbursements'
@@ -2748,21 +2750,50 @@ LEFT OUTER JOIN (
 	WHERE fact_bill_detail.dim_bill_date_key BETWEEN '20210101' AND '20211231'
 	AND 
 	
-	--charge_type='disbursements'
-	--AND 
+	charge_type='disbursements'
+	AND 
 	
 	UPPER(cost_type_description) LIKE '%COUNSEL%'
 	GROUP BY client_code_bill_item
-	,matter_number_bill_item ) AS CounselFees
+	,matter_number_bill_item ) AS CounselFees 
+	
 	 ON dim_matter_header_current.client_code=CounselFees.client_code
 	AND dim_matter_header_current.matter_number=CounselFees.matter_number
 
+
+
+		LEFT OUTER JOIN (SELECT client_code_bill_item AS [client_code]
+	,matter_number_bill_item AS [matter_number]
+	,SUM(bill_total) AS  [Counsel inc VAT]
+	,SUM(bill_total_excl_vat)AS  [Counsel ex VAT] 
+	FROM red_dw.dbo.fact_bill_detail
+	INNER JOIN red_dw.dbo.dim_bill_cost_type
+	 ON dim_bill_cost_type.dim_bill_cost_type_key = fact_bill_detail.dim_bill_cost_type_key
+	WHERE fact_bill_detail.dim_bill_date_key BETWEEN '20210101' AND '20210330'
+	AND 
+	
+	charge_type='disbursements'
+	AND 
+	
+	UPPER(cost_type_description) LIKE '%COUNSEL%'
+	GROUP BY client_code_bill_item
+	,matter_number_bill_item ) AS CounselFeesqtr
+
+	 ON dim_matter_header_current.client_code=CounselFeesqtr.client_code
+	AND dim_matter_header_current.matter_number=CounselFeesqtr.matter_number
+
+
+
+
+
+	
 
 
 
 WHERE dim_matter_header_current.client_code IN ('WB171470', 'WB172015', 'WB172562' )
 AND dim_matter_header_current.reporting_exclusions = 0 
 AND red_dw.dbo.dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
+
 
 
 
@@ -2793,12 +2824,13 @@ AND red_dw.dbo.dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
 				disbursements2020.Disbursements, FEEEEEEESNOW, 
 				fact_finance_summary.time_billed,
 				alldisb.Disbursements,  mainquarter.FEEEEEEESQTR,
+				CounselFeesqtr.[Counsel ex VAT],
 	
 				fact_finance_summary.fixed_fee_amount, 
 				quarterprevious.Fees, fees2020.Fees, fact_finance_summary.total_amount_billed,
 				fact_finance_summary.total_billed_disbursements_vat, 
 				overall.Fees, overall.Disbursements, dim_matter_header_current.ms_fileid
-
+				--CounselFeesqtr.[Counsel ex VAT]
 
 
 
@@ -2900,6 +2932,10 @@ AND red_dw.dbo.dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
         </Field>
         <Field Name="Agreed_Cap_or_Fixed_Fee_for_this_matter">
           <DataField>Agreed Cap or Fixed Fee for this matter</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="counselqtr">
+          <DataField>counselqtr</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="total_fees_invoiced_on_this_matter_all_years__ex_VAT_">
@@ -5543,7 +5579,6 @@ WHERE dim_matter_header_current.client_code IN ('WB171470', 'WB172015', 'WB17256
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
