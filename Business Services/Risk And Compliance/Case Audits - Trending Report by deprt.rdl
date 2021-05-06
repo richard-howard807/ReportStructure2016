@@ -2627,30 +2627,28 @@ ORDER BY Audits.AuditID, QuestGroup.DisplayOrder</CommandText>
             <Value>=Parameters!Department.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT distinct     Teams.TeamName AS [Team Name]
-FROM            Audits AS Audits INNER JOIN
-                         Teams AS Teams ON Audits.TeamID = Teams.TeamID INNER JOIN
-                         Employees AS Auditor ON CAST(Audits.Auditor AS NVARCHAR(40)) = Auditor.EmployeeId INNER JOIN
-                         Employees AS Auditee ON CAST(Audits.Auditee1 AS NVARCHAR(40)) = Auditee.EmployeeId LEFT OUTER JOIN
-                         Employees AS AcknEmp ON CAST(Audits.AcknowledgingFE AS NVARCHAR(40)) = AcknEmp.EmployeeId
-WHERE    Auditee.Department IN (@Department) AND 
-(    (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
-                         --AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End)
-						) AND 
-						( CASE WHEN Auditee.Department = 'Corp-Comm' AND Teams.TeamName = 'Real Estate Liverpool 1' THEN 0 ELSE 1 END = 1)
-						AND  ( CASE WHEN Auditee.Department = 'Real Estate' AND Teams.TeamName in ('Disease Liverpool 3','Large Loss Manchester and Leeds') THEN 0 ELSE 1 END = 1)
--- ld added 2018/06/12
-	AND  ( CASE WHEN Auditee.Department = 'Casualty' AND Teams.TeamName in ('Real Estate Liverpool 2','Disease Leicester','Disease Liverpool 2','EPI Birmingham','Motor Liverpool','  Motor Liverpool &amp; Birmingham') THEN 0 ELSE 1 END = 1)
-	AND  ( CASE WHEN Auditee.Department = 'Healthcare' AND Teams.TeamName in ('Casualty Birmingham 1','Disease Birmingham 1','Disease Liverpool 3') THEN 0 ELSE 1 END = 1)
-	
+        <CommandText>SELECT DISTINCT  REPLACE(hierarchylevel4hist,',','') AS  hierarchylevel4hist
+FROM red_dw.dbo.dim_employee
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON dim_fed_hierarchy_history.dim_employee_key = dim_employee.dim_employee_key
+ INNER JOIN red_dw.dbo.fact_budget_activity
+ ON fact_budget_activity.fed_code = dim_fed_hierarchy_history.fed_code
+ AND financial_budget_year=(SELECT DISTINCT fin_year 
+											FROM red_dw.dbo.dim_date
+											WHERE current_fin_year='Current')
+WHERE leftdate IS NULL
+AND activeud=1
+AND dss_current_flag='Y'
+AND dim_employee.dim_employee_key&lt;&gt;0
+AND latest_hierarchy_flag='Y'
+AND hierarchylevel2hist  NOT IN ('Solving Disputes','Insurance') 
+--AND hierarchylevel2hist IN ('Legal Ops - Claims','Legal Ops - LTA')
 
-GROUP BY  Teams.TeamName
-order by Teams.TeamName
-</CommandText>
+AND hierarchylevel3hist IN (@Department)</CommandText>
       </Query>
       <Fields>
-        <Field Name="Team_Name">
-          <DataField>Team Name</DataField>
+        <Field Name="hierarchylevel4hist">
+          <DataField>hierarchylevel4hist</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -5859,8 +5857,8 @@ iif(Fields!Answer.Value = 10 , "#00b050",
       <ValidValues>
         <DataSetReference>
           <DataSetName>Team_param</DataSetName>
-          <ValueField>Team_Name</ValueField>
-          <LabelField>Team_Name</LabelField>
+          <ValueField>hierarchylevel4hist</ValueField>
+          <LabelField>hierarchylevel4hist</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
