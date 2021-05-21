@@ -17,6 +17,11 @@
       <rd:SecurityType>None</rd:SecurityType>
       <rd:DataSourceID>c2edc717-7182-435a-ae2f-901ac22dd77c</rd:DataSourceID>
     </DataSource>
+    <DataSource Name="SSAS_SVR_LIV_DWH_03_BILLS">
+      <DataSourceReference>SSAS-SVR-LIV-DWH-03-BILLS</DataSourceReference>
+      <rd:SecurityType>None</rd:SecurityType>
+      <rd:DataSourceID>d9498352-b6fb-475c-a06d-a144db4c38b2</rd:DataSourceID>
+    </DataSource>
   </DataSources>
   <DataSets>
     <DataSet Name="DefaultProperties">
@@ -2624,6 +2629,11 @@ dim_matter_header_current[matter_number]</Statement>
     <DataSet Name="retainer_data">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_TT</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE (
 	CALCULATETABLE(
 			SUMMARIZE(
@@ -2656,8 +2666,8 @@ dim_matter_header_current[matter_number]</Statement>
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
 			PATHCONTAINS("1162215", Matter[MatterID]),
-			dimDateBillDate[BillDateKey] &gt;= 20210401,
-			dimDateBillDate[BillDateKey] &lt;= 20220331,
+			dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			dimDateMatterOpened[DateMatterOpenedKey] &gt;= 20160401
 		)
 )</CommandText>
@@ -2842,8 +2852,8 @@ dim_matter_header_current[matter_number]</Statement>
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
 			PATHCONTAINS("1162215", Matter[MatterID]),
-			dimDateBillDate[BillDateKey] &amp;gt;= 20210401,
-			dimDateBillDate[BillDateKey] &amp;lt;= 20220331,
+			dimDateBillDate[BillDateKey] &amp;gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &amp;lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			dimDateMatterOpened[DateMatterOpenedKey] &amp;gt;= 20160401
 		)
 )&lt;/QueryText&gt;
@@ -2887,12 +2897,25 @@ dim_matter_header_current[matter_number]</Statement>
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
 			PATHCONTAINS("1162215", Matter[MatterID]),
-			dimDateBillDate[BillDateKey] &gt;= 20210401,
-			dimDateBillDate[BillDateKey] &lt;= 20220331,
+			dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			dimDateMatterOpened[DateMatterOpenedKey] &gt;= 20160401
 		)
 )</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>FinYear</Name>
+                  <DefaultValues>
+                    <DefaultValue>20210401</DefaultValue>
+                  </DefaultValues>
+                  <Caption>FinYear</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -2984,6 +3007,114 @@ dim_matter_header_current[matter_number]</Statement>
         </Field>
         <Field Name="ID_Quarter_">
           <DataField>[Quarter]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_fin_year">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_BILLS</DataSourceName>
+        <CommandText>EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			dimDateBillDate,
+			dimDateBillDate[BillDateCalendarYear],
+			"fin_year_start", CALCULATE(MIN(dimDateBillDate[BillDateKey]), FILTER(dimDateBillDate, dimDateBillDate[BillDateCalendarMonthNo] = 4)),
+			"fin_year", dimDateBillDate[BillDateCalendarYear] &amp; "/" &amp; dimDateBillDate[BillDateCalendarYear]+1
+		),
+		dimDateBillDate[BillDateKey] &gt;= 20200101,
+		dimDateBillDate[BillDateCalendarYear] &lt;= YEAR(TODAY())
+	)
+)
+ORDER BY
+	dimDateBillDate[BillDateCalendarYear]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dimDateBillDate[BillDateCalendarYear]</ColumnName>
+                    </ID>
+                    <ItemCaption>dimDateBillDate[BillDateCalendarYear]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[fin_year_start]</ColumnName>
+                    </ID>
+                    <ItemCaption>[fin_year_start]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[fin_year]</ColumnName>
+                    </ID>
+                    <ItemCaption>[fin_year]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			dimDateBillDate,
+			dimDateBillDate[BillDateCalendarYear],
+			"fin_year_start", CALCULATE(MIN(dimDateBillDate[BillDateKey]), FILTER(dimDateBillDate, dimDateBillDate[BillDateCalendarMonthNo] = 4)),
+			"fin_year", dimDateBillDate[BillDateCalendarYear] &amp;amp; "/" &amp;amp; dimDateBillDate[BillDateCalendarYear]+1
+		),
+		dimDateBillDate[BillDateKey] &amp;gt;= 20200101,
+		dimDateBillDate[BillDateCalendarYear] &amp;lt;= YEAR(TODAY())
+	)
+)
+ORDER BY
+	dimDateBillDate[BillDateCalendarYear]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			dimDateBillDate,
+			dimDateBillDate[BillDateCalendarYear],
+			"fin_year_start", CALCULATE(MIN(dimDateBillDate[BillDateKey]), FILTER(dimDateBillDate, dimDateBillDate[BillDateCalendarMonthNo] = 4)),
+			"fin_year", dimDateBillDate[BillDateCalendarYear] &amp; "/" &amp; dimDateBillDate[BillDateCalendarYear]+1
+		),
+		dimDateBillDate[BillDateKey] &gt;= 20200101,
+		dimDateBillDate[BillDateCalendarYear] &lt;= YEAR(TODAY())
+	)
+)
+ORDER BY
+	dimDateBillDate[BillDateCalendarYear]</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dimDateBillDate_BillDateCalendarYear_">
+          <DataField>dimDateBillDate[BillDateCalendarYear]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_fin_year_start_">
+          <DataField>[fin_year_start]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_fin_year_">
+          <DataField>[fin_year]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4319,7 +4450,7 @@ dim_matter_header_current[matter_number]</Statement>
                 <DataSetName>retainer_data</DataSetName>
                 <Top>0.97896cm</Top>
                 <Height>0.82291in</Height>
-                <Width>13.87639in</Width>
+                <Width>13.87638in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -5986,7 +6117,6 @@ dim_matter_header_current[matter_number]</Statement>
                 </Paragraphs>
                 <rd:DefaultName>Textbox53</rd:DefaultName>
                 <Top>0.05556in</Top>
-                <Left>0cm</Left>
                 <Height>0.25in</Height>
                 <Width>3.8in</Width>
                 <Style>
@@ -7070,7 +7200,6 @@ dim_matter_header_current[matter_number]</Statement>
                 </TablixRowHierarchy>
                 <DataSetName>DefaultProperties</DataSetName>
                 <Top>0.36111in</Top>
-                <Left>0cm</Left>
                 <Height>2.59722in</Height>
                 <Width>8.11944in</Width>
                 <ZIndex>1</ZIndex>
@@ -7437,7 +7566,6 @@ dim_matter_header_current[matter_number]</Statement>
                 </TablixRowHierarchy>
                 <DataSetName>DefaultProperties</DataSetName>
                 <Top>3.23958in</Top>
-                <Left>0cm</Left>
                 <Height>0.84722in</Height>
                 <Width>8.11944in</Width>
                 <ZIndex>2</ZIndex>
@@ -7450,7 +7578,6 @@ dim_matter_header_current[matter_number]</Statement>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
             <Top>7.50694in</Top>
-            <Left>0in</Left>
             <Height>4.15278in</Height>
             <Width>13.87638in</Width>
             <ZIndex>2</ZIndex>
@@ -7782,16 +7909,39 @@ dim_matter_header_current[matter_number]</Statement>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="FinYear">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>=IIf(Month(Today())&gt;=4
+, Year(Today()) &amp; "04" &amp; "01"
+, Year(Today())-1 &amp; "04" &amp; "01")</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Fin Year</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_fin_year</DataSetName>
+          <ValueField>ID_fin_year_start_</ValueField>
+          <LabelField>ID_fin_year_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>FinYear</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
