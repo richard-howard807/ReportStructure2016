@@ -2465,6 +2465,11 @@ WHERE  name ='Sovini_Quarterly_Report.png'</CommandText>
     <DataSet Name="sovini_main_dax">
       <Query>
         <DataSourceName>SSAS_03_case_details</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE(
 	CALCULATETABLE(
 			SUMMARIZE( 
@@ -2506,24 +2511,33 @@ WHERE  name ='Sovini_Quarterly_Report.png'</CommandText>
 								, IF(PATHCONTAINS("Social Housing - Property|Right to buy|Residential conveyancing (houses/flats)|Remortgage|Property redevelopment|Property Due Diligence|Property DO NOT USE|Property Dispute Residential other|Project Separation|Prof Risk - Construction - Contentious|Plot Sales|Planning|Licensing|Leases-granting,taking,assigning,renewin|Landlord &amp; Tenant - Residential|Environmental|Easement|Due Dilligence|Construction DO NOT USE|Construction|Comm conveyancing (business premises)", dim_matter_worktype[work_type_name]) = TRUE(), "Lot 4 - Property, Land &amp; Development"
 								, "")))),
 						"Open/Closed", IF(ISBLANK(dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]) = TRUE(), "Open", "Closed"),
-						"NewInstruction", IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20210401, "New", "Old"),
+						"NewInstruction", IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= VALUE(@FinYear), "New", "Old"),
 						"FinYear", IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20160401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20170331, "2016/17", 
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20170401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20180331, "2017/18",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20180401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20190331, "2018/19",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20190401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20200331, "2019/20",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20200401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20210331, "2020/21",
-									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20210401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20220331, "2021/22", ""))))))
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20210401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20220331, "2021/22",
+									// Added for future fin years
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20220401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20230331, "2022/23",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20230401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20240331, "2023/24",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20240401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20250331, "2024/25",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20250401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20260331, "2025/26",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20260401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20270331, "2026/27",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20270401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20280331, "2027/28",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20280401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20290331, "2028/29",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20290401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20300331, "2029/30",""))))))))))))))
 						),
 					dim_matter_header_current[reporting_exclusions]&lt;&gt;1,
 					dim_client[client_code] &lt;&gt; "00030645",
 					dim_client[client_group_name] = "Sovini Group",
-					dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20160401
+					dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20160401,
+					dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2))
 					)
 			)
 
 ORDER BY
-dim_client[client_code],
-dim_matter_header_current[matter_number]</CommandText>
+	dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -2792,24 +2806,33 @@ dim_matter_header_current[matter_number]</CommandText>
 								, IF(PATHCONTAINS("Social Housing - Property|Right to buy|Residential conveyancing (houses/flats)|Remortgage|Property redevelopment|Property Due Diligence|Property DO NOT USE|Property Dispute Residential other|Project Separation|Prof Risk - Construction - Contentious|Plot Sales|Planning|Licensing|Leases-granting,taking,assigning,renewin|Landlord &amp;amp; Tenant - Residential|Environmental|Easement|Due Dilligence|Construction DO NOT USE|Construction|Comm conveyancing (business premises)", dim_matter_worktype[work_type_name]) = TRUE(), "Lot 4 - Property, Land &amp;amp; Development"
 								, "")))),
 						"Open/Closed", IF(ISBLANK(dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]) = TRUE(), "Open", "Closed"),
-						"NewInstruction", IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20210401, "New", "Old"),
+						"NewInstruction", IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= VALUE(@FinYear), "New", "Old"),
 						"FinYear", IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20160401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20170331, "2016/17", 
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20170401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20180331, "2017/18",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20180401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20190331, "2018/19",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20190401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20200331, "2019/20",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20200401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20210331, "2020/21",
-									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20210401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20220331, "2021/22", ""))))))
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20210401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20220331, "2021/22",
+									// Added for future fin years
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20220401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20230331, "2022/23",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20230401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20240331, "2023/24",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20240401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20250331, "2024/25",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20250401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20260331, "2025/26",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20260401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20270331, "2026/27",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20270401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20280331, "2027/28",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20280401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20290331, "2028/29",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20290401 &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[dim_date_key] &amp;lt;= 20300331, "2029/30",""))))))))))))))
 						),
 					dim_matter_header_current[reporting_exclusions]&amp;lt;&amp;gt;1,
 					dim_client[client_code] &amp;lt;&amp;gt; "00030645",
 					dim_client[client_group_name] = "Sovini Group",
-					dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20160401
+					dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= 20160401,
+					dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date] &amp;lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2))
 					)
 			)
 
 ORDER BY
-dim_client[client_code],
-dim_matter_header_current[matter_number]&lt;/QueryText&gt;
+	dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]&lt;/QueryText&gt;
   &lt;DatabaseId /&gt;
   &lt;MiningStructureId /&gt;
   &lt;MiningModelId /&gt;
@@ -2859,25 +2882,47 @@ dim_matter_header_current[matter_number]&lt;/QueryText&gt;
 								, IF(PATHCONTAINS("Social Housing - Property|Right to buy|Residential conveyancing (houses/flats)|Remortgage|Property redevelopment|Property Due Diligence|Property DO NOT USE|Property Dispute Residential other|Project Separation|Prof Risk - Construction - Contentious|Plot Sales|Planning|Licensing|Leases-granting,taking,assigning,renewin|Landlord &amp; Tenant - Residential|Environmental|Easement|Due Dilligence|Construction DO NOT USE|Construction|Comm conveyancing (business premises)", dim_matter_worktype[work_type_name]) = TRUE(), "Lot 4 - Property, Land &amp; Development"
 								, "")))),
 						"Open/Closed", IF(ISBLANK(dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]) = TRUE(), "Open", "Closed"),
-						"NewInstruction", IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20210401, "New", "Old"),
+						"NewInstruction", IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= VALUE(@FinYear), "New", "Old"),
 						"FinYear", IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20160401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20170331, "2016/17", 
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20170401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20180331, "2017/18",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20180401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20190331, "2018/19",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20190401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20200331, "2019/20",
 									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20200401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20210331, "2020/21",
-									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20210401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20220331, "2021/22", ""))))))
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20210401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20220331, "2021/22",
+									// Added for future fin years
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20220401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20230331, "2022/23",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20230401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20240331, "2023/24",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20240401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20250331, "2024/25",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20250401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20260331, "2025/26",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20260401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20270331, "2026/27",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20270401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20280331, "2027/28",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20280401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20290331, "2028/29",
+									IF(dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20290401 &amp;&amp; dim_date_matter_opened_practice_management[dim_date_key] &lt;= 20300331, "2029/30",""))))))))))))))
 						),
 					dim_matter_header_current[reporting_exclusions]&lt;&gt;1,
 					dim_client[client_code] &lt;&gt; "00030645",
 					dim_client[client_group_name] = "Sovini Group",
-					dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20160401
+					dim_date_matter_opened_practice_management[dim_date_key] &gt;= 20160401,
+					dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2))
 					)
 			)
 
 ORDER BY
-dim_client[client_code],
-dim_matter_header_current[matter_number]</Statement>
-              <ParameterDefinitions />
+	dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]</Statement>
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>FinYear</Name>
+                  <DefaultValues>
+                    <DefaultValue>20210401</DefaultValue>
+                  </DefaultValues>
+                  <Caption>FinYear</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -3185,6 +3230,11 @@ HAVING SUM(OrgBOA)&lt;&gt;0</CommandText>
     <DataSet Name="bill_data">
       <Query>
         <DataSourceName>SSAS_03_bills</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE(
 	CALCULATETABLE(
 		SUMMARIZE(
@@ -3223,18 +3273,29 @@ HAVING SUM(OrgBOA)&lt;&gt;0</CommandText>
 						, IF(PATHCONTAINS("Property Dispute Commercial other|Landlord &amp; Tenant - Disrepair|Landlord &amp; Tenant - Commercial|Injunctions|Injunction|Debt Recovery|Consumer debt", dimWorkType[WorkTypeDesc]) = TRUE(), "Lot 3 - Housing Management"
 						, IF(PATHCONTAINS("Social Housing - Property|Right to buy|Residential conveyancing (houses/flats)|Remortgage|Property redevelopment|Property Due Diligence|Property DO NOT USE|Property Dispute Residential other|Project Separation|Prof Risk - Construction - Contentious|Plot Sales|Planning|Licensing|Leases-granting,taking,assigning,renewin|Landlord &amp; Tenant - Residential|Environmental|Easement|Due Dilligence|Construction DO NOT USE|Construction|Comm conveyancing (business premises)", dimWorkType[WorkTypeDesc]) = TRUE(), "Lot 4 - Property, Land &amp; Development"
 						, "")))),
-				"PostApril21", IF(dimDateBillDate[BillDateKey] &gt;= 20210401, "New", "Old"),
+				"PostApril21", IF(dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear), "New", "Old"),
 				"FinYear", IF(dimDateBillDate[BillDateKey] &gt;= 20160401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20170331, "2016/17", 
 							IF(dimDateBillDate[BillDateKey] &gt;= 20170401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20180331, "2017/18",
 							IF(dimDateBillDate[BillDateKey] &gt;= 20180401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20190331, "2018/19",
 							IF(dimDateBillDate[BillDateKey] &gt;= 20190401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20200331, "2019/20",
 							IF(dimDateBillDate[BillDateKey] &gt;= 20200401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20210331, "2020/21",
-							IF(dimDateBillDate[BillDateKey] &gt;= 20210401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20220331, "2021/22", ""))))))
+							IF(dimDateBillDate[BillDateKey] &gt;= 20210401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20220331, "2021/22", 
+							// Added for future fin years
+							IF(dimDateBillDate[BillDateKey] &gt;= 20220401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20230331, "2022/23",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20230401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20240331, "2023/24",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20240401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20250331, "2024/25",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20250401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20260331, "2025/26",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20260401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20270331, "2026/27",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20270401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20280331, "2027/28",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20280401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20290331, "2028/29",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20290401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20300331, "2029/30",
+							""))))))))))))))
 			),
 			Bills[BillNumber] &lt;&gt; "PURGE",
 			dimClient[ClientGroupName] = "Sovini Group",
 			dimClient[ClientCode] &lt;&gt; "00030645",
 			dimDateBillDate[BillDateKey] &gt;= 20160401,
+			dimDateBillDate[BillDateDate] &lt;  DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			Bills[AmountPaid] &gt; -1000000
 							)
 			)
@@ -3487,18 +3548,29 @@ dimDateBillDate[BillDateDate]</CommandText>
 						, IF(PATHCONTAINS("Property Dispute Commercial other|Landlord &amp;amp; Tenant - Disrepair|Landlord &amp;amp; Tenant - Commercial|Injunctions|Injunction|Debt Recovery|Consumer debt", dimWorkType[WorkTypeDesc]) = TRUE(), "Lot 3 - Housing Management"
 						, IF(PATHCONTAINS("Social Housing - Property|Right to buy|Residential conveyancing (houses/flats)|Remortgage|Property redevelopment|Property Due Diligence|Property DO NOT USE|Property Dispute Residential other|Project Separation|Prof Risk - Construction - Contentious|Plot Sales|Planning|Licensing|Leases-granting,taking,assigning,renewin|Landlord &amp;amp; Tenant - Residential|Environmental|Easement|Due Dilligence|Construction DO NOT USE|Construction|Comm conveyancing (business premises)", dimWorkType[WorkTypeDesc]) = TRUE(), "Lot 4 - Property, Land &amp;amp; Development"
 						, "")))),
-				"PostApril21", IF(dimDateBillDate[BillDateKey] &amp;gt;= 20210401, "New", "Old"),
+				"PostApril21", IF(dimDateBillDate[BillDateKey] &amp;gt;= VALUE(@FinYear), "New", "Old"),
 				"FinYear", IF(dimDateBillDate[BillDateKey] &amp;gt;= 20160401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20170331, "2016/17", 
 							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20170401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20180331, "2017/18",
 							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20180401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20190331, "2018/19",
 							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20190401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20200331, "2019/20",
 							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20200401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20210331, "2020/21",
-							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20210401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20220331, "2021/22", ""))))))
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20210401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20220331, "2021/22", 
+							// Added for future fin years
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20220401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20230331, "2022/23",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20230401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20240331, "2023/24",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20240401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20250331, "2024/25",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20250401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20260331, "2025/26",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20260401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20270331, "2026/27",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20270401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20280331, "2027/28",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20280401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20290331, "2028/29",
+							IF(dimDateBillDate[BillDateKey] &amp;gt;= 20290401 &amp;amp;&amp;amp; dimDateBillDate[BillDateKey] &amp;lt;= 20300331, "2029/30",
+							""))))))))))))))
 			),
 			Bills[BillNumber] &amp;lt;&amp;gt; "PURGE",
 			dimClient[ClientGroupName] = "Sovini Group",
 			dimClient[ClientCode] &amp;lt;&amp;gt; "00030645",
 			dimDateBillDate[BillDateKey] &amp;gt;= 20160401,
+			dimDateBillDate[BillDateDate] &amp;lt;  DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			Bills[AmountPaid] &amp;gt; -1000000
 							)
 			)
@@ -3550,24 +3622,48 @@ dimDateBillDate[BillDateDate]&lt;/QueryText&gt;
 						, IF(PATHCONTAINS("Property Dispute Commercial other|Landlord &amp; Tenant - Disrepair|Landlord &amp; Tenant - Commercial|Injunctions|Injunction|Debt Recovery|Consumer debt", dimWorkType[WorkTypeDesc]) = TRUE(), "Lot 3 - Housing Management"
 						, IF(PATHCONTAINS("Social Housing - Property|Right to buy|Residential conveyancing (houses/flats)|Remortgage|Property redevelopment|Property Due Diligence|Property DO NOT USE|Property Dispute Residential other|Project Separation|Prof Risk - Construction - Contentious|Plot Sales|Planning|Licensing|Leases-granting,taking,assigning,renewin|Landlord &amp; Tenant - Residential|Environmental|Easement|Due Dilligence|Construction DO NOT USE|Construction|Comm conveyancing (business premises)", dimWorkType[WorkTypeDesc]) = TRUE(), "Lot 4 - Property, Land &amp; Development"
 						, "")))),
-				"PostApril21", IF(dimDateBillDate[BillDateKey] &gt;= 20210401, "New", "Old"),
+				"PostApril21", IF(dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear), "New", "Old"),
 				"FinYear", IF(dimDateBillDate[BillDateKey] &gt;= 20160401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20170331, "2016/17", 
 							IF(dimDateBillDate[BillDateKey] &gt;= 20170401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20180331, "2017/18",
 							IF(dimDateBillDate[BillDateKey] &gt;= 20180401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20190331, "2018/19",
 							IF(dimDateBillDate[BillDateKey] &gt;= 20190401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20200331, "2019/20",
 							IF(dimDateBillDate[BillDateKey] &gt;= 20200401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20210331, "2020/21",
-							IF(dimDateBillDate[BillDateKey] &gt;= 20210401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20220331, "2021/22", ""))))))
+							IF(dimDateBillDate[BillDateKey] &gt;= 20210401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20220331, "2021/22", 
+							// Added for future fin years
+							IF(dimDateBillDate[BillDateKey] &gt;= 20220401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20230331, "2022/23",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20230401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20240331, "2023/24",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20240401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20250331, "2024/25",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20250401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20260331, "2025/26",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20260401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20270331, "2026/27",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20270401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20280331, "2027/28",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20280401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20290331, "2028/29",
+							IF(dimDateBillDate[BillDateKey] &gt;= 20290401 &amp;&amp; dimDateBillDate[BillDateKey] &lt;= 20300331, "2029/30",
+							""))))))))))))))
 			),
 			Bills[BillNumber] &lt;&gt; "PURGE",
 			dimClient[ClientGroupName] = "Sovini Group",
 			dimClient[ClientCode] &lt;&gt; "00030645",
 			dimDateBillDate[BillDateKey] &gt;= 20160401,
+			dimDateBillDate[BillDateDate] &lt;  DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			Bills[AmountPaid] &gt; -1000000
 							)
 			)
 order by 
 dimDateBillDate[BillDateDate]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>FinYear</Name>
+                  <DefaultValues>
+                    <DefaultValue>20210401</DefaultValue>
+                  </DefaultValues>
+                  <Caption>FinYear</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -3706,6 +3802,11 @@ dimDateBillDate[BillDateDate]</Statement>
     <DataSet Name="helpline_retainer_tt">
       <Query>
         <DataSourceName>SSAS_03_tt</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE(
 	CALCULATETABLE(
 		SUMMARIZE(
@@ -3721,7 +3822,8 @@ dimDateBillDate[BillDateDate]</Statement>
 		),
 		dimClient[ClientGroupName] = "Sovini Group",
 		PATHCONTAINS("1161184|1163732", Matter[MatterID]),
-		dimDateTransactionDate[TransactionDateKey] &gt;= 20210401
+		dimDateTransactionDate[TransactionDateKey] &gt;= VALUE(@FinYear),
+		dimDateTransactionDate[TransactionDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2))
 	)
 )</CommandText>
         <rd:DesignerState>
@@ -3804,7 +3906,8 @@ dimDateBillDate[BillDateDate]</Statement>
 		),
 		dimClient[ClientGroupName] = "Sovini Group",
 		PATHCONTAINS("1161184|1163732", Matter[MatterID]),
-		dimDateTransactionDate[TransactionDateKey] &amp;gt;= 20210401
+		dimDateTransactionDate[TransactionDateKey] &amp;gt;= VALUE(@FinYear),
+		dimDateTransactionDate[TransactionDateDate] &amp;lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2))
 	)
 )&lt;/QueryText&gt;
   &lt;DatabaseId /&gt;
@@ -3830,10 +3933,24 @@ dimDateBillDate[BillDateDate]</Statement>
 		),
 		dimClient[ClientGroupName] = "Sovini Group",
 		PATHCONTAINS("1161184|1163732", Matter[MatterID]),
-		dimDateTransactionDate[TransactionDateKey] &gt;= 20210401
+		dimDateTransactionDate[TransactionDateKey] &gt;= VALUE(@FinYear),
+		dimDateTransactionDate[TransactionDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2))
 	)
 )</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>FinYear</Name>
+                  <DefaultValues>
+                    <DefaultValue>20210401</DefaultValue>
+                  </DefaultValues>
+                  <Caption>FinYear</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -3876,6 +3993,11 @@ dimDateBillDate[BillDateDate]</Statement>
     <DataSet Name="corporate_retainer_tt">
       <Query>
         <DataSourceName>SSAS_03_tt</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE (
 	CALCULATETABLE(
 			SUMMARIZE(
@@ -3906,8 +4028,8 @@ dimDateBillDate[BillDateDate]</Statement>
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
 //			Bill[BillNumber] = "02012266",
-			dimDateBillDate[BillDateKey] &gt;= 20210401,
-			dimDateBillDate[BillDateKey] &lt;= 20220331,
+			dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			dimDateMatterOpened[DateMatterOpenedKey] &gt;= 20160401,
 			PATHCONTAINS("Training|Trading standards|Tax Advisory|Subject Access Request|Special Projects|Share Structures &amp; Company Reorganisatio|Share Schemes|Secured lending|Procurement|Private Equity|Partnerships &amp; JVs|Partnership|Non-contentious IP &amp; IT Contracts|Intellectual property|Insolvency Corporate|Health and Safety - Advisory/Consultancy|Governance &amp; Regulatory|General Advice|GDPR|Financial – General Advice|Financial|Direct Selling|Defamation|Data Protection  |Corporate transactions|Corporate DO NOT USE|Contract Supplier|Contract|Competition Law|Company|Commercial drafting (advice)|Commercial Contracts|CDR DO NOT USE|Banking|Ad Hoc Enquiries",dimWorkType[WorkTypeDesc]) = TRUE()
 		)
@@ -4079,8 +4201,8 @@ dimDateBillDate[BillDateDate]</Statement>
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
 //			Bill[BillNumber] = "02012266",
-			dimDateBillDate[BillDateKey] &amp;gt;= 20210401,
-			dimDateBillDate[BillDateKey] &amp;lt;= 20220331,
+			dimDateBillDate[BillDateKey] &amp;gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &amp;lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			dimDateMatterOpened[DateMatterOpenedKey] &amp;gt;= 20160401,
 			PATHCONTAINS("Training|Trading standards|Tax Advisory|Subject Access Request|Special Projects|Share Structures &amp;amp; Company Reorganisatio|Share Schemes|Secured lending|Procurement|Private Equity|Partnerships &amp;amp; JVs|Partnership|Non-contentious IP &amp;amp; IT Contracts|Intellectual property|Insolvency Corporate|Health and Safety - Advisory/Consultancy|Governance &amp;amp; Regulatory|General Advice|GDPR|Financial – General Advice|Financial|Direct Selling|Defamation|Data Protection  |Corporate transactions|Corporate DO NOT USE|Contract Supplier|Contract|Competition Law|Company|Commercial drafting (advice)|Commercial Contracts|CDR DO NOT USE|Banking|Ad Hoc Enquiries",dimWorkType[WorkTypeDesc]) = TRUE()
 		)
@@ -4123,13 +4245,26 @@ dimDateBillDate[BillDateDate]</Statement>
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
 //			Bill[BillNumber] = "02012266",
-			dimDateBillDate[BillDateKey] &gt;= 20210401,
-			dimDateBillDate[BillDateKey] &lt;= 20220331,
+			dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			dimDateMatterOpened[DateMatterOpenedKey] &gt;= 20160401,
 			PATHCONTAINS("Training|Trading standards|Tax Advisory|Subject Access Request|Special Projects|Share Structures &amp; Company Reorganisatio|Share Schemes|Secured lending|Procurement|Private Equity|Partnerships &amp; JVs|Partnership|Non-contentious IP &amp; IT Contracts|Intellectual property|Insolvency Corporate|Health and Safety - Advisory/Consultancy|Governance &amp; Regulatory|General Advice|GDPR|Financial – General Advice|Financial|Direct Selling|Defamation|Data Protection  |Corporate transactions|Corporate DO NOT USE|Contract Supplier|Contract|Competition Law|Company|Commercial drafting (advice)|Commercial Contracts|CDR DO NOT USE|Banking|Ad Hoc Enquiries",dimWorkType[WorkTypeDesc]) = TRUE()
 		)
 )</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>FinYear</Name>
+                  <DefaultValues>
+                    <DefaultValue>20210401</DefaultValue>
+                  </DefaultValues>
+                  <Caption>FinYear</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -4220,6 +4355,11 @@ dimDateBillDate[BillDateDate]</Statement>
     <DataSet Name="first_bill_date_for_fin_year">
       <Query>
         <DataSourceName>SSAS_03_tt</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="FinYear">
+            <Value>=Parameters!FinYear.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE (
 	CALCULATETABLE(
 			SUMMARIZE(
@@ -4227,13 +4367,13 @@ dimDateBillDate[BillDateDate]</Statement>
 				dimClient[ClientCode],
 				Matter[MatterNumber],
 				dimOriginalMatter[OriginalMatterID],
-				"First Bill in Fin Year", CALCULATE(MIN(dimDateBillDate[BillDateDate]), FILTER(dimDateBillDate, dimDateBillDate[BillDateKey] &gt;= 20210401))
+				"First Bill in Fin Year", CALCULATE(MIN(dimDateBillDate[BillDateDate]), FILTER(dimDateBillDate, dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear)))
 				
 			),
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
-			dimDateBillDate[BillDateKey] &gt;= 20210401,
-			dimDateBillDate[BillDateKey] &lt;= 20220331,
+			dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			//dimOriginalMatter[OriginalMatterID] = 1107389,
 			dimDateMatterOpened[DateMatterOpenedKey] &gt;= 20160401,
 			PATHCONTAINS("Training|Trading standards|Tax Advisory|Subject Access Request|Special Projects|Share Structures &amp; Company Reorganisatio|Share Schemes|Secured lending|Procurement|Private Equity|Partnerships &amp; JVs|Partnership|Non-contentious IP &amp; IT Contracts|Intellectual property|Insolvency Corporate|Health and Safety - Advisory/Consultancy|Governance &amp; Regulatory|General Advice|GDPR|Financial – General Advice|Financial|Direct Selling|Defamation|Data Protection  |Corporate transactions|Corporate DO NOT USE|Contract Supplier|Contract|Competition Law|Company|Commercial drafting (advice)|Commercial Contracts|CDR DO NOT USE|Banking|Ad Hoc Enquiries",dimWorkType[WorkTypeDesc]) = TRUE()
@@ -4287,13 +4427,13 @@ dimDateBillDate[BillDateDate]</Statement>
 				dimClient[ClientCode],
 				Matter[MatterNumber],
 				dimOriginalMatter[OriginalMatterID],
-				"First Bill in Fin Year", CALCULATE(MIN(dimDateBillDate[BillDateDate]), FILTER(dimDateBillDate, dimDateBillDate[BillDateKey] &amp;gt;= 20210401))
+				"First Bill in Fin Year", CALCULATE(MIN(dimDateBillDate[BillDateDate]), FILTER(dimDateBillDate, dimDateBillDate[BillDateKey] &amp;gt;= VALUE(@FinYear)))
 				
 			),
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
-			dimDateBillDate[BillDateKey] &amp;gt;= 20210401,
-			dimDateBillDate[BillDateKey] &amp;lt;= 20220331,
+			dimDateBillDate[BillDateKey] &amp;gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &amp;lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			//dimOriginalMatter[OriginalMatterID] = 1107389,
 			dimDateMatterOpened[DateMatterOpenedKey] &amp;gt;= 20160401,
 			PATHCONTAINS("Training|Trading standards|Tax Advisory|Subject Access Request|Special Projects|Share Structures &amp;amp; Company Reorganisatio|Share Schemes|Secured lending|Procurement|Private Equity|Partnerships &amp;amp; JVs|Partnership|Non-contentious IP &amp;amp; IT Contracts|Intellectual property|Insolvency Corporate|Health and Safety - Advisory/Consultancy|Governance &amp;amp; Regulatory|General Advice|GDPR|Financial – General Advice|Financial|Direct Selling|Defamation|Data Protection  |Corporate transactions|Corporate DO NOT USE|Contract Supplier|Contract|Competition Law|Company|Commercial drafting (advice)|Commercial Contracts|CDR DO NOT USE|Banking|Ad Hoc Enquiries",dimWorkType[WorkTypeDesc]) = TRUE()
@@ -4314,19 +4454,32 @@ dimDateBillDate[BillDateDate]</Statement>
 				dimClient[ClientCode],
 				Matter[MatterNumber],
 				dimOriginalMatter[OriginalMatterID],
-				"First Bill in Fin Year", CALCULATE(MIN(dimDateBillDate[BillDateDate]), FILTER(dimDateBillDate, dimDateBillDate[BillDateKey] &gt;= 20210401))
+				"First Bill in Fin Year", CALCULATE(MIN(dimDateBillDate[BillDateDate]), FILTER(dimDateBillDate, dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear)))
 				
 			),
 			dimClient[ClientGroupName] = "Sovini Group",
 			TimeTransactions[TransactionType] = "Billed",
-			dimDateBillDate[BillDateKey] &gt;= 20210401,
-			dimDateBillDate[BillDateKey] &lt;= 20220331,
+			dimDateBillDate[BillDateKey] &gt;= VALUE(@FinYear),
+			dimDateBillDate[BillDateDate] &lt; DATE(LEFT(@FinYear, 4)+1,RIGHT(LEFT(@FinYear,6),2),RIGHT(@FinYear,2)),
 			//dimOriginalMatter[OriginalMatterID] = 1107389,
 			dimDateMatterOpened[DateMatterOpenedKey] &gt;= 20160401,
 			PATHCONTAINS("Training|Trading standards|Tax Advisory|Subject Access Request|Special Projects|Share Structures &amp; Company Reorganisatio|Share Schemes|Secured lending|Procurement|Private Equity|Partnerships &amp; JVs|Partnership|Non-contentious IP &amp; IT Contracts|Intellectual property|Insolvency Corporate|Health and Safety - Advisory/Consultancy|Governance &amp; Regulatory|General Advice|GDPR|Financial – General Advice|Financial|Direct Selling|Defamation|Data Protection  |Corporate transactions|Corporate DO NOT USE|Contract Supplier|Contract|Competition Law|Company|Commercial drafting (advice)|Commercial Contracts|CDR DO NOT USE|Banking|Ad Hoc Enquiries",dimWorkType[WorkTypeDesc]) = TRUE()
 		)
 )</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>FinYear</Name>
+                  <DefaultValues>
+                    <DefaultValue>20210401</DefaultValue>
+                  </DefaultValues>
+                  <Caption>FinYear</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -4346,6 +4499,114 @@ dimDateBillDate[BillDateDate]</Statement>
         </Field>
         <Field Name="ID_First_Bill_in_Fin_Year_">
           <DataField>[First Bill in Fin Year]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_fin_year">
+      <Query>
+        <DataSourceName>SSAS_03_bills</DataSourceName>
+        <CommandText>EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			dimDateBillDate,
+			dimDateBillDate[BillDateCalendarYear],
+			"fin_year_start", CALCULATE(MIN(dimDateBillDate[BillDateKey]), FILTER(dimDateBillDate, dimDateBillDate[BillDateCalendarMonthNo] = 4)),
+			"fin_year", dimDateBillDate[BillDateCalendarYear] &amp; "/" &amp; dimDateBillDate[BillDateCalendarYear]+1
+		),
+		dimDateBillDate[BillDateKey] &gt;= 20200101,
+		dimDateBillDate[BillDateCalendarYear] &lt;= YEAR(TODAY())
+	)
+)
+ORDER BY
+	dimDateBillDate[BillDateCalendarYear]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dimDateBillDate[BillDateCalendarYear]</ColumnName>
+                    </ID>
+                    <ItemCaption>dimDateBillDate[BillDateCalendarYear]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[fin_year_start]</ColumnName>
+                    </ID>
+                    <ItemCaption>[fin_year_start]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[fin_year]</ColumnName>
+                    </ID>
+                    <ItemCaption>[fin_year]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			dimDateBillDate,
+			dimDateBillDate[BillDateCalendarYear],
+			"fin_year_start", CALCULATE(MIN(dimDateBillDate[BillDateKey]), FILTER(dimDateBillDate, dimDateBillDate[BillDateCalendarMonthNo] = 4)),
+			"fin_year", dimDateBillDate[BillDateCalendarYear] &amp;amp; "/" &amp;amp; dimDateBillDate[BillDateCalendarYear]+1
+		),
+		dimDateBillDate[BillDateKey] &amp;gt;= 20200101,
+		dimDateBillDate[BillDateCalendarYear] &amp;lt;= YEAR(TODAY())
+	)
+)
+ORDER BY
+	dimDateBillDate[BillDateCalendarYear]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			dimDateBillDate,
+			dimDateBillDate[BillDateCalendarYear],
+			"fin_year_start", CALCULATE(MIN(dimDateBillDate[BillDateKey]), FILTER(dimDateBillDate, dimDateBillDate[BillDateCalendarMonthNo] = 4)),
+			"fin_year", dimDateBillDate[BillDateCalendarYear] &amp; "/" &amp; dimDateBillDate[BillDateCalendarYear]+1
+		),
+		dimDateBillDate[BillDateKey] &gt;= 20200101,
+		dimDateBillDate[BillDateCalendarYear] &lt;= YEAR(TODAY())
+	)
+)
+ORDER BY
+	dimDateBillDate[BillDateCalendarYear]</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dimDateBillDate_BillDateCalendarYear_">
+          <DataField>dimDateBillDate[BillDateCalendarYear]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_fin_year_start_">
+          <DataField>[fin_year_start]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_fin_year_">
+          <DataField>[fin_year]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -31409,16 +31670,39 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="FinYear">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>=IIf(Month(Today())&gt;=4
+, Year(Today()) &amp; "04" &amp; "01"
+, Year(Today())-1 &amp; "04" &amp; "01")</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Fin Year</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_fin_year</DataSetName>
+          <ValueField>ID_fin_year_start_</ValueField>
+          <LabelField>ID_fin_year_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>FinYear</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
