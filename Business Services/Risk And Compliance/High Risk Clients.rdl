@@ -2450,7 +2450,19 @@ WHERE  name ='High Risk Clients.png'</CommandText>
     <DataSet Name="DataSet1">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT clNo,clName
+        <QueryParameters>
+          <QueryParameter Name="@DateFrom">
+            <Value>=Parameters!DateFrom.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@DateTo">
+            <Value>=Parameters!DateTo.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>
+--DECLARE @DateFrom AS DATE = '2020-01-01'
+--		, @DateTo AS DATE = '2021-05-01'
+
+SELECT clNo,clName
 ,CASE WHEN cboHighRskJuris='Y' THEN 'Yes' 
 	  WHEN cboHighRskJuris='N' THEN 'No' END  AS cboHighRskJuris
 ,CASE WHEN cboPEP='Y' THEN 'Yes' 
@@ -2462,6 +2474,7 @@ WHERE  name ='High Risk Clients.png'</CommandText>
 	  ,txtAMLComments
 	  ,usrFullName AS [Client Partner]
 	  ,files.CaseManager
+	  , dbCodeLookup.cdDesc		AS [Country Involved]
 FROM MS_Prod.dbo.udExtClient 
 INNER JOIN MS_Prod.config.dbClient
  ON udExtClient.clID=dbClient.clID   
@@ -2473,9 +2486,13 @@ WHERE fileno='1') AS files
  ON dbclient.clid=files.clid   
 LEFT OUTER JOIN MS_Prod.dbo.dbUser
  ON cboPartner=usrID
+LEFT OUTER JOIN MS_Prod.dbo.dbCodeLookup
+	ON dbCodeLookup.cdCode = udExtClient.cboRiskCtryCli
 WHERE (cboPEP='Y' OR cboHighRskJuris='Y' OR cboRisk='H' OR txtAMLComments IS NOT NULL)
 AND clName NOT LIKE '%ERROR%'
-AND clName NOT LIKE '%TEST%'</CommandText>
+AND clName NOT LIKE '%TEST%'
+AND CAST(files.[Date Opened] AS DATE) &gt;= @DateFrom
+AND CAST(files.[Date Opened] AS DATE) &lt;= @DateTo</CommandText>
       </Query>
       <Fields>
         <Field Name="clNo">
@@ -2522,12 +2539,27 @@ AND clName NOT LIKE '%TEST%'</CommandText>
           <DataField>CaseManager</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Country_Involved">
+          <DataField>Country Involved</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="DataSet2">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT clNo,clName,fileNo,dbFile.fileDesc,dbFile.fileClosed,dbFile.Created AS [Date Opened]
+        <QueryParameters>
+          <QueryParameter Name="@DateFrom">
+            <Value>=Parameters!DateFrom.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@DateTo">
+            <Value>=Parameters!DateTo.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>--DECLARE @DateFrom AS DATE = '2020-01-01'
+--		, @DateTo AS DATE = '2021-05-01'
+
+SELECT clNo,clName,fileNo,dbFile.fileDesc,dbFile.fileClosed,dbFile.Created AS [Date Opened]
 ,CASE WHEN udextfile.cboHighRskJuris='Y' THEN 'Yes' 
 	  WHEN udextfile.cboHighRskJuris='N' THEN 'No' END  AS cboHighRskJuris
 ,CASE WHEN udextfile.cboPEP='Y' THEN 'Yes' 
@@ -2535,13 +2567,10 @@ AND clName NOT LIKE '%TEST%'</CommandText>
 ,CASE WHEN udextfile.cboRisk='H' THEN 'High' 
 	  WHEN udextfile.cboRisk='M' THEN 'Medium'
 	  WHEN udextfile.cboRisk='L' THEN 'Low' END AS cboRisk
-	  
 	  ,udextfile.txtAMLComments
-
-
-
 	  ,dbUser.usrFullName AS [Client Partner]
 	  ,FE.usrFullName AS CaseManager
+	  , dbCodeLookup.cdDesc		AS [Country Involved]
 FROM MS_Prod.dbo.udExtClient 
 INNER JOIN MS_Prod.config.dbClient
  ON udExtClient.clID=dbClient.clID  
@@ -2553,11 +2582,17 @@ LEFT OUTER JOIN MS_Prod.dbo.dbUser
  ON cboPartner=dbUser.usrID
 LEFT OUTER JOIN ms_prod.dbo.udExtFile
  ON  udExtFile.fileID = dbFile.fileID
+LEFT OUTER JOIN MS_Prod.dbo.dbCodeLookup
+	ON dbCodeLookup.cdCode = udExtFile.cboHighRiskCtry
+		AND dbCodeLookup.cdType = 'RISKCOUNTRY'
 WHERE (udextfile.cboPEP='Y' OR udextfile.cboHighRskJuris='Y' OR udextfile.cboRisk='H' OR udextfile.txtAMLComments IS NOT NULL)
 AND clName NOT LIKE '%ERROR%'
 AND clName NOT LIKE '%TEST%'
 AND clNo&lt;&gt;'30645'
-ORDER BY clNo,fileNo</CommandText>
+AND CAST(dbFile.Created AS DATE) &gt;= @DateFrom
+AND CAST(dbFile.Created AS DATE) &lt;= @DateTo
+ORDER BY clNo,fileNo
+</CommandText>
       </Query>
       <Fields>
         <Field Name="clNo">
@@ -2608,6 +2643,10 @@ ORDER BY clNo,fileNo</CommandText>
           <DataField>CaseManager</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Country_Involved">
+          <DataField>Country Involved</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
   </DataSets>
@@ -2629,6 +2668,9 @@ ORDER BY clNo,fileNo</CommandText>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>2.54cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>4.18923cm</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>3.43958cm</Width>
@@ -2914,7 +2956,71 @@ ORDER BY clNo,fileNo</CommandText>
                             <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox23">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Country Involved</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                    <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox23</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -3639,6 +3745,71 @@ ORDER BY clNo,fileNo</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Country_Involved1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Country_Involved.Value</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                    <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Country_Involved1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>=IIF(ISNOTHING(Fields!txtAMLComments.Value),"RED","Transparent")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="cboRisk">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -4091,6 +4262,7 @@ ORDER BY clNo,fileNo</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
@@ -4108,7 +4280,7 @@ ORDER BY clNo,fileNo</CommandText>
             <PageName>Client</PageName>
             <Top>1.14827cm</Top>
             <Height>1.62332cm</Height>
-            <Width>58.63696cm</Width>
+            <Width>62.82619cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -4138,8 +4310,8 @@ ORDER BY clNo,fileNo</CommandText>
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>textbox14</rd:DefaultName>
-            <Top>0.17639cm</Top>
-            <Left>3.14616cm</Left>
+            <Top>0.20284cm</Top>
+            <Left>3.10407cm</Left>
             <Height>0.57937cm</Height>
             <Width>2.96296cm</Width>
             <ZIndex>1</ZIndex>
@@ -4200,6 +4372,9 @@ ORDER BY clNo,fileNo</CommandText>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>2.54cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.10444cm</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>3.43958cm</Width>
@@ -4581,6 +4756,71 @@ ORDER BY clNo,fileNo</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox7</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox21">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Country Involved</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                    <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox21</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>Solid</Style>
@@ -5469,6 +5709,71 @@ ORDER BY clNo,fileNo</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Country_Involved">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Country_Involved.Value</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                    <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                    <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                    <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Country_Involved</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>=IIF(ISNOTHING(Fields!txtAMLComments.Value),"RED","Transparent")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                            <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                            <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="cboRisk2">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -5923,6 +6228,7 @@ ORDER BY clNo,fileNo</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
@@ -5944,7 +6250,7 @@ ORDER BY clNo,fileNo</CommandText>
             <Top>3.03476cm</Top>
             <Left>0.00001cm</Left>
             <Height>1.62332cm</Height>
-            <Width>67.44757cm</Width>
+            <Width>70.55201cm</Width>
             <ZIndex>3</ZIndex>
             <Style>
               <Border>
@@ -5953,7 +6259,7 @@ ORDER BY clNo,fileNo</CommandText>
             </Style>
           </Tablix>
         </ReportItems>
-        <Height>3.86201in</Height>
+        <Height>2.13284in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5989,7 +6295,7 @@ ORDER BY clNo,fileNo</CommandText>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>26.55417in</Width>
+      <Width>27.77639in</Width>
       <Page>
         <PageHeader>
           <Height>0.89832in</Height>
@@ -6482,16 +6788,34 @@ ORDER BY clNo,fileNo</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="DateFrom">
+      <DataType>DateTime</DataType>
+      <Prompt>Date From</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="DateTo">
+      <DataType>DateTime</DataType>
+      <Prompt>Date To</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>DateFrom</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>DateTo</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
