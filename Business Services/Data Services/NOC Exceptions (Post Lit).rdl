@@ -2450,6 +2450,11 @@ WHERE  name ='NOC Exceptions.png'</CommandText>
     <DataSet Name="NOCExceptions">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!Team.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>dbo.NOCExceptions</CommandText>
       </Query>
@@ -2570,6 +2575,18 @@ WHERE  name ='NOC Exceptions.png'</CommandText>
           <DataField>Number Live Matters</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
+        <Field Name="present_position">
+          <DataField>present_position</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="branch_name">
+          <DataField>branch_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="branch_code">
+          <DataField>branch_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
       </Fields>
       <Filters>
         <Filter>
@@ -2580,6 +2597,33 @@ WHERE  name ='NOC Exceptions.png'</CommandText>
           </FilterValues>
         </Filter>
       </Filters>
+    </DataSet>
+    <DataSet Name="Team">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT hierarchylevel4hist AS Team  FROM red_dw.dbo.dim_matter_header_current
+INNER JOIN red_dw.[dbo].[dim_fed_hierarchy_history]
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+  ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
+  AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number 
+
+WHERE [hierarchylevel2hist]='Legal Ops - Claims'
+AND ms_only=1
+AND date_closed_case_management IS NULL
+--AND ISNULL(referral_reason,'') &lt;&gt;'Advice only'
+AND dim_matter_header_current.client_code &lt;&gt;'00030645'
+AND ms_fileid NOT IN (SELECT fileID FROM ms_prod.dbo.udClaimCleanseExclude)
+AND ISNULL(dim_detail_core_details.present_position,'') NOT IN ('Final bill due - claim and costs concluded','Final bill sent - unpaid','To be closed/minor balances to be clear')
+AND ISNULL(branch_name,'') &lt;&gt;'Liverpool'
+ORDER BY Team</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Team">
+          <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
     </DataSet>
   </DataSets>
   <ReportSections>
@@ -8729,6 +8773,23 @@ WHERE  name ='NOC Exceptions.png'</CommandText>
       <Prompt>Level</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>Team</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>Team</ValueField>
+          <LabelField>Team</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -8744,6 +8805,11 @@ WHERE  name ='NOC Exceptions.png'</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Level</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>Team</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
