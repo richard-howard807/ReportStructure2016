@@ -36,20 +36,14 @@ WHERE bill_date =DATEADD(MONTH,0,CONVERT(DATE,GETDATE(),103))</CommandText>
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@Division">
-            <Value>=Parameters!Division.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Department">
-            <Value>=Parameters!Department.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@FeeEarner">
-            <Value>=Parameters!FeeEarner.Value</Value>
+          <QueryParameter Name="@FEDCode">
+            <Value>=Parameters!FEDCode.Value</Value>
           </QueryParameter>
           <QueryParameter Name="@Period">
             <Value>=Parameters!Period.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Level">
+            <Value>=Parameters!Level.Value</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
@@ -116,186 +110,74 @@ ORDER BY bill_fin_year,bill_fin_month_no</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="Division">
+    <DataSet Name="Param_level">
       <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <DataSourceName>SQL12</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@Period">
-            <Value>=Parameters!Period.Value</Value>
+          <QueryParameter Name="@Username">
+            <Value>=Parameters!Username.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>DECLARE @FinYear AS INT
-SET @FinYear=(SELECT DISTINCT  bill_fin_year FROM red_dw.dbo.dim_bill_date
-WHERE bill_fin_period=@Period)
-
-
-SELECT DISTINCT hierarchylevel2hist AS [Division]
-FROM red_dw.dbo.fact_bill_receipts_detail 
-INNER JOIN red_dw.dbo.dim_receipt_date
- ON dim_receipt_date.dim_receipt_date_key = fact_bill_receipts_detail.dim_receipt_date_key
-INNER JOIN  red_dw.dbo.dim_fed_hierarchy_history
- ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_receipts_detail.dim_fed_hierarchy_history_key
- WHERE receipt_fin_year=@FinYear
-</CommandText>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>AreaManaged_Level</CommandText>
       </Query>
       <Fields>
-        <Field Name="Division">
-          <DataField>Division</DataField>
+        <Field Name="Level">
+          <DataField>Level</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="mdx">
+          <DataField>mdx</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="sql">
+          <DataField>sql</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="default">
+          <DataField>default</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="Department">
+    <DataSet Name="Param_FEDCode">
       <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <DataSourceName>SQL12</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="@Period">
-            <Value>=Parameters!Period.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Division">
-            <Value>=JOIN(Parameters!Division.Value,",")</Value>
+          <QueryParameter Name="@Username">
+            <Value>=Parameters!Username.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>DECLARE @FinYear AS INT
-SET @FinYear=(SELECT DISTINCT  bill_fin_year FROM red_dw.dbo.dim_bill_date
-WHERE bill_fin_period=@Period)
-
-IF OBJECT_ID('tempdb..#Division') IS NOT NULL   DROP TABLE #Division
-			CREATE TABLE #Division 
-	( ListValue NVARCHAR(MAX) COLLATE Latin1_General_BIN)
-	INSERT INTO #Division
-	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @Division) 
-
-SELECT DISTINCT hierarchylevel3hist AS [Department]
-FROM red_dw.dbo.fact_bill_receipts_detail 
-INNER JOIN red_dw.dbo.dim_receipt_date
- ON dim_receipt_date.dim_receipt_date_key = fact_bill_receipts_detail.dim_receipt_date_key
-INNER JOIN  red_dw.dbo.dim_fed_hierarchy_history
- ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_receipts_detail.dim_fed_hierarchy_history_key
-INNER JOIN #Division AS Division 
- ON Division.ListValue = hierarchylevel2hist 
-WHERE receipt_fin_year=@FinYear</CommandText>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>AreaManaged_Level</CommandText>
       </Query>
       <Fields>
-        <Field Name="Department">
-          <DataField>Department</DataField>
+        <Field Name="Level">
+          <DataField>Level</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="mdx">
+          <DataField>mdx</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="sql">
+          <DataField>sql</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="default">
+          <DataField>default</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
-    </DataSet>
-    <DataSet Name="Team">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@Period">
-            <Value>=Parameters!Period.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Division">
-            <Value>=JOIN(Parameters!Division.Value,",")</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Department">
-            <Value>=JOIN(Parameters!Department.Value,",")</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>DECLARE @FinYear AS INT
-SET @FinYear=(SELECT DISTINCT  bill_fin_year FROM red_dw.dbo.dim_bill_date
-WHERE bill_fin_period=@Period)
-
-IF OBJECT_ID('tempdb..#Division') IS NOT NULL   DROP TABLE #Division
-			CREATE TABLE #Division 
-	( ListValue NVARCHAR(MAX) COLLATE Latin1_General_BIN)
-	INSERT INTO #Division
-	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @Division) 
-
-IF OBJECT_ID('tempdb..#Department') IS NOT NULL   DROP TABLE #Department
-			CREATE TABLE #Department 
-	( ListValue NVARCHAR(MAX) COLLATE Latin1_General_BIN)
-	INSERT INTO #Department
-	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @Department) 
-
-SELECT DISTINCT hierarchylevel4hist AS [Team]
-FROM red_dw.dbo.fact_bill_receipts_detail 
-INNER JOIN red_dw.dbo.dim_receipt_date
- ON dim_receipt_date.dim_receipt_date_key = fact_bill_receipts_detail.dim_receipt_date_key
-INNER JOIN  red_dw.dbo.dim_fed_hierarchy_history
- ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_receipts_detail.dim_fed_hierarchy_history_key
-INNER JOIN #Division AS Division 
- ON Division.ListValue = hierarchylevel2hist 
-INNER JOIN #Department AS Department 
- ON Department.ListValue = hierarchylevel3hist 
-WHERE receipt_fin_year=@FinYear</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="Team">
-          <DataField>Team</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="FeeEarner">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@Period">
-            <Value>=Parameters!Period.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Division">
-            <Value>=JOIN(Parameters!Division.Value,",")</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Department">
-            <Value>=JOIN(Parameters!Department.Value,",")</Value>
-          </QueryParameter>
-          <QueryParameter Name="@Team">
-            <Value>=JOIN(Parameters!Team.Value,",")</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>DECLARE @FinYear AS INT
-SET @FinYear=(SELECT DISTINCT  bill_fin_year FROM red_dw.dbo.dim_bill_date
-WHERE bill_fin_period=@Period)
-
-IF OBJECT_ID('tempdb..#Division') IS NOT NULL   DROP TABLE #Division
-			CREATE TABLE #Division 
-	( ListValue NVARCHAR(MAX) COLLATE Latin1_General_BIN)
-	INSERT INTO #Division
-	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @Division) 
-
-IF OBJECT_ID('tempdb..#Department') IS NOT NULL   DROP TABLE #Department
-			CREATE TABLE #Department 
-	( ListValue NVARCHAR(MAX) COLLATE Latin1_General_BIN)
-	INSERT INTO #Department
-	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @Department) 
-
-IF OBJECT_ID('tempdb..#Team') IS NOT NULL   DROP TABLE #Team
-			CREATE TABLE #Team
-	( ListValue NVARCHAR(MAX) COLLATE Latin1_General_BIN)
-	INSERT INTO #Team
-	SELECT ListValue  FROM 	dbo.udt_TallySplit(',', @Team) 
-
-SELECT DISTINCT dim_fed_hierarchy_history.fed_code AS [FeeEarner]
-,name AS FeeEarnerName
-FROM red_dw.dbo.fact_bill_receipts_detail 
-INNER JOIN red_dw.dbo.dim_receipt_date
- ON dim_receipt_date.dim_receipt_date_key = fact_bill_receipts_detail.dim_receipt_date_key
-INNER JOIN  red_dw.dbo.dim_fed_hierarchy_history
- ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_receipts_detail.dim_fed_hierarchy_history_key
-INNER JOIN #Division AS Division 
- ON Division.ListValue = hierarchylevel2hist 
-INNER JOIN #Department AS Department 
- ON Department.ListValue = hierarchylevel3hist 
-INNER JOIN #Team AS Team 
- ON Team.ListValue = hierarchylevel4hist 
-WHERE receipt_fin_year=@FinYear</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="FeeEarner">
-          <DataField>FeeEarner</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="FeeEarnerName">
-          <DataField>FeeEarnerName</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
+      <Filters>
+        <Filter>
+          <FilterExpression>=Fields!Level.Value</FilterExpression>
+          <Operator>Equal</Operator>
+          <FilterValues>
+            <FilterValue>=Parameters!Level.Value</FilterValue>
+          </FilterValues>
+        </Filter>
+      </Filters>
     </DataSet>
   </DataSets>
   <ReportSections>
@@ -2868,7 +2750,7 @@ WHERE receipt_fin_year=@FinYear</CommandText>
             <DataSetName>PaidRevenue</DataSetName>
             <Left>0.01794cm</Left>
             <Height>7.80771cm</Height>
-            <Width>21.56748cm</Width>
+            <Width>21.56749cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -2956,6 +2838,32 @@ WHERE receipt_fin_year=@FinYear</CommandText>
     </ReportSection>
   </ReportSections>
   <ReportParameters>
+    <ReportParameter Name="Username">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>=MID(User!UserID,5,LEN(User!UserID)-4)</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Username</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="Level">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Param_level</DataSetName>
+          <ValueField>default</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Level</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Param_level</DataSetName>
+          <ValueField>Level</ValueField>
+          <LabelField>Level</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
     <ReportParameter Name="Period">
       <DataType>String</DataType>
       <DefaultValue>
@@ -2973,123 +2881,49 @@ WHERE receipt_fin_year=@FinYear</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="Level">
+    <ReportParameter Name="FEDCode">
       <DataType>String</DataType>
       <DefaultValue>
-        <Values>
-          <Value>Firm</Value>
-        </Values>
+        <DataSetReference>
+          <DataSetName>Param_FEDCode</DataSetName>
+          <ValueField>sql</ValueField>
+        </DataSetReference>
       </DefaultValue>
-      <Prompt>Level</Prompt>
+      <Prompt>FEDCode</Prompt>
       <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Division">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>Division</DataSetName>
-          <ValueField>Division</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Division</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>Division</DataSetName>
-          <ValueField>Division</ValueField>
-          <LabelField>Division</LabelField>
+          <DataSetName>Param_FEDCode</DataSetName>
+          <ValueField>sql</ValueField>
+          <LabelField>sql</LabelField>
         </DataSetReference>
       </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
-    <ReportParameter Name="Department">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>Department</DataSetName>
-          <ValueField>Department</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Department</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>Department</DataSetName>
-          <ValueField>Department</ValueField>
-          <LabelField>Department</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
-    <ReportParameter Name="Team">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>Team</DataSetName>
-          <ValueField>Team</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Team</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>Team</DataSetName>
-          <ValueField>Team</ValueField>
-          <LabelField>Team</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
-    <ReportParameter Name="FeeEarner">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>FeeEarner</DataSetName>
-          <ValueField>FeeEarner</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Fee Earner</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>FeeEarner</DataSetName>
-          <ValueField>FeeEarner</ValueField>
-          <LabelField>FeeEarnerName</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>5</NumberOfRows>
+      <NumberOfRows>6</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>Division</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>Department</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>4</RowIndex>
-          <ParameterName>Team</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>4</RowIndex>
-          <ParameterName>FeeEarner</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>2</RowIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>Period</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
-          <RowIndex>2</RowIndex>
+          <RowIndex>0</RowIndex>
           <ParameterName>Level</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>FEDCode</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>Username</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
