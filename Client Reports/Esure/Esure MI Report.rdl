@@ -2460,9 +2460,69 @@ WHERE  name ='Esure MI Report.png'</CommandText>
             <Value>=Parameters!Period.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT * FROM dbo.EnsureHistoryData
+        <CommandText>
+SELECT EnsureHistoryData.master_client_code,
+       EnsureHistoryData.master_matter_number,
+       MatterDescription,
+       [Date Opened],
+       [Date Closed],
+       [Our Reference],
+       [Claim Number],
+       Insured,
+       [TCD Handler],
+       [Weightmans Handler],
+       [Reason for Issue],
+       [Litigation Avoidable],
+       [Damages Claimed],
+       [Damages Agreed],
+       [Claimed Vs Settled],
+       [Time to Settled(Days)],
+       [Total Weightmans Profit Costs],
+       [Total Disbursements],
+       Narrative,
+       NewInstruction,
+       ClosedInstruction,
+       ProceedingsIssued,
+       [Date ProceedingsIssued],
+       [Date Claim Concluded],
+       [Year Period],
+       Period,
+       NewLitigated,
+       bill_cal_month_no,
+       bill_cal_year,
+       bill_cal_month_name,
+       [Name of Claimant] = ClaimantName,
+       [Date Instructions Received],
+       [Instruction Type],
+       [Date Proceedings Served],
+       [Present Position],
+       [Date Claimants Costs Settled],
+       [Claimants Costs Claimed],
+       [Claimants Costs Paid],
+       [Claimants Costs Savings]
+	   
+	   FROM dbo.EnsureHistoryData
+
+	 
+	 LEFT JOIN 
+	   
+	   (SELECT DISTINCT ROW_NUMBER () OVER (PARTITION BY fileID ORDER BY assocActive DESC, assocOrder  ) AS RN , master_client_code, master_matter_number, dbContact.contName AS ClaimantName
+				FROM ms_prod.[config].[dbAssociates]
+				JOIN ms_prod.config.dbContact ON dbContact.contID = dbAssociates.contID
+				JOIN red_dw.dbo.dim_matter_header_current ON ms_fileid = fileID
+						WHERE 1 = 1 
+						AND assocType = 'CLAIMANT'
+						AND contIsClient = 0
+						AND master_client_code = '433281'
+						)
+
+						ClaimantName  ON   RN = 1 AND ClaimantName.master_client_code = EnsureHistoryData.master_client_code AND ClaimantName.master_matter_number = EnsureHistoryData.master_matter_number
+						
+
+
 WHERE bill_cal_month_name + ' - ' + CAST(bill_cal_year AS NVARCHAR(4)) =@Period
-AND master_matter_number&lt;&gt;'11'</CommandText>
+AND EnsureHistoryData.master_matter_number&lt;&gt;'11'
+						</CommandText>
       </Query>
       <Fields>
         <Field Name="master_client_code">
@@ -7721,7 +7781,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                    <Format>#,0.00</Format>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -7770,6 +7830,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -7789,6 +7850,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -7837,6 +7899,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -7850,7 +7913,9 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(ISNOTHING(Fields!Damages_Agreed.Value),nothing,code.Divide(Fields!Claimed_Vs_Settled.Value,Fields!Damages_Claimed.Value))</Value>
+                                  <Value>=IIF(ISNOTHING(Fields!Damages_Agreed.Value),nothing,
+
+code.Divide(Fields!Damages_Agreed.Value,Fields!Damages_Claimed.Value))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -8266,6 +8331,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -8314,6 +8380,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -8333,6 +8400,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -8381,6 +8449,7 @@ AND CONVERT(DATE,bill_date,103)&lt;=CONVERT(DATE,GETDATE(),103)</CommandText>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -16114,7 +16183,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                    <Format>#,0.00</Format>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -16163,6 +16232,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -16182,6 +16252,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -16230,6 +16301,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -16243,7 +16315,10 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(ISNOTHING(Fields!Damages_Agreed.Value),nothing,Fields!Claimed_Vs_Settled.Value)</Value>
+                                  <Value>=IIF(ISNOTHING(Fields!Damages_Agreed.Value) = true 
+or CINT(Fields!Damages_Agreed.Value) = 0 
+or CInt(Fields!Damages_Claimed.Value) = 0 ,nothing,
+Code.Divide(Fields!Damages_Agreed.Value , Fields!Damages_Claimed.Value))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -16300,7 +16375,6 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -16517,7 +16591,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Claimants_Costs_Paid.Value</Value>
+                                  <Value>=IIF(Fields!Claimants_Costs_Paid.Value = 0, nothing, Fields!Claimants_Costs_Paid.Value)</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -16586,7 +16660,8 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=code.Divide(Fields!Claimants_Costs_Savings.Value,Fields!Claimants_Costs_Claimed.Value)</Value>
+                                  <Value>=IIF(Fields!Claimants_Costs_Paid.Value = 0, nothing, 
+code.Divide(Fields!Claimants_Costs_Savings.Value,Fields!Claimants_Costs_Claimed.Value))</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -16660,6 +16735,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -16708,6 +16784,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -16727,6 +16804,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -16775,6 +16853,7 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
                             <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -21320,10 +21399,9 @@ Fields!Volume.Value-Fields!Total_New_Cases.Value)</Value>
     <ReportParameter Name="Period">
       <DataType>String</DataType>
       <DefaultValue>
-        <DataSetReference>
-          <DataSetName>CurrentPeriod</DataSetName>
-          <ValueField>ID</ValueField>
-        </DataSetReference>
+        <Values>
+          <Value>=CSTR(MONTH(NOW())) +"-"+ CSTR(YEAR(NOW()))</Value>
+        </Values>
       </DefaultValue>
       <Prompt>Period</Prompt>
       <ValidValues>
