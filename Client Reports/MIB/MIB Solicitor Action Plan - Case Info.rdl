@@ -13,21 +13,19 @@
     <DataSet Name="DataSet1">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@MatterNumber">
-            <Value>=Parameters!MatterNumber.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>SELECT  date_instructions_received AS [Date of Instruction]
+        <CommandText>DECLARE @MatterNumber AS BIGINT
+SET @MatterNumber='27846'
+
+SELECT  date_instructions_received AS [Date of Instruction]
 ,NULL AS [Date of Initial Discussion with Handler]
 ,NULL AS [Date of Second Discussion with Handler (as per DLL or CAT scheme requirements)]
 ,NULL AS [Date of Third Discussion with Handler (as per DLL or CAT scheme requirements)]
 ,dim_detail_core_details.[date_initial_report_sent] AS [Date of First Report]
 ,Hrs.TotalHrs AS [Total Number Hours spent to date]
-,Hrs.Partner AS [Partner / Lead lawyer]
+,ISNULL(Hrs.Partner,0) + ISNULL(Hrs.LeadLawyer,0) AS [Partner / Lead lawyer]
 ,Hrs.Associate AS [Associate / Solicitor (primary assisting lawyer)]
 ,Hrs.Paralegal AS [Paralegal (secondary assisting lawyer)]
-,ISNULL(Hrs.TotalHrs,0) - (ISNULL(Hrs.Partner,0) + ISNULL(Hrs.Associate,0) + ISNULL(Hrs.Paralegal,0))  AS [Other]
+,ISNULL(Hrs.TotalHrs,0) - (ISNULL(Hrs.Partner,0) + ISNULL(Hrs.LeadLawyer,0) + ISNULL(Hrs.Associate,0) + ISNULL(Hrs.Paralegal,0))  AS [Other]
 --Split by task
 ,NULL AS ID
 ,NULL AS Liability
@@ -57,21 +55,23 @@ LEFT OUTER  JOIN red_dw.dbo.dim_detail_core_details
 LEFT OUTER JOIN 
 (
 SELECT dim_matter_header_current.dim_matter_header_curr_key
-,SUM(CASE WHEN LOWER(jobtitle) LIKE '%associate%' OR LOWER(jobtitle) LIKE '%solicitor%' THEN  BillHrs ELSE 0 END) AS [Associate]
-,SUM(CASE WHEN LOWER(jobtitle) LIKE '%paralegal%' THEN  BillHrs ELSE 0 END) AS [Paralegal]
-,SUM(CASE WHEN LOWER(jobtitle) LIKE '%partner%' THEN  BillHrs ELSE 0 END) AS [Partner]
+,SUM(CASE WHEN (LOWER(dim_fed_hierarchy_history.jobtitle) LIKE '%associate%' OR LOWER(dim_fed_hierarchy_history.jobtitle) LIKE '%solicitor%') AND dim_fed_hierarchy_history.fed_code&lt;&gt;dim_matter_header_current.fee_earner_code THEN  BillHrs ELSE 0 END) AS [Associate]
+,SUM(CASE WHEN LOWER(dim_fed_hierarchy_history.jobtitle) LIKE '%paralegal%' AND dim_fed_hierarchy_history.fed_code&lt;&gt;dim_matter_header_current.fee_earner_code THEN  BillHrs ELSE 0 END) AS [Paralegal]
+,SUM(CASE WHEN LOWER(dim_fed_hierarchy_history.jobtitle) LIKE '%partner%' AND dim_fed_hierarchy_history.fed_code&lt;&gt;dim_matter_header_current.fee_earner_code THEN  BillHrs ELSE 0 END) AS [Partner]
+,SUM(CASE WHEN dim_fed_hierarchy_history.fed_code=dim_matter_header_current.fee_earner_code THEN BillHrs ELSE 0 END) AS LeadLawyer
 ,SUM(BillHrs) AS TotalHrs
  
 FROM  red_dw.dbo.fact_bill_billed_time_activity WITH(NOLOCK)
 INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
  ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_bill_billed_time_activity.dim_fed_hierarchy_history_key
-INNER JOIN red_dw.dbo.dim_bill
+INNER JOIN red_dw.dbo.dim_bill  WITH(NOLOCK)
  ON dim_bill.dim_bill_key = fact_bill_billed_time_activity.dim_bill_key
 INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)
  ON dim_matter_header_current.dim_matter_header_curr_key = fact_bill_billed_time_activity.dim_matter_header_curr_key
-        LEFT OUTER JOIN TE_3E_Prod.dbo.TimeBill
+        LEFT OUTER JOIN TE_3E_Prod.dbo.TimeBill  WITH(NOLOCK)
             ON TimeCard = fact_bill_billed_time_activity.transaction_sequence_number
                AND TimeBill.timebillindex = fact_bill_billed_time_activity.timebillindex
+
 WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber
 AND IsReversed=0
 GROUP BY dim_matter_header_current.dim_matter_header_curr_key
@@ -831,7 +831,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Total_Number_Hours_spent_to_date.Value/60</Value>
+                                  <Value>=Fields!Total_Number_Hours_spent_to_date.Value</Value>
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
                                     <Format>#,0.0;(#,0.0)</Format>
@@ -1040,7 +1040,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(ISNOTHING(Fields!Partner___Lead_lawyer.Value),0,Fields!Partner___Lead_lawyer.Value/60)</Value>
+                                  <Value>=IIF(ISNOTHING(Fields!Partner___Lead_lawyer.Value),0,Fields!Partner___Lead_lawyer.Value)</Value>
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
                                     <Format>#,0.0;(#,0.0)</Format>
@@ -1111,7 +1111,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(ISNOTHING(Fields!Associate___Solicitor__primary_assisting_lawyer_.Value),0,Fields!Associate___Solicitor__primary_assisting_lawyer_.Value/60)</Value>
+                                  <Value>=IIF(ISNOTHING(Fields!Associate___Solicitor__primary_assisting_lawyer_.Value),0,Fields!Associate___Solicitor__primary_assisting_lawyer_.Value)</Value>
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
                                     <Format>#,0.0;(#,0.0)</Format>
@@ -1182,7 +1182,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(ISNOTHING(Fields!Paralegal__secondary_assisting_lawyer_.Value),0,Fields!Paralegal__secondary_assisting_lawyer_.Value/60)</Value>
+                                  <Value>=IIF(ISNOTHING(Fields!Paralegal__secondary_assisting_lawyer_.Value),0,Fields!Paralegal__secondary_assisting_lawyer_.Value)</Value>
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
                                     <Format>#,0.0;(#,0.0)</Format>
@@ -1253,7 +1253,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(ISNOTHING(Fields!Other.Value),0,Fields!Other.Value/60)</Value>
+                                  <Value>=IIF(ISNOTHING(Fields!Other.Value),0,Fields!Other.Value)</Value>
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
                                     <Format>#,0.0;(#,0.0)</Format>
@@ -1275,6 +1275,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -2358,7 +2359,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox74">
+                        <Textbox Name="Textbox4">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
@@ -2375,7 +2376,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox74</rd:DefaultName>
+                          <rd:DefaultName>Textbox4</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2427,17 +2428,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox46">
+                        <Textbox Name="Textbox16">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=(Fields!Partner___Lead_lawyer.Value/60)/(Fields!Total_Number_Hours_spent_to_date.Value/60)</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>0.00%</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2445,7 +2445,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox27</rd:DefaultName>
+                          <rd:DefaultName>Textbox16</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2497,17 +2497,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox140">
+                        <Textbox Name="Textbox21">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_review_date.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2515,7 +2514,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox140</rd:DefaultName>
+                          <rd:DefaultName>Textbox21</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2567,17 +2566,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox150">
+                        <Textbox Name="Textbox46">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_ID_decision_made.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2585,7 +2583,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox150</rd:DefaultName>
+                          <rd:DefaultName>Textbox46</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2637,17 +2635,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox148">
+                        <Textbox Name="Textbox50">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_Liability_Decision_made.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2655,7 +2652,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox148</rd:DefaultName>
+                          <rd:DefaultName>Textbox50</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2707,17 +2704,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox146">
+                        <Textbox Name="Textbox53">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_instruction_of_medical_expert.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2725,7 +2721,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox146</rd:DefaultName>
+                          <rd:DefaultName>Textbox53</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2777,17 +2773,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox152">
+                        <Textbox Name="Textbox55">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_receipt_of_core_medical_evidence.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2795,7 +2790,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox152</rd:DefaultName>
+                          <rd:DefaultName>Textbox55</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2847,17 +2842,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox144">
+                        <Textbox Name="Textbox58">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_First_Offer.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2865,7 +2859,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox144</rd:DefaultName>
+                          <rd:DefaultName>Textbox58</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -2917,17 +2911,16 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox142">
+                        <Textbox Name="Textbox60">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Days_from_instruction_to_closure_of_Rehab.Value</Value>
+                                  <Value />
                                   <Style>
                                     <FontFamily>Arial</FontFamily>
-                                    <Format>#,0.0;(#,0.0)</Format>
                                     <Language>en-GB</Language>
                                   </Style>
                                 </TextRun>
@@ -2935,7 +2928,7 @@ WHERE master_client_code='M1001' AND master_matter_number=@MatterNumber</Command
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox142</rd:DefaultName>
+                          <rd:DefaultName>Textbox60</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
