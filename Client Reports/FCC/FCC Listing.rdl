@@ -3930,12 +3930,15 @@ fact_payor_debt_detail
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <CommandText>SELECT DISTINCT TRIM(dim_matter_header_current.client_code) +'/' +TRIM(dim_matter_header_current.matter_number) AS ClientMatter
    ,'Yes' AS FilterFlag
+   ,dim_detail_core_details.[fcc_division] AS Division
+   ,dim_detail_core_details.[fcc_region] AS Region
+   ,dim_detail_core_details.[fcc_activity] AS Activity
    FROM red_dw.dbo.dim_matter_header_current
    JOIN red_dw.dbo.fact_dimension_main
    ON fact_dimension_main.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
    JOIN red_dw.dbo.dim_client_involvement
    ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
-
+   LEFT JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
    WHERE dim_matter_header_current.client_code = 'W20163'
 
     --(Protector) opened since February 2019 where “FCC” is in the Insured Client Name or Matter Description.
@@ -3955,6 +3958,18 @@ fact_payor_debt_detail
         </Field>
         <Field Name="FilterFlag">
           <DataField>FilterFlag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Division">
+          <DataField>Division</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Region">
+          <DataField>Region</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Activity">
+          <DataField>Activity</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -9746,7 +9761,7 @@ fact_payor_debt_detail
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!ID_Division_.Value</Value>
+                                      <Value>=Lookup(Fields!ID_Matter_Number_.Value, Fields!ClientMatter.Value,Fields!Division.Value, "SQL")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -9813,7 +9828,7 @@ fact_payor_debt_detail
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!ID_Region_.Value</Value>
+                                      <Value>=Lookup(Fields!ID_Matter_Number_.Value, Fields!ClientMatter.Value,Fields!Region.Value, "SQL")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -9880,7 +9895,7 @@ fact_payor_debt_detail
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!ID_Activity_.Value</Value>
+                                      <Value>=Lookup(Fields!ID_Matter_Number_.Value, Fields!ClientMatter.Value,Fields!Activity.Value, "SQL")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -13881,7 +13896,6 @@ Fields!dim_detail_core_details_referral_reason_.Value = "Dispute on liability an
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
