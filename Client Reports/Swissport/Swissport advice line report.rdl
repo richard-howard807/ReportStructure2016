@@ -2455,6 +2455,14 @@ WHERE  name ='Swissport advice line report.png'</CommandText>
     <DataSet Name="DaxCD">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandText>EVALUATE(
 CALCULATETABLE(
 SUMMARIZE(
@@ -2476,11 +2484,18 @@ fact_dimension_main
 ,dim_client[client_code]
 ,dim_matter_header_current[matter_number]
 ,dim_matter_worktype[work_type_name]
-,dim_detail_advice[emph_primary_issue] 
+,dim_detail_advice[emph_primary_issue]
+,fact_finance_summary[chargeable_minutes_recorded]
+,"Hours Recorded", fact_finance_summary[chargeable_minutes_recorded]/60
+
  
+
+
 ),PATHCONTAINS("W15593|00696670",dim_client[client_code])
 ,dim_matter_worktype[work_type_group]="EPI"
 ,dim_matter_worktype[work_type_name] = "Employment Advice Line"
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &gt;=VALUE(@StartDate)
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &lt;VALUE(@EndDate)
 
 )
 )
@@ -2601,6 +2616,18 @@ ORDER BY dim_client[client_code_trimmed]
                     </ID>
                     <ItemCaption>dim_detail_advice[emph_primary_issue]</ItemCaption>
                   </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>fact_finance_summary[chargeable_minutes_recorded]</ColumnName>
+                    </ID>
+                    <ItemCaption>fact_finance_summary[chargeable_minutes_recorded]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[Hours Recorded]</ColumnName>
+                    </ID>
+                    <ItemCaption>[Hours Recorded]</ItemCaption>
+                  </Item>
                 </Items>
               </Select>
               <AutoExecute>false</AutoExecute>
@@ -2632,11 +2659,18 @@ fact_dimension_main
 ,dim_client[client_code]
 ,dim_matter_header_current[matter_number]
 ,dim_matter_worktype[work_type_name]
-,dim_detail_advice[emph_primary_issue] 
+,dim_detail_advice[emph_primary_issue]
+,fact_finance_summary[chargeable_minutes_recorded]
+,"Hours Recorded", fact_finance_summary[chargeable_minutes_recorded]/60
+
  
+
+
 ),PATHCONTAINS("W15593|00696670",dim_client[client_code])
 ,dim_matter_worktype[work_type_group]="EPI"
 ,dim_matter_worktype[work_type_name] = "Employment Advice Line"
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &amp;gt;=VALUE(@StartDate)
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &amp;lt;VALUE(@EndDate)
 
 )
 )
@@ -2671,17 +2705,49 @@ fact_dimension_main
 ,dim_client[client_code]
 ,dim_matter_header_current[matter_number]
 ,dim_matter_worktype[work_type_name]
-,dim_detail_advice[emph_primary_issue] 
+,dim_detail_advice[emph_primary_issue]
+,fact_finance_summary[chargeable_minutes_recorded]
+,"Hours Recorded", fact_finance_summary[chargeable_minutes_recorded]/60
+
  
+
+
 ),PATHCONTAINS("W15593|00696670",dim_client[client_code])
 ,dim_matter_worktype[work_type_group]="EPI"
 ,dim_matter_worktype[work_type_name] = "Employment Advice Line"
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &gt;=VALUE(@StartDate)
+,dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date] &lt;VALUE(@EndDate)
 
 )
 )
 ORDER BY dim_client[client_code_trimmed]
 ,dim_matter_header_current[matter_number_trimmed]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>StartDate</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>StartDate</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>EndDate</Name>
+                  <DefaultValues>
+                    <DefaultValue>0</DefaultValue>
+                  </DefaultValues>
+                  <Caption>EndDate</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -2755,8 +2821,16 @@ ORDER BY dim_client[client_code_trimmed]
           <DataField>dim_matter_worktype[work_type_name]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="fact_finance_summary_chargeable_minutes_recorded_">
+          <DataField>fact_finance_summary[chargeable_minutes_recorded]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="dim_detail_advice_emph_primary_issue_">
           <DataField>dim_detail_advice[emph_primary_issue]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_Hours_Recorded_">
+          <DataField>[Hours Recorded]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -2772,8 +2846,7 @@ ORDER BY dim_client[client_code_trimmed]
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
-SELECT a.client_code AS Client
+        <CommandText>SELECT a.client_code AS Client
 ,a.matter_number AS Matter
 ,SUM(CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.edithrs,a.wiphrs) END)  AS Hrs
 ,SUM(CASE WHEN b.WorkHrs&lt;0 AND b.Disposition='Transfer' THEN 0 ELSE COALESCE(a.editamt,a.wipamt) END)  AS Revenue
@@ -2788,10 +2861,8 @@ INNER JOIN TE_3E_Prod.dbo.Timecard AS b
 LEFT OUTER JOIN red_dw.dbo.dim_transaction_date 
  ON dim_transaction_date.dim_transaction_date_key = a.dim_transaction_date_key
 WHERE a.client_code IN ('W15593','00696670')
-
+--AND a.matter_number='00000777'
 GROUP BY a.client_code,a.matter_number
-
-
 </CommandText>
       </Query>
       <Fields>
@@ -2856,7 +2927,7 @@ GROUP BY a.client_code,a.matter_number
                       <Width>1.76042in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>1.29167in</Width>
+                      <Width>1.74999in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>3.15625in</Width>
@@ -3429,7 +3500,7 @@ GROUP BY a.client_code,a.matter_number
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Issue </Value>
+                                      <Value>Issue</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4902,16 +4973,16 @@ GROUP BY a.client_code,a.matter_number
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Textbox42">
+                            <Textbox Name="ID_Hours_Recorded_">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=LOOKUP(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value
-,Fields!Client.Value &amp; Fields!Matter.Value
-,Fields!Hrs.Value, "HoursRecorded")</Value>
+                                      <Value>=Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
+RTRIM(Fields!Client.Value) &amp; Fields!Matter.Value,
+Fields!Hrs.Value, "HoursRecorded")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4931,7 +5002,7 @@ GROUP BY a.client_code,a.matter_number
                                   </Style>
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Textbox42</rd:DefaultName>
+                              <rd:DefaultName>ID_Hours_Recorded_</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4979,8 +5050,9 @@ GROUP BY a.client_code,a.matter_number
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Lookup(TRIM(Fields!dim_client_client_code_.Value) &amp; TRIM(Fields!dim_matter_header_current_matter_number_.Value), TRIM(Fields!Client.Value) &amp; TRIM(Fields!Matter.Value)
-,Fields!HrsDateRange.Value, "HoursRecorded")</Value>
+                                      <Value>=Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
+RTRIM(Fields!Client.Value) &amp; Fields!Matter.Value,
+Fields!HrsDateRange.Value, "HoursRecorded")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6160,19 +6232,9 @@ GROUP BY a.client_code,a.matter_number
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>DaxCD</DataSetName>
-                <Filters>
-                  <Filter>
-                    <FilterExpression>=IIF(ISNOTHING(Lookup(TRIM(Fields!dim_client_client_code_.Value) &amp; TRIM(Fields!dim_matter_header_current_matter_number_.Value), TRIM(Fields!Client.Value) &amp; TRIM(Fields!Matter.Value)
-,Fields!HrsDateRange.Value, "HoursRecorded")),1,0)</FilterExpression>
-                    <Operator>Equal</Operator>
-                    <FilterValues>
-                      <FilterValue>=0</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                </Filters>
                 <Top>0.0441cm</Top>
                 <Height>1.01041in</Height>
-                <Width>32.89237in</Width>
+                <Width>33.35069in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6186,7 +6248,7 @@ GROUP BY a.client_code,a.matter_number
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>1.02777in</Height>
-            <Width>32.89237in</Width>
+            <Width>33.35069in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -6230,7 +6292,7 @@ GROUP BY a.client_code,a.matter_number
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>32.89237in</Width>
+      <Width>33.35069in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -6273,7 +6335,7 @@ GROUP BY a.client_code,a.matter_number
                     </Paragraph>
                   </Paragraphs>
                   <Height>0.24208in</Height>
-                  <Width>32.89237in</Width>
+                  <Width>33.35069in</Width>
                   <Visibility>
                     <Hidden>=CBool(First(Fields!txtTotalPages_Hidden.Value, "DefaultProperties"))</Hidden>
                   </Visibility>
@@ -6316,7 +6378,7 @@ GROUP BY a.client_code,a.matter_number
               <KeepTogether>true</KeepTogether>
               <Top>0.80471in</Top>
               <Height>0.24208in</Height>
-              <Width>32.89237in</Width>
+              <Width>33.35069in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -6417,7 +6479,7 @@ GROUP BY a.client_code,a.matter_number
               <Top>0.14847in</Top>
               <Left>1.67361in</Left>
               <Height>0.64235in</Height>
-              <Width>31.21876in</Width>
+              <Width>31.67708in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -6504,7 +6566,7 @@ GROUP BY a.client_code,a.matter_number
               </Paragraphs>
               <Top>0.14111cm</Top>
               <Height>0.25in</Height>
-              <Width>32.89237in</Width>
+              <Width>33.35069in</Width>
               <Visibility>
                 <Hidden>=CBool(First(Fields!txtPageNumber_Visibility_Hidden.Value, "DefaultProperties"))</Hidden>
               </Visibility>
@@ -6664,7 +6726,7 @@ GROUP BY a.client_code,a.matter_number
               </Paragraphs>
               <Top>0.61112in</Top>
               <Height>0.36938in</Height>
-              <Width>32.89237in</Width>
+              <Width>33.35069in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
@@ -6718,7 +6780,7 @@ GROUP BY a.client_code,a.matter_number
               </ActionInfo>
               <Top>0.2853in</Top>
               <Height>0.25638in</Height>
-              <Width>32.89237in</Width>
+              <Width>33.35069in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
