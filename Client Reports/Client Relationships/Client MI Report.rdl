@@ -2466,7 +2466,7 @@ WHERE  name ='Client_MI.png'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>marketing.client_mi</CommandText>
+        <CommandText>marketing.client_mi_v2</CommandText>
       </Query>
       <Fields>
         <Field Name="client_group_name">
@@ -2571,7 +2571,7 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>marketing.client_mi_wip_and_debt</CommandText>
+        <CommandText>marketing.client_mi_wip_and_debt_v2</CommandText>
       </Query>
       <Fields>
         <Field Name="division">
@@ -2612,92 +2612,83 @@ WHERE calendar_date = CAST(DATEADD(MM,-1,GETDATE()) AS DATE)</CommandText>
             <Value>=Parameters!current_fin_from.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>/*
-	This is the MS_Prod query .... need to see if I can replicate in the warehouse. Unlikely at the moment.
-
-*/
-
- --   DECLARE @current_fin_from INT = '201801'
-	--DECLARE @current_fin_to INT = '202111'
+        <CommandText>--DECLARE @current_fin_from INT = '202201'
+--DECLARE @current_fin_to INT = '202201'
 DECLARE @DateFrom DATE 
-	SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
-	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
+SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
+DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
 	
 
-
-
-		
-	SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
-
-	SELECT  DISTINCT 
-				
-		NULLIF(udClientGroup.[description],'') [group_name]
-		,CASE WHEN udClientGroup.description IS NULL OR udClientGroup.description = '' THEN dbClient.clName END [client_name]
-		
-		--,[cboGenClientStatus]
-		,ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  group_client_name
-		,
-	--	CASE WHEN [cboGenClientStatus] = '0001' THEN 'Patron'
-	--		  WHEN [cboGenClientStatus] = '0002' THEN 'Star'
-	--		  WHEN [cboGenClientStatus] = '0003' THEN 'Rising Star'
-	--		  WHEN [cboGenClientStatus] = '0005' THEN 'Pipeline'
-	--	WHEN [cboGenClientStatus] = '0004' THEN 'Generator'
-	
-	--WHEN [cboGenClientStatus] IS NULL THEN ''
-	--	 END + ' : ' +
-		 ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) display_name 
-		
-	FROM [MS_Prod].[dbo].[udExtClient] udExtClient
-	INNER JOIN MS_Prod.config.dbClient dbClient ON dbClient.clID = udExtClient.clID
-	LEFT JOIN MS_Prod.dbo.udClientGroup udClientGroup ON udClientGroup.code = udExtClient.cboClientGroup
-	INNER JOIN MS_Prod.config.dbFile dbfile ON dbfile.clID = dbClient.clID
-	--Commented out the below as it was preventing Northern Powergrid client pulling in, client from Newcastle office
-	--INNER JOIN MS_Prod.dbo.udExtFile udextfile ON udextfile.fileID = dbfile.fileID AND udextfile.FEDCodeNoZeros IS NOT NULL 
-	INNER JOIN (SELECT DISTINCT client_code 
-					FROM [red_dw].[dbo].[fact_bill_activity] bill 
-					WHERE bill.bill_date &gt;= @PreviousDateFrom ) billed_client 
-			ON billed_client.client_code = CASE WHEN ISNUMERIC(dbClient.clNo)= 1 THEN RIGHT('0000000'+ dbClient.clNo,8) ELSE dbClient.clNo END COLLATE database_default
-	WHERE  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) NOT IN ('AXA Insurance UK Plc') AND
-	--cboGenClientStatus IS NOT NULL -- only those clients that have a status
-	--AND [cboGenClientStatus] &lt;&gt; '0004'
-	-- exclusions to deal with data issues
-	clno &lt;&gt; '69873' -- Collegiate Management Ltd issue (file switched client)
-AND (
-ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) 
-IN (
-N'Zurich',
-N'Zurich',
-N'NHS Resolution',
-N'Ageas',
-N'AXA XL',
-N'AXA Insurance UK Plc',
-N'AXA Insurance UK Plc',
-N'AIG',
-N'Royal Mail',
-N'Markel',
-N'Markel',
-N'BARRATT PLC',
-N'Surrey Police',
-N'Sussex Police',
-N'Sabre',
-N'pwc',
-N'Bibby Group',
-N'Clarion Housing Group Limited',
-N'Metropolitan Police',
-N'Sovini Group',
-N'Business Energy Solutions Ltd' ,                                                
-N'BES Utilities Holding Ltd',                                                    
-N'BES Metering Services Limited',  
-N'BES Group',
-N'Northern Powergrid'
-)
-
-OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '%Northern Electric%'
-
-)
-
---	AND ISNULL(udClientGroup.[description],dbClient.clName) = @generator_client
-	ORDER BY ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) </CommandText>
+SELECT 
+	client_data.group_name
+	, client_data.client_name
+	, ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) AS [group_client_name]
+	, ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) AS [display_name]
+FROM (
+	SELECT DISTINCT
+		CASE 
+				WHEN (RTRIM(dim_client.client_code) = 'T3003' 
+					OR ISNULL(dim_detail_claim.name_of_instructing_insurer, '') = 'Tesco Underwriting (TU)') AND dim_client.client_group_name = 'Ageas' THEN 
+					'Tesco'
+				WHEN dim_client.client_group_name = 'Ageas' THEN 
+					CASE 
+						WHEN RTRIM(dim_client.client_code) &lt;&gt; 'T3003' AND ISNULL(dim_detail_claim.name_of_instructing_insurer, '') &lt;&gt; 'Tesco Underwriting (TU)' 
+							AND dim_client.client_group_name = 'Ageas' THEN 
+							'Ageas'
+					END 
+				ELSE 
+					dim_client.client_group_name
+		END										AS [group_name]
+		, CASE	
+			WHEN ISNULL(dim_client.client_group_name, '') = '' THEN
+				dim_client.client_name
+		  END			AS [client_name]
+	FROM red_dw.dbo.dim_client
+			INNER JOIN red_dw.dbo.dim_matter_header_current
+				ON dim_matter_header_current.client_code = dim_client.client_code
+			LEFT OUTER JOIN red_dw.dbo.fact_bill_activity
+				ON fact_bill_activity.client_code = dim_matter_header_current.client_code
+					AND fact_bill_activity.matter_number = dim_matter_header_current.matter_number
+			LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+				ON dim_detail_claim.client_code = dim_matter_header_current.client_code
+					AND dim_detail_claim.matter_number = dim_matter_header_current.matter_number
+	WHERE
+		fact_bill_activity.bill_date &gt;= @PreviousDateFrom 
+		AND dim_matter_header_current.master_client_code &lt;&gt; '69873'-- Collegiate Management Ltd issue (file switched client)
+	)		AS client_data
+WHERE 1 = 1
+	AND ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) &lt;&gt; 'AXA Insurance UK Plc'
+	AND ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) IN (
+		N'Zurich',
+		N'Zurich',
+		N'NHS Resolution',
+		N'Ageas',
+		N'AXA XL',
+		N'AXA Insurance UK Plc',
+		N'AXA Insurance UK Plc',
+		N'AIG',
+		N'Royal Mail',
+		N'Markel',
+		N'Markel',
+		N'BARRATT PLC',
+		N'Surrey Police',
+		N'Sussex Police',
+		N'Sabre',
+		N'pwc',
+		N'Bibby Group',
+		N'Clarion Housing Group Limited',
+		N'Metropolitan Police',
+		N'Sovini Group',
+		N'Business Energy Solutions Ltd' ,                                                
+		N'BES Utilities Holding Ltd',                                                    
+		N'BES Metering Services Limited',  
+		N'BES Group',
+		N'Northern Powergrid',
+		N'Tesco'
+	)
+	OR ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) LIKE '%Northern Electric%'
+ORDER BY
+	LOWER(ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name))</CommandText>
       </Query>
       <Fields>
         <Field Name="group_name">
@@ -2729,86 +2720,59 @@ OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '%Northe
             <Value>=Parameters!generator_client.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>/*
-	This is the MS_Prod query .... need to see if I can replicate in the warehouse. Unlikely at the moment.
-
-*/
-	--DECLARE @current_fin_from INT = '201801'
-	--DECLARE @generator_client AS VARCHAR(MAX) = 'Northern Powergrid'
+        <CommandText>
+--DECLARE @current_fin_from INT = '202201'
+--DECLARE @generator_client AS VARCHAR(MAX) = 'Clarion Housing Group Limited'
 	
 -- used for current profit costs
-	DECLARE @DateFrom DATE 
-	SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
-	DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
-	
-
+DECLARE @DateFrom DATE 
+SELECT  @DateFrom = MIN(calendar_date) FROM red_dw.dbo.dim_date WHERE fin_month = @current_fin_from
+DECLARE @PreviousDateFrom DATE = DATEADD(YEAR,-3,@DateFrom)
 
 		
-	SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
-	SELECT  DISTINCT 
-				
-		NULLIF(udClientGroup.[description],'') [group_name]
-		,CASE WHEN udClientGroup.description IS NULL OR udClientGroup.description = '' THEN dbClient.clName END [client_name]
-		,[cboGenClientStatus]
-		,ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  group_client_name
-		,ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  display_name
-			
-			
-	FROM [MS_Prod].[dbo].[udExtClient] udExtClient
-	INNER JOIN MS_Prod.config.dbClient dbClient ON dbClient.clID = udExtClient.clID
-	LEFT JOIN MS_Prod.dbo.udClientGroup udClientGroup ON udClientGroup.code = udExtClient.cboClientGroup
-	INNER JOIN MS_Prod.config.dbFile dbfile ON dbfile.clID = dbClient.clID
-	--Commented out the below as it was preventing Northern Powergrid client pulling in, client from Newcastle office
-	--INNER JOIN MS_Prod.dbo.udExtFile udextfile ON udextfile.fileID = dbfile.fileID AND udextfile.FEDCodeNoZeros IS NOT NULL 
-	INNER JOIN (SELECT DISTINCT client_code 
-					FROM [red_dw].[dbo].[fact_bill_activity] bill 
-					WHERE bill.bill_date &gt;= @PreviousDateFrom ) billed_client 
-			ON billed_client.client_code = CASE WHEN ISNUMERIC(dbClient.clNo)= 1 THEN RIGHT('0000000'+ dbClient.clNo,8) ELSE dbClient.clNo END COLLATE database_default
-	WHERE 
-	--cboGenClientStatus IS NOT NULL -- only those clients that have a status
-	--AND [cboGenClientStatus] &lt;&gt; '0004'
-	-- exclusions to deal with data issues
- clno &lt;&gt; '69873' -- Collegiate Management Ltd issue (file switched client)
-	AND ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName)  = @generator_client
-AND (
-
-		ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) 
-IN (
-N'Zurich',
-N'Zurich',
-N'NHS Resolution',
-N'Ageas',
-N'AXA XL',
-N'AXA Insurance UK Plc',
-N'AXA Insurance UK Plc',
-N'AIG',
-N'Royal Mail',
-N'Markel',
-N'Markel',
-N'BARRATT PLC',
-N'Surrey Police',
-N'Sussex Police',
-N'Sabre',
-N'pwc',
-N'Bibby Group',
-N'Clarion Housing Group Limited',
-N'Metropolitan Police',
-N'Sovini Group',
-N'Business Energy Solutions Ltd' ,                                                
-N'BES Utilities Holding Ltd',                                                    
-N'BES Metering Services Limited', 
-N'BES Group',
-N'Northern Powergrid'
-)
-
-OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '%Northern Electric%'
-
-)
-
-
-
-	ORDER BY [cboGenClientStatus]
-			,ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) </CommandText>
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+SELECT 
+	client_data.group_name
+	, client_data.client_name
+	, ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) AS [group_client_name]
+	, ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) AS [display_name]
+FROM (
+	SELECT DISTINCT
+		CASE 
+				WHEN (RTRIM(dim_client.client_code) = 'T3003' 
+					OR ISNULL(dim_detail_claim.name_of_instructing_insurer, '') = 'Tesco Underwriting (TU)') AND dim_client.client_group_name = 'Ageas' THEN 
+					'Tesco'
+				WHEN dim_client.client_group_name = 'Ageas' THEN 
+					CASE 
+						WHEN RTRIM(dim_client.client_code) &lt;&gt; 'T3003' AND ISNULL(dim_detail_claim.name_of_instructing_insurer, '') &lt;&gt; 'Tesco Underwriting (TU)' 
+							AND dim_client.client_group_name = 'Ageas' THEN 
+							'Ageas'
+					END 
+				ELSE 
+					dim_client.client_group_name
+		END										AS [group_name]
+		, CASE	
+			WHEN ISNULL(dim_client.client_group_name, '') = '' THEN
+				dim_client.client_name
+		  END			AS [client_name]
+	FROM red_dw.dbo.dim_client
+			INNER JOIN red_dw.dbo.dim_matter_header_current
+				ON dim_matter_header_current.client_code = dim_client.client_code
+			LEFT OUTER JOIN red_dw.dbo.fact_bill_activity
+				ON fact_bill_activity.client_code = dim_matter_header_current.client_code
+					AND fact_bill_activity.matter_number = dim_matter_header_current.matter_number
+			LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+				ON dim_detail_claim.client_code = dim_matter_header_current.client_code
+					AND dim_detail_claim.matter_number = dim_matter_header_current.matter_number
+	WHERE
+		fact_bill_activity.bill_date &gt;= @PreviousDateFrom 
+		AND dim_matter_header_current.master_client_code &lt;&gt; '69873'-- Collegiate Management Ltd issue (file switched client)
+	)		AS client_data
+WHERE 1 = 1
+	AND ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) &lt;&gt; 'AXA Insurance UK Plc'
+	AND ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name) = @generator_client
+ORDER BY
+	LOWER(ISNULL(NULLIF(client_data.group_name, ''), client_data.client_name))</CommandText>
       </Query>
       <Fields>
         <Field Name="group_name">
@@ -2817,10 +2781,6 @@ OR  ISNULL(NULLIF(udClientGroup.[description],''),dbClient.clName) LIKE '%Northe
         </Field>
         <Field Name="client_name">
           <DataField>client_name</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-        <Field Name="cboGenClientStatus">
-          <DataField>cboGenClientStatus</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="group_client_name">
