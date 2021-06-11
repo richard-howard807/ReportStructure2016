@@ -2520,7 +2520,7 @@ WHERE
 	ClaimsSLAComplianceTable.Team IN (@Team)
 	AND ClaimsSLAComplianceTable.fee_earner_code IN (@Name)
 	AND ISNULL(CASE WHEN ClaimsSLAComplianceTable.client_group_name = '' THEN 'None' ELSE ClaimsSLAComplianceTable.client_group_name END,'None') IN (@ClientGroup)
-	AND ISNULL(ClaimsSLAComplianceTable.[Present Position],'Missing') IN (@PresentPosition)
+	AND ISNULL(RTRIM(ClaimsSLAComplianceTable.[Present Position]),'Missing') IN (@PresentPosition)
 	AND ClaimsSLAComplianceTable.Status IN (@Status)
 	AND ((ClaimsSLAComplianceTable.[Date Opened] &gt;= @StartDate OR @StartDate IS NULL) AND  ClaimsSLAComplianceTable.[Date Opened] &lt;=  @EndDate  OR @EndDate IS NULL)
 	AND (CASE 
@@ -2796,47 +2796,6 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="ParamClients">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT client_group_name FROM
-(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
-FROM red_dw.dbo.dim_client) AS AllData
-ORDER BY AllData.client_group_name</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="client_group_name">
-          <DataField>client_group_name</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="ParamPP">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT ISNULL([present_position],'Missing')  AS [present_position]
-FROM red_dw.dbo.dim_detail_core_details</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="present_position">
-          <DataField>present_position</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="ParamStatus">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT CASE WHEN date_closed_case_management IS NULL THEN 'Open' ELSE 'Closed' END AS [Status]
-FROM red_dw.dbo.dim_matter_header_current</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="Status">
-          <DataField>Status</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
     <DataSet Name="ClaimsSLACompliance">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
@@ -2869,9 +2828,10 @@ WHERE
 	ClaimsSLAComplianceTable.Team IN (@Team)
 	AND ClaimsSLAComplianceTable.fee_earner_code IN (@Name)
 	AND ISNULL(CASE WHEN ClaimsSLAComplianceTable.client_group_name = '' THEN 'None' ELSE ClaimsSLAComplianceTable.client_group_name END,'None') IN (@ClientGroup)
-	AND ISNULL(ClaimsSLAComplianceTable.[Present Position],'Missing') IN (@PresentPosition)
+	AND ISNULL(RTRIM(ClaimsSLAComplianceTable.[Present Position]),'Missing') IN (@PresentPosition)
 	AND ClaimsSLAComplianceTable.Status IN (@Status)
-	AND ((ClaimsSLAComplianceTable.[Date Opened] &gt;= @StartDate OR @StartDate IS NULL) AND  ClaimsSLAComplianceTable.[Date Opened] &lt;=  @EndDate  OR @EndDate IS NULL)</CommandText>
+	AND ((ClaimsSLAComplianceTable.[Date Opened] &gt;= @StartDate OR @StartDate IS NULL) AND  ClaimsSLAComplianceTable.[Date Opened] &lt;=  @EndDate  OR @EndDate IS NULL)
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Name">
@@ -3077,6 +3037,35 @@ WHERE
         <Field Name="Subsequent_Report_is_Overdue">
           <DataField>Subsequent Report is Overdue</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_present_position">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT 
+	ISNULL([present_position],'Missing')  AS [present_position]
+FROM red_dw.dbo.dim_detail_core_details</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="present_position">
+          <DataField>present_position</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_client_group">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT client_group_name FROM
+(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
+FROM red_dw.dbo.dim_client) AS AllData
+ORDER BY AllData.client_group_name</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_group_name">
+          <DataField>client_group_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -7049,11 +7038,36 @@ WHERE
       <DataType>String</DataType>
       <Prompt>Present Position</Prompt>
       <ValidValues>
-        <DataSetReference>
-          <DataSetName>ParamPP</DataSetName>
-          <ValueField>present_position</ValueField>
-          <LabelField>present_position</LabelField>
-        </DataSetReference>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>Claim and costs outstanding</Value>
+            <Label>Claim and costs outstanding</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Claim concluded but costs outstanding</Value>
+            <Label>Claim concluded but costs outstanding</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Claim and costs concluded but recovery outstanding</Value>
+            <Label>Claim and costs concluded but recovery outstanding</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Missing</Value>
+            <Label>Missing</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Final bill due - claim and costs concluded</Value>
+            <Label>Final bill due - claim and costs concluded</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Final bill sent - unpaid</Value>
+            <Label>Final bill sent - unpaid</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>To be closed/minor balances to be clear</Value>
+            <Label>To be closed/minor balances to be clear</Label>
+          </ParameterValue>
+        </ParameterValues>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
@@ -7062,7 +7076,7 @@ WHERE
       <Prompt>Client Group</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>ParamClients</DataSetName>
+          <DataSetName>param_client_group</DataSetName>
           <ValueField>client_group_name</ValueField>
           <LabelField>client_group_name</LabelField>
         </DataSetReference>
@@ -7073,11 +7087,16 @@ WHERE
       <DataType>String</DataType>
       <Prompt>Status</Prompt>
       <ValidValues>
-        <DataSetReference>
-          <DataSetName>ParamStatus</DataSetName>
-          <ValueField>Status</ValueField>
-          <LabelField>Status</LabelField>
-        </DataSetReference>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>Open</Value>
+            <Label>Open</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Closed</Value>
+            <Label>Closed</Label>
+          </ParameterValue>
+        </ParameterValues>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
