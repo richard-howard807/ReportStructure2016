@@ -2713,81 +2713,73 @@ ORDER BY dim_detail_claim[ageas_instruction_type]</Statement>
       <Query>
         <DataSourceName>CaseDetails</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="Client">
-            <Value>=JOIN(Parameters!Client.Value,"|")</Value>
-          </QueryParameter>
-          <QueryParameter Name="Team">
-            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
-          </QueryParameter>
           <QueryParameter Name="InstructionType">
             <Value>=JOIN(Parameters!InstructionType.Value,"|")</Value>
           </QueryParameter>
-          <QueryParameter Name="Fraud">
-            <Value>=JOIN(Parameters!Fraud.Value,"|")</Value>
+          <QueryParameter Name="Team">
+            <Value>=Join(Parameters!Team.Value, "|")</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>EVALUATE
- (
-    FILTER(
-    CALCULATETABLE (
-        SUMMARIZE (
-            fact_dimension_main,
-            dim_client_involvement[insuredclient_name],
-            dim_client[client_code],
-            dim_client[client_code_trimmed],
-            dim_matter_header_current[matter_number],
-            dim_matter_header_current[matter_number_trimmed],
-            dim_client_involvement[insurerclient_reference],
-            dim_detail_claim[name_of_instructing_insurer],
-            dim_detail_claim[ageas_claim_type],
-            dim_detail_claim[ageas_office],
-            dim_detail_court[date_of_trial],
-            dim_detail_fraud[fraud_current_fraud_type],
-            dim_detail_fraud[fraud_initial_fraud_type],
-            dim_detail_fraud[fraud_type_ageas],
-            dim_court_involvement[court_name],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_team],
-            dim_detail_court[prospect_of_success],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_name],
-            dim_detail_outcome[outcome_of_case],
-            dim_detail_core_details[grpageas_case_handler],
-            dim_client[client_group_name],
-            fact_finance_summary[damages_reserve],
-            fact_finance_summary[tp_costs_reserve],
-            fact_finance_summary[defence_costs_reserve],
-            fact_finance_summary[damages_interims],
-            fact_finance_summary[damages_paid],
-            fact_finance_summary[claimants_costs_paid],
-            fact_finance_summary[total_amount_billed],
-            fact_finance_summary[wip],
-            fact_finance_summary[disbursement_balance],
-            dim_detail_core_details[suspicion_of_fraud],
-            dim_detail_claim[ageas_instruction_type],
-            dim_detail_claim[date_of_disposal_hearing],
-            dim_detail_outcome[date_claim_concluded],
-            "Insurer",IF(dim_detail_claim[name_of_instructing_insurer] = BLANK() , "Missing" , dim_detail_claim[name_of_instructing_insurer]),
-            "ClaimType",IF(dim_detail_claim[ageas_claim_type] = BLANK() , "Missing" , dim_detail_claim[ageas_claim_type]),
-            "InstructionType",IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type])
-        ),
-//    dim_detail_court[date_of_trial] &gt;= value(@StartDate),
-//    dim_detail_court[date_of_trial] &lt; value(@EndDate),
---    dim_client[client_group_name] = "Ageas",
-    dim_matter_header_current[matter_number] &lt;&gt; "ML",
-   -- dim_detail_outcome[outcome_of_case] = BLANK(),
-    PATHCONTAINS(@Fraud,dim_detail_core_details[suspicion_of_fraud]),
-    PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
-    ),
-//(dim_detail_court[date_of_trial] &gt;= value(@StartDate) || dim_detail_claim[date_of_disposal_hearing]&gt;= value(@StartDate))
-//&amp;&amp; 
-//(dim_detail_court[date_of_trial] &lt; value(@EndDate) || dim_detail_claim[date_of_disposal_hearing]&lt; value(@EndDate))
-//&amp;&amp;
-PATHCONTAINS(@InstructionType,IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type]))
-&amp;&amp;
-PATHCONTAINS(@Client,[Insurer])
-)
+        <CommandText>EVALUATE(
+	FILTER(
+    	CALCULATETABLE (
+    	    SUMMARIZE (
+	            fact_dimension_main,
+	            dim_client_involvement[insuredclient_name],
+	            dim_client[client_code],
+	            dim_client[client_code_trimmed],
+	            dim_matter_header_current[matter_number],
+	            dim_matter_header_current[matter_number_trimmed],
+	            dim_matter_header_current[master_client_matter_combined],
+	            dim_client_involvement[insurerclient_reference],
+	            dim_detail_claim[name_of_instructing_insurer],
+	            dim_detail_claim[ageas_claim_type],
+	            dim_detail_claim[ageas_office],
+	            dim_detail_court[date_of_trial],
+	            dim_detail_fraud[fraud_current_fraud_type],
+	            dim_detail_fraud[fraud_initial_fraud_type],
+	            dim_detail_fraud[fraud_type_ageas],
+	            dim_court_involvement[court_name],
+	            dim_fed_hierarchy_history_matter_owner[matter_owner_team],
+	            dim_detail_court[prospect_of_success],
+	            dim_fed_hierarchy_history_matter_owner[matter_owner_name],
+	            dim_detail_outcome[outcome_of_case],
+	            dim_detail_core_details[grpageas_case_handler],
+	            dim_client[client_group_name],
+	            fact_finance_summary[damages_reserve],
+	            fact_finance_summary[tp_costs_reserve],
+	            fact_finance_summary[defence_costs_reserve],
+	            fact_finance_summary[damages_interims],
+	            fact_finance_summary[damages_paid],
+	            fact_finance_summary[claimants_costs_paid],
+	            fact_finance_summary[total_amount_billed],
+	            fact_finance_summary[wip],
+	            fact_finance_summary[disbursement_balance],
+	            dim_detail_core_details[suspicion_of_fraud],
+	            dim_detail_claim[ageas_instruction_type],
+	            dim_detail_claim[date_of_disposal_hearing],
+	            dim_detail_outcome[date_claim_concluded],
+	            "Insurer", IF(dim_detail_claim[name_of_instructing_insurer]="Tesco Underwriting (TU)" || dim_client[client_code]="T3003", "Tesco Underwriting (TU)"
+							,"Ageas Insurance Ltd (AIL)"),
+				-- Removes duplicate CCMC entries
+				"NewCourtName", IF(SEARCH("CCMC", dim_court_involvement[court_name], SEARCH("CCMC", dim_court_involvement[court_name], 1, 0) + 3  , 0) &gt; 0,
+							REPLACE("CCMC", SEARCH("CCMC", dim_court_involvement[court_name], SEARCH("CCMC", dim_court_involvement[court_name], 1, 0) + 3  , 0), 4, ""), 
+							dim_court_involvement[court_name]),
+	            "ClaimType",IF(dim_detail_claim[ageas_claim_type] = BLANK() , "Missing" , dim_detail_claim[ageas_claim_type]),
+	            "InstructionType",IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type])
+        	),
+		    dim_matter_header_current[matter_number] &lt;&gt; "ML",
+		    dim_client[client_group_name] = "Ageas",
+		    PATHCONTAINS("Yes",dim_detail_core_details[suspicion_of_fraud]),
+		    PATHCONTAINS(@Team ,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+    	),
+    	PATHCONTAINS(@InstructionType,IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type]))
+		&amp;&amp;
+		PATHCONTAINS("Ageas Insurance Ltd (AIL)",[Insurer])
+	)
 )
 ORDER BY
-dim_detail_court[date_of_trial],
+	dim_detail_court[date_of_trial],
     dim_client[client_code],
     dim_matter_header_current[matter_number]</CommandText>
         <rd:DesignerState>
@@ -2826,6 +2818,12 @@ dim_detail_court[date_of_trial],
                       <ColumnName>dim_matter_header_current[matter_number_trimmed]</ColumnName>
                     </ID>
                     <ItemCaption>dim_matter_header_current[matter_number_trimmed]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_matter_header_current[master_client_matter_combined]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_matter_header_current[master_client_matter_combined]</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
@@ -3003,6 +3001,12 @@ dim_detail_court[date_of_trial],
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
+                      <ColumnName>[NewCourtName]</ColumnName>
+                    </ID>
+                    <ItemCaption>[NewCourtName]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
                       <ColumnName>[ClaimType]</ColumnName>
                     </ID>
                     <ItemCaption>[ClaimType]</ItemCaption>
@@ -3023,68 +3027,66 @@ dim_detail_court[date_of_trial],
   &lt;/SelectTablesControlState&gt;
   &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
   &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;EVALUATE
- (
-    FILTER(
-    CALCULATETABLE (
-        SUMMARIZE (
-            fact_dimension_main,
-            dim_client_involvement[insuredclient_name],
-            dim_client[client_code],
-            dim_client[client_code_trimmed],
-            dim_matter_header_current[matter_number],
-            dim_matter_header_current[matter_number_trimmed],
-            dim_client_involvement[insurerclient_reference],
-            dim_detail_claim[name_of_instructing_insurer],
-            dim_detail_claim[ageas_claim_type],
-            dim_detail_claim[ageas_office],
-            dim_detail_court[date_of_trial],
-            dim_detail_fraud[fraud_current_fraud_type],
-            dim_detail_fraud[fraud_initial_fraud_type],
-            dim_detail_fraud[fraud_type_ageas],
-            dim_court_involvement[court_name],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_team],
-            dim_detail_court[prospect_of_success],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_name],
-            dim_detail_outcome[outcome_of_case],
-            dim_detail_core_details[grpageas_case_handler],
-            dim_client[client_group_name],
-            fact_finance_summary[damages_reserve],
-            fact_finance_summary[tp_costs_reserve],
-            fact_finance_summary[defence_costs_reserve],
-            fact_finance_summary[damages_interims],
-            fact_finance_summary[damages_paid],
-            fact_finance_summary[claimants_costs_paid],
-            fact_finance_summary[total_amount_billed],
-            fact_finance_summary[wip],
-            fact_finance_summary[disbursement_balance],
-            dim_detail_core_details[suspicion_of_fraud],
-            dim_detail_claim[ageas_instruction_type],
-            dim_detail_claim[date_of_disposal_hearing],
-            dim_detail_outcome[date_claim_concluded],
-            "Insurer",IF(dim_detail_claim[name_of_instructing_insurer] = BLANK() , "Missing" , dim_detail_claim[name_of_instructing_insurer]),
-            "ClaimType",IF(dim_detail_claim[ageas_claim_type] = BLANK() , "Missing" , dim_detail_claim[ageas_claim_type]),
-            "InstructionType",IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type])
-        ),
-//    dim_detail_court[date_of_trial] &amp;gt;= value(@StartDate),
-//    dim_detail_court[date_of_trial] &amp;lt; value(@EndDate),
---    dim_client[client_group_name] = "Ageas",
-    dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "ML",
-   -- dim_detail_outcome[outcome_of_case] = BLANK(),
-    PATHCONTAINS(@Fraud,dim_detail_core_details[suspicion_of_fraud]),
-    PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
-    ),
-//(dim_detail_court[date_of_trial] &amp;gt;= value(@StartDate) || dim_detail_claim[date_of_disposal_hearing]&amp;gt;= value(@StartDate))
-//&amp;amp;&amp;amp; 
-//(dim_detail_court[date_of_trial] &amp;lt; value(@EndDate) || dim_detail_claim[date_of_disposal_hearing]&amp;lt; value(@EndDate))
-//&amp;amp;&amp;amp;
-PATHCONTAINS(@InstructionType,IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type]))
-&amp;amp;&amp;amp;
-PATHCONTAINS(@Client,[Insurer])
-)
+  &lt;QueryText&gt;EVALUATE(
+	FILTER(
+    	CALCULATETABLE (
+    	    SUMMARIZE (
+	            fact_dimension_main,
+	            dim_client_involvement[insuredclient_name],
+	            dim_client[client_code],
+	            dim_client[client_code_trimmed],
+	            dim_matter_header_current[matter_number],
+	            dim_matter_header_current[matter_number_trimmed],
+	            dim_matter_header_current[master_client_matter_combined],
+	            dim_client_involvement[insurerclient_reference],
+	            dim_detail_claim[name_of_instructing_insurer],
+	            dim_detail_claim[ageas_claim_type],
+	            dim_detail_claim[ageas_office],
+	            dim_detail_court[date_of_trial],
+	            dim_detail_fraud[fraud_current_fraud_type],
+	            dim_detail_fraud[fraud_initial_fraud_type],
+	            dim_detail_fraud[fraud_type_ageas],
+	            dim_court_involvement[court_name],
+	            dim_fed_hierarchy_history_matter_owner[matter_owner_team],
+	            dim_detail_court[prospect_of_success],
+	            dim_fed_hierarchy_history_matter_owner[matter_owner_name],
+	            dim_detail_outcome[outcome_of_case],
+	            dim_detail_core_details[grpageas_case_handler],
+	            dim_client[client_group_name],
+	            fact_finance_summary[damages_reserve],
+	            fact_finance_summary[tp_costs_reserve],
+	            fact_finance_summary[defence_costs_reserve],
+	            fact_finance_summary[damages_interims],
+	            fact_finance_summary[damages_paid],
+	            fact_finance_summary[claimants_costs_paid],
+	            fact_finance_summary[total_amount_billed],
+	            fact_finance_summary[wip],
+	            fact_finance_summary[disbursement_balance],
+	            dim_detail_core_details[suspicion_of_fraud],
+	            dim_detail_claim[ageas_instruction_type],
+	            dim_detail_claim[date_of_disposal_hearing],
+	            dim_detail_outcome[date_claim_concluded],
+	            "Insurer", IF(dim_detail_claim[name_of_instructing_insurer]="Tesco Underwriting (TU)" || dim_client[client_code]="T3003", "Tesco Underwriting (TU)"
+							,"Ageas Insurance Ltd (AIL)"),
+				-- Removes duplicate CCMC entries
+				"NewCourtName", IF(SEARCH("CCMC", dim_court_involvement[court_name], SEARCH("CCMC", dim_court_involvement[court_name], 1, 0) + 3  , 0) &amp;gt; 0,
+							REPLACE("CCMC", SEARCH("CCMC", dim_court_involvement[court_name], SEARCH("CCMC", dim_court_involvement[court_name], 1, 0) + 3  , 0), 4, ""), 
+							dim_court_involvement[court_name]),
+	            "ClaimType",IF(dim_detail_claim[ageas_claim_type] = BLANK() , "Missing" , dim_detail_claim[ageas_claim_type]),
+	            "InstructionType",IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type])
+        	),
+		    dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "ML",
+		    dim_client[client_group_name] = "Ageas",
+		    PATHCONTAINS("Yes",dim_detail_core_details[suspicion_of_fraud]),
+		    PATHCONTAINS(@Team ,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+    	),
+    	PATHCONTAINS(@InstructionType,IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type]))
+		&amp;amp;&amp;amp;
+		PATHCONTAINS("Ageas Insurance Ltd (AIL)",[Insurer])
+	)
 )
 ORDER BY
-dim_detail_court[date_of_trial],
+	dim_detail_court[date_of_trial],
     dim_client[client_code],
     dim_matter_header_current[matter_number]&lt;/QueryText&gt;
   &lt;DatabaseId /&gt;
@@ -3095,95 +3097,69 @@ dim_detail_court[date_of_trial],
 &lt;/DataminingQueryBuilderState&gt;</Data>
             </QuerySpecification>
             <Query>
-              <Statement>EVALUATE
- (
-    FILTER(
-    CALCULATETABLE (
-        SUMMARIZE (
-            fact_dimension_main,
-            dim_client_involvement[insuredclient_name],
-            dim_client[client_code],
-            dim_client[client_code_trimmed],
-            dim_matter_header_current[matter_number],
-            dim_matter_header_current[matter_number_trimmed],
-            dim_client_involvement[insurerclient_reference],
-            dim_detail_claim[name_of_instructing_insurer],
-            dim_detail_claim[ageas_claim_type],
-            dim_detail_claim[ageas_office],
-            dim_detail_court[date_of_trial],
-            dim_detail_fraud[fraud_current_fraud_type],
-            dim_detail_fraud[fraud_initial_fraud_type],
-            dim_detail_fraud[fraud_type_ageas],
-            dim_court_involvement[court_name],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_team],
-            dim_detail_court[prospect_of_success],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_name],
-            dim_detail_outcome[outcome_of_case],
-            dim_detail_core_details[grpageas_case_handler],
-            dim_client[client_group_name],
-            fact_finance_summary[damages_reserve],
-            fact_finance_summary[tp_costs_reserve],
-            fact_finance_summary[defence_costs_reserve],
-            fact_finance_summary[damages_interims],
-            fact_finance_summary[damages_paid],
-            fact_finance_summary[claimants_costs_paid],
-            fact_finance_summary[total_amount_billed],
-            fact_finance_summary[wip],
-            fact_finance_summary[disbursement_balance],
-            dim_detail_core_details[suspicion_of_fraud],
-            dim_detail_claim[ageas_instruction_type],
-            dim_detail_claim[date_of_disposal_hearing],
-            dim_detail_outcome[date_claim_concluded],
-            "Insurer",IF(dim_detail_claim[name_of_instructing_insurer] = BLANK() , "Missing" , dim_detail_claim[name_of_instructing_insurer]),
-            "ClaimType",IF(dim_detail_claim[ageas_claim_type] = BLANK() , "Missing" , dim_detail_claim[ageas_claim_type]),
-            "InstructionType",IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type])
-        ),
-//    dim_detail_court[date_of_trial] &gt;= value(@StartDate),
-//    dim_detail_court[date_of_trial] &lt; value(@EndDate),
---    dim_client[client_group_name] = "Ageas",
-    dim_matter_header_current[matter_number] &lt;&gt; "ML",
-   -- dim_detail_outcome[outcome_of_case] = BLANK(),
-    PATHCONTAINS(@Fraud,dim_detail_core_details[suspicion_of_fraud]),
-    PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
-    ),
-//(dim_detail_court[date_of_trial] &gt;= value(@StartDate) || dim_detail_claim[date_of_disposal_hearing]&gt;= value(@StartDate))
-//&amp;&amp; 
-//(dim_detail_court[date_of_trial] &lt; value(@EndDate) || dim_detail_claim[date_of_disposal_hearing]&lt; value(@EndDate))
-//&amp;&amp;
-PATHCONTAINS(@InstructionType,IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type]))
-&amp;&amp;
-PATHCONTAINS(@Client,[Insurer])
-)
+              <Statement>EVALUATE(
+	FILTER(
+    	CALCULATETABLE (
+    	    SUMMARIZE (
+	            fact_dimension_main,
+	            dim_client_involvement[insuredclient_name],
+	            dim_client[client_code],
+	            dim_client[client_code_trimmed],
+	            dim_matter_header_current[matter_number],
+	            dim_matter_header_current[matter_number_trimmed],
+	            dim_matter_header_current[master_client_matter_combined],
+	            dim_client_involvement[insurerclient_reference],
+	            dim_detail_claim[name_of_instructing_insurer],
+	            dim_detail_claim[ageas_claim_type],
+	            dim_detail_claim[ageas_office],
+	            dim_detail_court[date_of_trial],
+	            dim_detail_fraud[fraud_current_fraud_type],
+	            dim_detail_fraud[fraud_initial_fraud_type],
+	            dim_detail_fraud[fraud_type_ageas],
+	            dim_court_involvement[court_name],
+	            dim_fed_hierarchy_history_matter_owner[matter_owner_team],
+	            dim_detail_court[prospect_of_success],
+	            dim_fed_hierarchy_history_matter_owner[matter_owner_name],
+	            dim_detail_outcome[outcome_of_case],
+	            dim_detail_core_details[grpageas_case_handler],
+	            dim_client[client_group_name],
+	            fact_finance_summary[damages_reserve],
+	            fact_finance_summary[tp_costs_reserve],
+	            fact_finance_summary[defence_costs_reserve],
+	            fact_finance_summary[damages_interims],
+	            fact_finance_summary[damages_paid],
+	            fact_finance_summary[claimants_costs_paid],
+	            fact_finance_summary[total_amount_billed],
+	            fact_finance_summary[wip],
+	            fact_finance_summary[disbursement_balance],
+	            dim_detail_core_details[suspicion_of_fraud],
+	            dim_detail_claim[ageas_instruction_type],
+	            dim_detail_claim[date_of_disposal_hearing],
+	            dim_detail_outcome[date_claim_concluded],
+	            "Insurer", IF(dim_detail_claim[name_of_instructing_insurer]="Tesco Underwriting (TU)" || dim_client[client_code]="T3003", "Tesco Underwriting (TU)"
+							,"Ageas Insurance Ltd (AIL)"),
+				-- Removes duplicate CCMC entries
+				"NewCourtName", IF(SEARCH("CCMC", dim_court_involvement[court_name], SEARCH("CCMC", dim_court_involvement[court_name], 1, 0) + 3  , 0) &gt; 0,
+							REPLACE("CCMC", SEARCH("CCMC", dim_court_involvement[court_name], SEARCH("CCMC", dim_court_involvement[court_name], 1, 0) + 3  , 0), 4, ""), 
+							dim_court_involvement[court_name]),
+	            "ClaimType",IF(dim_detail_claim[ageas_claim_type] = BLANK() , "Missing" , dim_detail_claim[ageas_claim_type]),
+	            "InstructionType",IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type])
+        	),
+		    dim_matter_header_current[matter_number] &lt;&gt; "ML",
+		    dim_client[client_group_name] = "Ageas",
+		    PATHCONTAINS("Yes",dim_detail_core_details[suspicion_of_fraud]),
+		    PATHCONTAINS(@Team ,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+    	),
+    	PATHCONTAINS(@InstructionType,IF( dim_detail_claim[ageas_instruction_type]= BLANK() , "Missing" , dim_detail_claim[ageas_instruction_type]))
+		&amp;&amp;
+		PATHCONTAINS("Ageas Insurance Ltd (AIL)",[Insurer])
+	)
 )
 ORDER BY
-dim_detail_court[date_of_trial],
+	dim_detail_court[date_of_trial],
     dim_client[client_code],
     dim_matter_header_current[matter_number]</Statement>
               <ParameterDefinitions>
-                <ParameterDefinition>
-                  <Name>Client</Name>
-                  <DefaultValues>
-                    <DefaultValue>Ageas Insurance Ltd (AIL)</DefaultValue>
-                  </DefaultValues>
-                  <Caption>Client</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>Team</Name>
-                  <DefaultValues>
-                    <DefaultValue>Fast Track Motort Liverpool</DefaultValue>
-                  </DefaultValues>
-                  <Caption>Team</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
                 <ParameterDefinition>
                   <Name>InstructionType</Name>
                   <DefaultValues>
@@ -3197,11 +3173,11 @@ dim_detail_court[date_of_trial],
                   </ParameterValuesQuery>
                 </ParameterDefinition>
                 <ParameterDefinition>
-                  <Name>Fraud</Name>
+                  <Name>Team</Name>
                   <DefaultValues>
-                    <DefaultValue>0</DefaultValue>
+                    <DefaultValue>Motor Fraud</DefaultValue>
                   </DefaultValues>
-                  <Caption>Fraud</Caption>
+                  <Caption>Team</Caption>
                   <ParameterValuesQuery>
                     <ParameterizedStatement>
                       <ReferencedParameters />
@@ -3236,6 +3212,10 @@ dim_detail_court[date_of_trial],
         </Field>
         <Field Name="dim_matter_header_current_matter_number_trimmed_">
           <DataField>dim_matter_header_current[matter_number_trimmed]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dim_matter_header_current_master_client_matter_combined_">
+          <DataField>dim_matter_header_current[master_client_matter_combined]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="dim_detail_claim_name_of_instructing_insurer_">
@@ -3354,6 +3334,10 @@ dim_detail_court[date_of_trial],
           <DataField>[ClaimType]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="ID_NewCourtName_">
+          <DataField>[NewCourtName]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="ID_InstructionType_">
           <DataField>[InstructionType]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -3465,6 +3449,91 @@ WHERE task_desccription = 'Trial date - today'</CommandText>
         <Field Name="Trial_Date">
           <DataField>Trial Date</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_team">
+      <Query>
+        <DataSourceName>CaseDetails</DataSourceName>
+        <CommandText>EVALUATE(
+    CALCULATETABLE (
+    	SUMMARIZE (
+	            fact_dimension_main,
+				dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+        	),
+		    dim_matter_header_current[matter_number] &lt;&gt; "ML",
+		    dim_client[client_group_name] = "Ageas",
+		    PATHCONTAINS("Yes",dim_detail_core_details[suspicion_of_fraud])
+	)
+)
+ORDER BY
+	dim_fed_hierarchy_history_matter_owner[matter_owner_team]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_team]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_team]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+    CALCULATETABLE (
+    	SUMMARIZE (
+	            fact_dimension_main,
+				dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+        	),
+		    dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "ML",
+		    dim_client[client_group_name] = "Ageas",
+		    PATHCONTAINS("Yes",dim_detail_core_details[suspicion_of_fraud])
+	)
+)
+ORDER BY
+	dim_fed_hierarchy_history_matter_owner[matter_owner_team]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+    CALCULATETABLE (
+    	SUMMARIZE (
+	            fact_dimension_main,
+				dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+        	),
+		    dim_matter_header_current[matter_number] &lt;&gt; "ML",
+		    dim_client[client_group_name] = "Ageas",
+		    PATHCONTAINS("Yes",dim_detail_core_details[suspicion_of_fraud])
+	)
+)
+ORDER BY
+	dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_team_">
+          <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_team]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -5449,7 +5518,7 @@ WHERE task_desccription = 'Trial date - today'</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_client_client_code_trimmed_.Value + "-" + Fields!dim_matter_header_current_matter_number_trimmed_.Value</Value>
+                                      <Value>=Fields!dim_matter_header_current_master_client_matter_combined_.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -6125,7 +6194,7 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_court_involvement_court_name_.Value</Value>
+                                      <Value>=Fields!ID_NewCourtName_.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -11027,7 +11096,7 @@ Fields!dim_detail_court_date_of_trial_.Value)</FilterExpression>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_client_client_code_trimmed_.Value + "-" + Fields!dim_matter_header_current_matter_number_trimmed_.Value</Value>
+                                      <Value>=Fields!dim_matter_header_current_master_client_matter_combined_.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -11827,7 +11896,6 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
@@ -11839,7 +11907,7 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_court_involvement_court_name_.Value</Value>
+                                      <Value>=Fields!ID_NewCourtName_.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -14711,7 +14779,7 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>2.34374in</Height>
-            <Width>38.0191in</Width>
+            <Width>39.0191in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -14755,7 +14823,7 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>38.0191in</Width>
+      <Width>39.0191in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -15340,42 +15408,6 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
         </ParameterValues>
       </ValidValues>
     </ReportParameter>
-    <ReportParameter Name="Client">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>Clients</DataSetName>
-          <ValueField>Insurer</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Client</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>Clients</DataSetName>
-          <ValueField>Insurer</ValueField>
-          <LabelField>Insurer</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
-    <ReportParameter Name="Team">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <DataSetReference>
-          <DataSetName>Teams</DataSetName>
-          <ValueField>Team</ValueField>
-        </DataSetReference>
-      </DefaultValue>
-      <Prompt>Team</Prompt>
-      <ValidValues>
-        <DataSetReference>
-          <DataSetName>Teams</DataSetName>
-          <ValueField>Team</ValueField>
-          <LabelField>Team</LabelField>
-        </DataSetReference>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
     <ReportParameter Name="InstructionType">
       <DataType>String</DataType>
       <DefaultValue>
@@ -15394,14 +15426,19 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="Fraud">
+    <ReportParameter Name="Team">
       <DataType>String</DataType>
-      <Prompt>Suspicion of Fraud</Prompt>
+      <DefaultValue>
+        <Values>
+          <Value>Motor Fraud</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>Fraudparam</DataSetName>
-          <ValueField>ID_Fraud_</ValueField>
-          <LabelField>ID_Fraud_</LabelField>
+          <DataSetName>param_team</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</ValueField>
+          <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</LabelField>
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
@@ -15410,7 +15447,7 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -15425,22 +15462,12 @@ IIF(Fields!dim_detail_fraud_fraud_initial_fraud_type_.Value &lt;&gt; nothing,Fie
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>Client</ParameterName>
+          <ParameterName>InstructionType</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
           <ParameterName>Team</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>InstructionType</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>Fraud</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
