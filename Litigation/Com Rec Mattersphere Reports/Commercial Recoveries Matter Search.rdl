@@ -2584,7 +2584,7 @@ SELECT clNo,fileNo,fileDesc,CRSystemSourceID AS [Original File Reference]
 ,txtClaimRef  AS [Claim Reference 1]     
 ,txtClaNum21  AS [Claim Reference 2]    
 ,txtDebtNum   AS [Debtor Reference]  
-,txtClientNum  AS [Client Reference]      
+,ISNULL(txtClientNum,AssocRef.assocRef) AS [Client Reference]      
 ,txtAccNumber  AS [Account Number]
 ,txtCliRef AS [CLient Reference 2]
 
@@ -2598,6 +2598,9 @@ LEFT OUTER JOIN MS_PROD.dbo.udCRIssueDetails ON udCRIssueDetails.fileID = dbFile
 LEFT OUTER JOIN MS_PROD.dbo.udCRInsolvency ON udCRInsolvency.fileID = dbFile.fileID
 LEFT OUTER JOIN MS_PROD.dbo.udCRClientScreens ON udCRClientScreens.fileID = dbFile.fileID
 LEFT OUTER JOIN MS_PROD.dbo.udCRSOLCDE ON udCRSOLCDE.fileID = dbFile.fileID
+LEFT OUTER JOIN (SELECT fileID,assocRef FROM MS_Prod.config.dbAssociates
+WHERE assocRef IS NOT NULL AND assocType='CLIENT') AS AssocRef
+ ON  AssocRef.fileID = dbFile.fileID
 WHERE fileType='2038' AND
 (
 UPPER(txtClaimRef)IS NOT NULL AND  UPPER(txtClaimRef) LIKE'%'+ UPPER(@SearchDetail1) + '%' OR 
@@ -2605,7 +2608,8 @@ UPPER(txtClaNum21)IS NOT NULL AND  UPPER(txtClaNum21) LIKE'%'+ UPPER(@SearchDeta
 UPPER(txtDebtNum)IS NOT NULL AND  UPPER(txtDebtNum) LIKE'%'+ UPPER(@SearchDetail1) + '%'  OR 
 UPPER(txtClientNum)IS NOT NULL AND  UPPER(txtClientNum) LIKE'%'+ UPPER(@SearchDetail1) + '%'  OR 
 UPPER(txtAccNumber)IS NOT NULL AND  UPPER(txtAccNumber) LIKE'%'+ UPPER(@SearchDetail1) + '%'  OR 
-UPPER(txtCliRef)IS NOT NULL AND  UPPER(txtCliRef) LIKE'%'+ UPPER(@SearchDetail1) + '%'
+UPPER(txtCliRef)IS NOT NULL AND  UPPER(txtCliRef) LIKE'%'+ UPPER(@SearchDetail1) + '%' OR
+UPPER(AssocRef.assocRef)IS NOT NULL AND  UPPER(AssocRef.assocRef) LIKE'%'+ UPPER(@SearchDetail1) + '%'
 )
 
 END
