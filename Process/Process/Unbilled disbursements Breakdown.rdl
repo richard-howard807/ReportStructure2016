@@ -74,6 +74,15 @@
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
+      <Filters>
+        <Filter>
+          <FilterExpression>=Fields!Fee_Earner.Value</FilterExpression>
+          <Operator>Equal</Operator>
+          <FilterValues>
+            <FilterValue>=IIF(Parameters!FeeEarner.Value = "All", Fields!Fee_Earner.Value, Parameters!FeeEarner.Value)</FilterValue>
+          </FilterValues>
+        </Filter>
+      </Filters>
     </DataSet>
     <DataSet Name="DataSet2">
       <Query>
@@ -107,6 +116,58 @@ WHERE transaction_calendar_date=CONVERT(DATE,GETDATE(),103)</CommandText>
         <Field Name="transaction_fin_period">
           <DataField>transaction_fin_period</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="FeeEarner">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@finMonth">
+            <Value>=Parameters!finMonth.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>
+
+SELECT distinct
+dim_fed_hierarchy_history.name AS [Fee Earner]
+, 1 AS RowOrder
+
+FROM red_dw.dbo.fact_disbursements_detail_monthly AS a
+INNER JOIN red_dw.dbo.dim_transaction_date AS b
+ ON a.dim_transaction_date_key=b.dim_transaction_date_key
+
+INNER JOIN red_dw.dbo.dim_matter_header_current WITH(NOLOCK)
+ ON a.client_code=dim_matter_header_current.client_code
+ AND a.matter_number=dim_matter_header_current.matter_number 
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history WITH(NOLOCK) 
+ ON dim_matter_header_current.fee_earner_code=fed_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+LEFT OUTER JOIN red_dw.dbo.dim_payee
+ ON dim_payee.dim_payee_key = a.dim_payee_key
+ LEFT OUTER JOIN red_dw.dbo.ds_sh_3e_costcard
+ ON ds_sh_3e_costcard.costindex = a.costindex
+
+ WHERE dim_bill_key=0
+AND total_unbilled_disbursements &lt;&gt; 0
+--AND reporting_exclusions=0
+AND b.transaction_fin_month=@finMonth  /*JL*/
+AND a.invnumber  IS NULL 
+AND ds_sh_3e_costcard.isnb=0
+
+UNION 
+
+SELECT 'All' , 2 
+
+ORDER BY RowOrder DESC, dim_fed_hierarchy_history.name ASC</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Fee_Earner">
+          <DataField>Fee Earner</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="RowOrder">
+          <DataField>RowOrder</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -1128,6 +1189,19 @@ WHERE transaction_calendar_date=CONVERT(DATE,GETDATE(),103)</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
+    <ReportParameter Name="FeeEarner">
+      <DataType>String</DataType>
+      <Nullable>true</Nullable>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Fee Earner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>FeeEarner</DataSetName>
+          <ValueField>Fee_Earner</ValueField>
+          <LabelField>Fee_Earner</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
     <ReportParameter Name="Level">
       <DataType>String</DataType>
       <DefaultValue>
@@ -1142,17 +1216,22 @@ WHERE transaction_calendar_date=CONVERT(DATE,GETDATE(),103)</CommandText>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>0</RowIndex>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
           <ParameterName>Level</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>finMonth</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>FeeEarner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
