@@ -3268,21 +3268,28 @@ LEFT JOIN (
 			GROUP BY aig_litigation_number
 			HAVING SUM(portal_bill_total_excl_vat) &gt; 0 --and aig_litigation_number IS NOT null
 		  ) lit_number ON lit_number.lit_number = aig_litigation_number
-			LEFT JOIN  (SELECT profstatus profstatus,altnumber,loadnumber FROM dbo.ds_sh_3e_profmaster
-							LEFT JOIN dbo.ds_sh_3e_matter ON leadmatter = mattindex) prof 
+LEFT JOIN  (SELECT profstatus profstatus,altnumber,loadnumber, sum(ds_sh_3e_profmaster.totamt - ds_sh_3e_profmaster.taxamt) portal_bill_total_excl_vat_vew FROM dbo.ds_sh_3e_profmaster
+			LEFT JOIN dbo.ds_sh_3e_matter ON leadmatter = mattindex
+			group by ds_sh_3e_profmaster.profstatus
+                   , ds_sh_3e_matter.altnumber
+                   , ds_sh_3e_matter.loadnumber) prof 
 ON loadnumber COLLATE DATABASE_DEFAULT = LTRIM(RTRIM(dim_detail_client.client_code)) +'-'+LTRIM(RTRIM(dim_detail_client.matter_number)) COLLATE DATABASE_DEFAULT OR 
 prof.altnumber COLLATE DATABASE_DEFAULT = LTRIM(RTRIM(dim_detail_client.client_code)) +'-'+LTRIM(RTRIM(dim_detail_client.matter_number)) COLLATE DATABASE_DEFAULT
 LEFT OUTER JOIN red_dw.dbo.dim_client_involvement
  ON dim_client_involvement.client_code = dim_matter_header_current.client_code
  AND dim_client_involvement.matter_number = dim_matter_header_current.matter_number
+
 WHERE 
-portal_bill_total_excl_vat &gt; 0  AND 
---UPPER(aig_litigation_number) LIKE '%LIT%' AND 
-profstatus  in ('Approved')
-and 
-altnumber LIKE 'A2002%'
- --AND RTRIM(dim_detail_client.client_code) = 'A2002' AND RTRIM(dim_detail_client.matter_number) = '00013149'
-ORDER BY  altnumber</CommandText>
+portal_bill_total_excl_vat_vew &gt; 0
+--portal_bill_total_excl_vat &gt; 0 
+and profstatus  in ('Approved')
+and altnumber LIKE 'A2002%'
+--and dim_matter_header_current.ms_fileid = 5029081
+ORDER BY  altnumber
+
+
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="ms_fileid">
@@ -7969,7 +7976,6 @@ WHERE    1 = 1
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
