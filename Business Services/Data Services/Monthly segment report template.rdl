@@ -2982,6 +2982,188 @@ WHERE bill_fin_period=@Period</CommandText>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="NewClientsReveny">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Period">
+            <Value>=Parameters!Period.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@SegmentName">
+            <Value>=Parameters!SegmentName.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>DECLARE @Year AS INT
+DECLARE @Month AS INT
+SET @Year=(SELECT DISTINCT bill_fin_year
+FROM red_dw.dbo.dim_bill_date
+WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))
+AND bill_fin_period=@Period)
+
+
+SET @Month=(SELECT DISTINCT bill_fin_month_no
+FROM red_dw.dbo.dim_bill_date
+WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))
+AND bill_fin_period=@Period)
+
+PRINT @Year
+PRINT @Month
+
+
+SELECT sector AS Sector,segment AS Segment
+,SUM(CASE WHEN dim_date.bill_fin_year=@Year AND bill_fin_month_no &lt;=@Month THEN 1 ELSE 0 END) AS NewClientYTDMonth
+,SUM(RevenueYTDMonth) AS RevenueYTDMonth
+,AVG(CASE WHEN dim_date.bill_fin_year=@Year AND bill_fin_month_no =@Month THEN 1 ELSE 0 END) AS AVGNewClientMonth
+,AVG(RevenueYTDMonth) AS AVGRevenueYTDMonth
+
+
+FROM red_dw.dbo.dim_client
+INNER JOIN red_dw.dbo.dim_bill_date AS dim_date WITH(NOLOCK)
+ ON CONVERT(DATE,dim_client.open_date,103)=CONVERT(DATE,dim_date.bill_date,103)
+INNER JOIN (SELECT client_code,SUM(CASE WHEN dim_bill_date.bill_fin_year=@Year THEN bill_amount ELSE 0 END) AS RevenueYTD 
+			,SUM(CASE WHEN dim_bill_date.bill_fin_year=@Year AND bill_fin_month_no &lt;=@Month THEN bill_amount ELSE 0 END) AS RevenueYTDMonth 
+			,SUM(CASE WHEN dim_bill_date.bill_fin_year=@Year AND bill_fin_month_no =@Month THEN bill_amount ELSE 0 END) AS RevenueMonth
+			FROM red_dw.dbo.fact_bill_activity  WITH(NOLOCK) 
+			INNER JOIN red_dw.dbo.dim_bill_date  WITH(NOLOCK) 
+			 ON fact_bill_activity.dim_bill_date_key=dim_bill_date.dim_bill_date_key
+			 WHERE dim_bill_date.bill_fin_year=@Year
+			AND dim_bill_date.bill_fin_month_no &lt;=@Month
+			GROUP BY client_code
+) AS fact_bill_activity_activity
+ ON dim_client.client_code=fact_bill_activity_activity.client_code
+
+WHERE dim_date.bill_fin_year=@Year
+AND sector IS NOT NULL
+AND dim_date.bill_fin_month_no &lt;=@Month
+AND segment=@SegmentName
+
+GROUP BY sector,segment</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Sector">
+          <DataField>Sector</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Segment">
+          <DataField>Segment</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="NewClientYTDMonth">
+          <DataField>NewClientYTDMonth</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AVGNewClientMonth">
+          <DataField>AVGNewClientMonth</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AVGRevenueYTDMonth">
+          <DataField>AVGRevenueYTDMonth</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="RevenueYTDMonth">
+          <DataField>RevenueYTDMonth</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="NewClientRevPre">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Period">
+            <Value>=Parameters!Period.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@SegmentName">
+            <Value>=Parameters!SegmentName.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>DECLARE @Year AS INT
+DECLARE @Month AS INT
+SET @Year=(SELECT DISTINCT bill_fin_year
+FROM red_dw.dbo.dim_bill_date
+WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))
+AND bill_fin_period=@Period)
+
+DECLARE @PrevYear AS INT
+SET @PrevYear=(SELECT DISTINCT bill_fin_year
+FROM red_dw.dbo.dim_bill_date
+WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=DATEADD(YEAR,-1,CONVERT(DATE,GETDATE(),103)))
+)
+
+PRINT @PrevYear
+PRINT @Year
+
+
+SET @Month=(SELECT DISTINCT bill_fin_month_no
+FROM red_dw.dbo.dim_bill_date
+WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))
+AND bill_fin_period=@Period)
+
+PRINT @Year
+PRINT @Month
+
+
+SELECT sector AS Sector,segment AS Segment
+,SUM(CASE WHEN dim_date.bill_fin_year=@PrevYear AND bill_fin_month_no &lt;=@Month THEN 1 ELSE 0 END) AS NewClientYTDMonth
+,SUM(RevenueYTDMonth) AS RevenueYTDMonth
+,AVG(CASE WHEN dim_date.bill_fin_year=@PrevYear AND bill_fin_month_no =@Month THEN 1 ELSE 0 END) AS AVGNewClientMonth
+,AVG(RevenueYTDMonth) AS AVGRevenueYTDMonth
+
+
+FROM red_dw.dbo.dim_client
+INNER JOIN red_dw.dbo.dim_bill_date AS dim_date WITH(NOLOCK)
+ ON CONVERT(DATE,dim_client.open_date,103)=CONVERT(DATE,dim_date.bill_date,103)
+INNER JOIN (SELECT client_code,SUM(CASE WHEN dim_bill_date.bill_fin_year=@PrevYear THEN bill_amount ELSE 0 END) AS RevenueYTD 
+			,SUM(CASE WHEN dim_bill_date.bill_fin_year=@PrevYear AND bill_fin_month_no &lt;=@Month THEN bill_amount ELSE 0 END) AS RevenueYTDMonth 
+			,SUM(CASE WHEN dim_bill_date.bill_fin_year=@PrevYear AND bill_fin_month_no =@Month THEN bill_amount ELSE 0 END) AS RevenueMonth
+			FROM red_dw.dbo.fact_bill_activity  WITH(NOLOCK) 
+			INNER JOIN red_dw.dbo.dim_bill_date  WITH(NOLOCK) 
+			 ON fact_bill_activity.dim_bill_date_key=dim_bill_date.dim_bill_date_key
+			 WHERE dim_bill_date.bill_fin_year=@PrevYear
+			AND dim_bill_date.bill_fin_month_no &lt;=@Month
+			GROUP BY client_code
+) AS fact_bill_activity_activity
+ ON dim_client.client_code=fact_bill_activity_activity.client_code
+
+WHERE dim_date.bill_fin_year=@PrevYear
+AND sector IS NOT NULL
+AND dim_date.bill_fin_month_no &lt;=@Month
+AND segment=@SegmentName
+
+GROUP BY sector,segment</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Sector">
+          <DataField>Sector</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Segment">
+          <DataField>Segment</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="NewClientYTDMonth">
+          <DataField>NewClientYTDMonth</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="RevenueYTDMonth">
+          <DataField>RevenueYTDMonth</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="AVGNewClientMonth">
+          <DataField>AVGNewClientMonth</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AVGRevenueYTDMonth">
+          <DataField>AVGRevenueYTDMonth</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -6584,7 +6766,7 @@ WHERE bill_fin_period=@Period</CommandText>
             </TablixRowHierarchy>
             <DataSetName>Financials</DataSetName>
             <Top>0.03473in</Top>
-            <Left>0.0002in</Left>
+            <Left>0.00029in</Left>
             <Height>5.21876in</Height>
             <Width>14.08786in</Width>
             <Style>
@@ -7323,7 +7505,7 @@ WHERE bill_fin_period=@Period</CommandText>
               <BreakLocation>Start</BreakLocation>
             </PageBreak>
             <Top>5.4971in</Top>
-            <Left>0.0002in</Left>
+            <Left>0.00029in</Left>
             <Height>4.04166in</Height>
             <Width>11.08785in</Width>
             <ZIndex>1</ZIndex>
@@ -7362,9 +7544,7 @@ WHERE bill_fin_period=@Period</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(Parameters!SegmentName.Value="Individuals",
-"Top 10 New Clients Opened in " &amp; FORMAT(Fields!MonthDate.Value,"MMMM") &amp;" by Segment"
-,"Top 3 New Clients Opened in " &amp; FORMAT(Fields!MonthDate.Value,"MMMM") &amp;" by Segment")</Value>
+                                  <Value>="Top 10 New Clients Opened in " &amp; FORMAT(Fields!MonthDate.Value,"MMMM") &amp;" by Segment"</Value>
                                   <Style>
                                     <FontFamily>Lucida Sans Unicode</FontFamily>
                                     <FontSize>11pt</FontSize>
@@ -7376,6 +7556,49 @@ WHERE bill_fin_period=@Period</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox349</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>None</Style>
+                            </Border>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <ColSpan>4</ColSpan>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox113">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Not auto-populated, please add any client wins on note</Value>
+                                  <Style>
+                                    <FontStyle>Italic</FontStyle>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontWeight>Normal</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox89</rd:DefaultName>
                           <Style>
                             <Border>
                               <Style>None</Style>
@@ -7834,6 +8057,219 @@ WHERE bill_fin_period=@Period</CommandText>
                   <TablixCells>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox36">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox36</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox37">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox37</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox38">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox38</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox39">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox39</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox360">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -7854,8 +8290,28 @@ WHERE bill_fin_period=@Period</CommandText>
                           <rd:DefaultName>Textbox360</rd:DefaultName>
                           <Style>
                             <Border>
-                              <Style>None</Style>
+                              <Style>Solid</Style>
                             </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -7886,8 +8342,28 @@ WHERE bill_fin_period=@Period</CommandText>
                           <rd:DefaultName>Textbox361</rd:DefaultName>
                           <Style>
                             <Border>
-                              <Style>None</Style>
+                              <Style>Solid</Style>
                             </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -7918,8 +8394,28 @@ WHERE bill_fin_period=@Period</CommandText>
                           <rd:DefaultName>Textbox370</rd:DefaultName>
                           <Style>
                             <Border>
-                              <Style>None</Style>
+                              <Style>Solid</Style>
                             </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -7950,8 +8446,28 @@ WHERE bill_fin_period=@Period</CommandText>
                           <rd:DefaultName>Textbox363</rd:DefaultName>
                           <Style>
                             <Border>
-                              <Style>None</Style>
+                              <Style>Solid</Style>
                             </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
                             <PaddingLeft>2pt</PaddingLeft>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
@@ -8045,6 +8561,9 @@ WHERE bill_fin_period=@Period</CommandText>
                   <KeepWithGroup>After</KeepWithGroup>
                 </TablixMember>
                 <TablixMember>
+                  <KeepWithGroup>After</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
                   <Group Name="Details2" />
                   <Visibility>
                     <Hidden>true</Hidden>
@@ -8056,12 +8575,15 @@ WHERE bill_fin_period=@Period</CommandText>
                 <TablixMember>
                   <KeepWithGroup>Before</KeepWithGroup>
                 </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>Before</KeepWithGroup>
+                </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>NewClients</DataSetName>
-            <Top>9.93459in</Top>
-            <Left>0.00005in</Left>
-            <Height>1.65625in</Height>
+            <Top>10.94294in</Top>
+            <Left>0.0006in</Left>
+            <Height>2.15625in</Height>
             <Width>11.08784in</Width>
             <ZIndex>2</ZIndex>
             <Visibility>
@@ -8145,7 +8667,7 @@ WHERE bill_fin_period=@Period</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(Parameters!SegmentName.Value = "OMB" ,"Information pulls from the IA Dashboard where an opportunity has been marked as a win in the reporting month"
+                                  <Value>=IIF(Parameters!SegmentName.Value &lt;&gt; "OMB" ,"Information pulls from the IA Dashboard where an opportunity has been marked as a win in the reporting month"
 ,"Information pulls from the IA Dashboard where an opportunity has been marked as a win in the reporting month As not all OMB opportunities are added or managed in the pipeline please add any new client wins of note")</Value>
                                   <Style>
                                     <FontStyle>Italic</FontStyle>
@@ -8825,8 +9347,8 @@ WHERE bill_fin_period=@Period</CommandText>
             <PageBreak>
               <BreakLocation>Start</BreakLocation>
             </PageBreak>
-            <Top>11.71007in</Top>
-            <Left>0.00016cm</Left>
+            <Top>13.23925in</Top>
+            <Left>0.00091cm</Left>
             <Height>2.11458in</Height>
             <Width>11.08784in</Width>
             <ZIndex>3</ZIndex>
@@ -8927,7 +9449,7 @@ WHERE bill_fin_period=@Period</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=IIF(Parameters!SegmentName.Value = "OMB" ,"Screenshot taken from the IA Dashboard and shows all opportunities with an expected close date in the next 3 months."
+                                  <Value>=IIF(Parameters!SegmentName.Value &lt;&gt; "OMB" ,"Screenshot taken from the IA Dashboard and shows all opportunities with an expected close date in the next 3 months."
 ,"Screenshot taken from the IA Dashboard and shows all opportunities with an expected close date in the next 3 months. As not all OMB opportunities are added or managed in the pipeline please add any additional opportunities of note in the comments box")</Value>
                                   <Style>
                                     <FontStyle>Italic</FontStyle>
@@ -9869,38 +10391,16 @@ WHERE bill_fin_period=@Period</CommandText>
                 <TablixMember />
                 <TablixMember />
                 <TablixMember>
-                  <Group Name="Opportunity_Number">
-                    <GroupExpressions>
-                      <GroupExpression>=Fields!Opportunity_Number.Value</GroupExpression>
-                    </GroupExpressions>
-                  </Group>
-                  <SortExpressions>
-                    <SortExpression>
-                      <Value>=Fields!Opportunity_Number.Value</Value>
-                    </SortExpression>
-                  </SortExpressions>
-                  <TablixMembers>
-                    <TablixMember>
-                      <Group Name="Details4">
-                        <GroupExpressions>
-                          <GroupExpression>=Fields!Opportunity_Number.Value</GroupExpression>
-                        </GroupExpressions>
-                      </Group>
-                      <TablixMembers>
-                        <TablixMember>
-                          <Visibility>
-                            <Hidden>true</Hidden>
-                          </Visibility>
-                        </TablixMember>
-                        <TablixMember />
-                      </TablixMembers>
-                    </TablixMember>
-                  </TablixMembers>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
                 </TablixMember>
+                <TablixMember />
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>RealisticOpp</DataSetName>
-            <Top>16.0132in</Top>
+            <Top>17.54238in</Top>
+            <Left>0.00075cm</Left>
             <Height>1.95833in</Height>
             <Width>11.08787in</Width>
             <ZIndex>4</ZIndex>
@@ -12638,8 +13138,8 @@ WHERE bill_fin_period=@Period</CommandText>
             <PageBreak>
               <BreakLocation>Start</BreakLocation>
             </PageBreak>
-            <Top>20.268in</Top>
-            <Left>0.00021cm</Left>
+            <Top>21.79718in</Top>
+            <Left>0.00096cm</Left>
             <Height>6.30209in</Height>
             <Width>11.08785in</Width>
             <ZIndex>5</ZIndex>
@@ -13494,8 +13994,8 @@ WHERE bill_fin_period=@Period</CommandText>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>RealisticOpp</DataSetName>
-            <Top>18.07223in</Top>
-            <Left>0.00024cm</Left>
+            <Top>19.60141in</Top>
+            <Left>0.00099cm</Left>
             <Height>2.125in</Height>
             <Width>11.08784in</Width>
             <ZIndex>6</ZIndex>
@@ -14256,8 +14756,8 @@ WHERE bill_fin_period=@Period</CommandText>
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>Losses</DataSetName>
-            <Top>13.97883in</Top>
-            <Left>0.00008cm</Left>
+            <Top>15.50801in</Top>
+            <Left>0.00083cm</Left>
             <Height>1.90625in</Height>
             <Width>11.08784in</Width>
             <ZIndex>7</ZIndex>
@@ -14267,8 +14767,858 @@ WHERE bill_fin_period=@Period</CommandText>
               </Border>
             </Style>
           </Tablix>
+          <Tablix Name="Tablix10">
+            <TablixBody>
+              <TablixColumns>
+                <TablixColumn>
+                  <Width>3.08785in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.67708in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.42702in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.42702in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.42702in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.40625in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.42702in</Width>
+                </TablixColumn>
+              </TablixColumns>
+              <TablixRows>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox354">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>="New Clients Opened"</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>11pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox349</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>None</Style>
+                            </Border>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <ColSpan>7</ColSpan>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                    <TablixCell />
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.41667in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox372">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Segment / Sector</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox347</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox378">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">No. of New Clients Billed Previous YTD</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox352</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox399">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">No. of New Clients Billed YTD</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox368</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox401">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Revenue Previous YTD</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox358</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox81">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Revenue YTD</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox81</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox92">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Average Revenue Previous YTD</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Format>1.42702in, 0.41667in</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox92</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox116">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Average Revenue YTD</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>9pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox116</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <BackgroundColor>White</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+                <TablixRow>
+                  <Height>0.25in</Height>
+                  <TablixCells>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox32">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Sector.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox7</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox120">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=lookup(TRIM(Fields!Sector.Value),TRIM(Fields!Sector.Value),Fields!NewClientYTDMonth.Value, "NewClientRevPre")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox120</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox40">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!NewClientYTDMonth.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox9</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox122">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Lookup(TRIM(Fields!Sector.Value), TRIM(Fields!Sector.Value)
+,Fields!AVGRevenueYTDMonth.Value, "NewClientRevPre")</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>#,0.00</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox120</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <rd:Selected>true</rd:Selected>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox85">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!RevenueYTDMonth.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>#,0.00</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox85</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox121">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=ReportItems("Textbox122").Value / ReportItems("Textbox120").Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>#,0.00</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox121</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox117">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!RevenueYTDMonth.Value/Fields!NewClientYTDMonth.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Format>#,0.00</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox117</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Style>Solid</Style>
+                            </Border>
+                            <TopBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </TopBorder>
+                            <BottomBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </BottomBorder>
+                            <LeftBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </LeftBorder>
+                            <RightBorder>
+                              <Color>Black</Color>
+                              <Style>Solid</Style>
+                              <Width>1pt</Width>
+                            </RightBorder>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                  </TablixCells>
+                </TablixRow>
+              </TablixRows>
+            </TablixBody>
+            <TablixColumnHierarchy>
+              <TablixMembers>
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+              </TablixMembers>
+            </TablixColumnHierarchy>
+            <TablixRowHierarchy>
+              <TablixMembers>
+                <TablixMember>
+                  <KeepWithGroup>After</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <KeepWithGroup>After</KeepWithGroup>
+                </TablixMember>
+                <TablixMember>
+                  <Group Name="Details4" />
+                </TablixMember>
+              </TablixMembers>
+            </TablixRowHierarchy>
+            <DataSetName>NewClientsReveny</DataSetName>
+            <Top>9.70068in</Top>
+            <Left>0.00039in</Left>
+            <Height>0.91667in</Height>
+            <Width>11.87926in</Width>
+            <ZIndex>8</ZIndex>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Tablix>
         </ReportItems>
-        <Height>26.78884in</Height>
+        <Height>28.09927in</Height>
         <Style>
           <Border>
             <Color>=First(Fields!Body_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -14304,7 +15654,7 @@ WHERE bill_fin_period=@Period</CommandText>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>15.08805in</Width>
+      <Width>22.32758in</Width>
       <Page>
         <PageHeader>
           <Height>1.11624in</Height>
@@ -14389,7 +15739,7 @@ WHERE bill_fin_period=@Period</CommandText>
               </ReportItems>
               <KeepTogether>true</KeepTogether>
               <Top>0.78124in</Top>
-              <Left>0.00051cm</Left>
+              <Left>0.00075cm</Left>
               <Height>0.24208in</Height>
               <Width>11.08785in</Width>
               <Visibility>
@@ -14438,7 +15788,7 @@ WHERE bill_fin_period=@Period</CommandText>
                 </Actions>
               </ActionInfo>
               <Top>0.125in</Top>
-              <Left>0.00051cm</Left>
+              <Left>0.00075cm</Left>
               <Height>0.65624in</Height>
               <Width>2.08785in</Width>
               <ZIndex>1</ZIndex>
@@ -14491,7 +15841,7 @@ WHERE bill_fin_period=@Period</CommandText>
                 </Actions>
               </ActionInfo>
               <Top>0.125in</Top>
-              <Left>2.08805in</Left>
+              <Left>2.08814in</Left>
               <Height>0.64235in</Height>
               <Width>9in</Width>
               <ZIndex>2</ZIndex>
@@ -14578,8 +15928,7 @@ WHERE bill_fin_period=@Period</CommandText>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0cm</Top>
-              <Left>0.00051cm</Left>
+              <Left>0.00075cm</Left>
               <Height>0.25in</Height>
               <Width>11.08785in</Width>
               <Visibility>
@@ -14743,7 +16092,7 @@ WHERE bill_fin_period=@Period</CommandText>
                 </Paragraph>
               </Paragraphs>
               <Top>0.55556in</Top>
-              <Left>0.00051cm</Left>
+              <Left>0.00075cm</Left>
               <Height>0.36938in</Height>
               <Width>11.08785in</Width>
               <ZIndex>1</ZIndex>
@@ -14798,7 +16147,7 @@ WHERE bill_fin_period=@Period</CommandText>
                 </Actions>
               </ActionInfo>
               <Top>0.22974in</Top>
-              <Left>0.00051cm</Left>
+              <Left>0.00075cm</Left>
               <Height>0.25638in</Height>
               <Width>11.08785in</Width>
               <ZIndex>2</ZIndex>
