@@ -2717,6 +2717,15 @@ fact_dimension_main
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
+      <Filters>
+        <Filter>
+          <FilterExpression>=Fields!Matter_Manager.Value</FilterExpression>
+          <Operator>Equal</Operator>
+          <FilterValues>
+            <FilterValue>=IIF(Parameters!MatterOwner.Value = "All", Fields!Matter_Manager.Value, Parameters!MatterOwner.Value)</FilterValue>
+          </FilterValues>
+        </Filter>
+      </Filters>
     </DataSet>
     <DataSet Name="Department">
       <Query>
@@ -2746,6 +2755,65 @@ AND dim_detail_core_details.present_position not IN
         <Field Name="department">
           <DataField>department</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="MatterOwner">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@dpt">
+            <Value>=Parameters!dpt.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>--DECLARE @dpt AS NVARCHAR(20) = 'Large Loss'
+
+SELECT distinct
+	dim_fed_hierarchy_history.name [Matter Manager]
+	,1 OrderSort
+	
+
+FROM 
+red_Dw.dbo.fact_dimension_main
+LEFT JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+LEFT JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+LEFT JOIN red_dw.dbo.dim_matter_worktype ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
+
+WHERE 
+dim_matter_header_current.date_closed_case_management IS NULL 
+AND 
+
+dim_fed_hierarchy_history.hierarchylevel2hist = 'Legal Ops - Claims'
+--AND dim_fed_hierarchy_history.hierarchylevel3hist = 'Large Loss'
+AND dim_detail_core_details.referral_reason = 'Advice only                                                 '
+AND dim_detail_core_details.present_position not IN
+(
+'Final bill sent - unpaid',
+'To be closed/minor balances to be clear                     '
+)
+
+AND dim_matter_header_current.ms_only = 1 
+AND dim_fed_hierarchy_history.hierarchylevel3hist IN (@dpt)
+
+UNION 
+
+SELECT 'All'
+
+,2
+
+ORDER BY 2 desc, 1
+
+</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Matter_Manager">
+          <DataField>Matter Manager</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="OrderSort">
+          <DataField>OrderSort</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -5925,11 +5993,28 @@ AND dim_detail_core_details.present_position not IN
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="MatterOwner">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>="All"</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>MatterOwner</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>MatterOwner</DataSetName>
+          <ValueField>Matter_Manager</ValueField>
+          <LabelField>Matter_Manager</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5940,6 +6025,11 @@ AND dim_detail_core_details.present_position not IN
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>dpt</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>MatterOwner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
