@@ -2477,7 +2477,7 @@ WHERE  name ='Counsel_and_Expert_Applied_Vouchers.png'</CommandText>
 	, IM.BalTax AS [Invoice Tax Balance]
 	, CAST(MAX(RM.RcptDate) AS DATE) AS [Receipt Date]
 	, MAX(RM.RcptAmt) AS [Receipt Amount]
-	, COALESCE(MAX(RM.RcptAmt) / NULLIF(IM.BalAmt,0), 0)  AS [Receipt %]  
+	, CAST(COALESCE(MAX(RM.RcptAmt) / NULLIF(IM.BalAmt,0), 0) AS DECIMAL (16,2))  AS [Receipt %]  
 	, P.PayeeNum AS [Payee Number]
 	, P.Name AS [Payee Name]
 	, P.Terms
@@ -2517,8 +2517,10 @@ FROM TE_3E_Prod.dbo.Voucher V WITH (NOLOCK)
 		ON RM.RcptIndex = AR.RcptMaster
 WHERE 
 	V.OpenAmt &gt; '0'
-	AND C.CostType IN ('COU','122','COUNSEL','CF','119','125')
 	AND C.IsActive = '1'
+	--amended below logic as requested on #106382
+	--AND C.CostType IN ('COU','122','COUNSEL','CF','119','125')
+	AND P.PayeeType IN ('EXPERT','COUN')
 GROUP BY	
 	V.VchrIndex
 	, V.TranDate
@@ -8558,6 +8560,7 @@ ORDER BY
                                         <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>0.00%</Format>
                                         <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -8608,6 +8611,7 @@ ORDER BY
                                 <WritingMode>=First(Fields!tblDataFooter_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
