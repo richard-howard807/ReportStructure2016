@@ -2456,13 +2456,13 @@ WHERE  name ='New_Contact_Duplications.png'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>--DECLARE @Dups AS VARCHAR(max)
---SET @Dups='5513250,5771561'
+--SET @Dups='5546300,5513250'
 
 IF OBJECT_ID('tempdb..#Dups') IS NOT NULL   DROP TABLE #Dups
 
 SELECT ListValue  INTO #Dups FROM Reporting.dbo.udt_TallySplit(',', @Dups)
 
-SELECT dbContact.contID AS [Contact ID]
+SELECT DISTINCT dbContact.contID AS [Contact ID]
        ,dbContact.contName AS [Contact Name]
        ,dbAddress.addLine1 AS [Address Line 1]
        ,dbAddress.addLine2 AS [Address Line 2]
@@ -2473,13 +2473,24 @@ SELECT dbContact.contID AS [Contact ID]
        ,Email AS [Email]
        ,usrFullName AS [Created By]
        ,[red_dw].[dbo].[datetimelocal](dbContact.Created) AS [Date Created]
-       ,STRING_AGG(PossibleDups.contID, ', ') AS [Possible Dups]
+       ,STRING_AGG(PossibleDups.contID, ', ')  AS [Possible Dups]
+	   ,files.Files AS [Files]
 
 FROM MS_Prod.config.dbContact
     INNER JOIN MS_Prod.dbo.dbUser
         ON dbUser.usrID = dbContact.CreatedBy
     INNER JOIN MS_Prod.dbo.dbAddress
         ON contDefaultAddress = addID
+
+	
+	LEFT OUTER JOIN (SELECT DISTINCT dbAssociates.contID
+									,STRING_AGG(master_client_code+'-'+master_matter_number,', ')  AS [Files]
+					FROM MS_Prod.config.dbAssociates
+					LEFT OUTER JOIN red_dw.dbo.dim_matter_header_current
+					ON dbAssociates.fileID=dim_matter_header_current.ms_fileid
+					--WHERE dbAssociates.contID='5513250'
+					GROUP BY dbAssociates.contID) AS files
+					ON files.contID = dbContact.contID   
     
 	LEFT OUTER JOIN
     (
@@ -2501,21 +2512,19 @@ FROM MS_Prod.config.dbContact
     (
         SELECT contName,
                addPostcode,
-               contID
+               dbContact.contID
         FROM MS_Prod.config.dbContact
             INNER JOIN MS_Prod.dbo.dbAddress
                 ON contDefaultAddress = addID
+			
     ) AS PossibleDups
         ON PossibleDups.addPostcode = dbAddress.addPostcode
            AND PossibleDups.contName = dbContact.contName
            --AND dbContact.contID &lt;&gt; PossibleDups.contID
+        
 
 INNER JOIN #Dups AS Dups ON Dups.ListValue  = dbContact.contID
 
---WHERE 
-----[red_dw].[dbo].[datetimelocal](dbContact.Created) BETWEEN '2021-06-14' AND '2021-06-16'
-----dbContact.contID IN (5513250, 5771561)
---dbContact.contID IN (@Dups)
 
 GROUP BY dbContact.contID,
          dbContact.contName,
@@ -2527,8 +2536,8 @@ GROUP BY dbContact.contID,
          dbAddress.addPostcode,
          Email,
          usrFullName,
-         [red_dw].[dbo].[datetimelocal](dbContact.Created)
-</CommandText>
+         [red_dw].[dbo].[datetimelocal](dbContact.Created),
+		 files.Files</CommandText>
       </Query>
       <Fields>
         <Field Name="Contact_ID">
@@ -2579,6 +2588,10 @@ GROUP BY dbContact.contID,
           <DataField>Possible Dups</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Files">
+          <DataField>Files</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
   </DataSets>
@@ -2623,6 +2636,9 @@ GROUP BY dbContact.contID,
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.14583in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1.6875in</Width>
                     </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
@@ -3328,6 +3344,73 @@ GROUP BY dbContact.contID,
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox26</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox1">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Files</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox1</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -4109,12 +4192,80 @@ GROUP BY dbContact.contID,
                             </Textbox>
                           </CellContents>
                         </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Files">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Files.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Files</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
                       </TablixCells>
                     </TablixRow>
                   </TablixRows>
                 </TablixBody>
                 <TablixColumnHierarchy>
                   <TablixMembers>
+                    <TablixMember />
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
@@ -4150,7 +4301,7 @@ GROUP BY dbContact.contID,
                 </SortExpressions>
                 <Top>0.0441cm</Top>
                 <Height>0.78124in</Height>
-                <Width>16.1865in</Width>
+                <Width>17.874in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
