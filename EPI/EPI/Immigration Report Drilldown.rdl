@@ -2455,7 +2455,13 @@ WHERE  name ='Immigration_Report.png'</CommandText>
             <Value>=Parameters!Matter.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT dim_matter_header_curr_key
+        <CommandText>IF @Matter IN (SELECT dim_matter_header_curr_key FROM red_dw.dbo.fact_all_time_activity
+INNER JOIN red_dw.dbo.dim_all_time_narrative
+ ON dim_all_time_narrative.dim_all_time_narrative_key = fact_all_time_activity.dim_all_time_narrative_key
+WHERE narrative LIKE 'IMM %')
+
+BEGIN
+SELECT dim_matter_header_curr_key
 		, time_keeper.name AS [Time Keeper]
 		, fact_all_time_activity.minutes_recorded/60 AS [Hours Recorded]
 		, dim_date.calendar_date AS [Transaction Date]
@@ -2468,7 +2474,30 @@ LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS time_keeper WITH(NOLOCK)
 ON time_keeper.dim_fed_hierarchy_history_key = fact_all_time_activity.dim_fed_hierarchy_history_key
 LEFT OUTER JOIN red_dw.dbo.dim_date WITH(NOLOCK)
 ON dim_date.dim_date_key=fact_all_time_activity.dim_transaction_date_key
-WHERE dim_matter_header_curr_key=@Matter</CommandText>
+WHERE dim_matter_header_curr_key=@Matter
+AND narrative LIKE 'IMM %'
+END
+
+ELSE 
+
+BEGIN
+
+SELECT dim_matter_header_curr_key
+		, time_keeper.name AS [Time Keeper]
+		, fact_all_time_activity.minutes_recorded/60 AS [Hours Recorded]
+		, dim_date.calendar_date AS [Transaction Date]
+		, dim_all_time_narrative.narrative AS [Narrative]
+,time_activity_code AS [Activity Code]
+FROM red_dw.dbo.fact_all_time_activity WITH(NOLOCK)
+LEFT OUTER JOIN red_dw.dbo.dim_all_time_narrative WITH(NOLOCK)
+ ON dim_all_time_narrative.dim_all_time_narrative_key = fact_all_time_activity.dim_all_time_narrative_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS time_keeper WITH(NOLOCK)
+ON time_keeper.dim_fed_hierarchy_history_key = fact_all_time_activity.dim_fed_hierarchy_history_key
+LEFT OUTER JOIN red_dw.dbo.dim_date WITH(NOLOCK)
+ON dim_date.dim_date_key=fact_all_time_activity.dim_transaction_date_key
+WHERE dim_matter_header_curr_key=@Matter
+
+END</CommandText>
       </Query>
       <Fields>
         <Field Name="dim_matter_header_curr_key">
@@ -3133,7 +3162,6 @@ WHERE dim_matter_header_curr_key=@Matter</CommandText>
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
