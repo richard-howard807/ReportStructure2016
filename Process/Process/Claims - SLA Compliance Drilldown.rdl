@@ -2520,7 +2520,7 @@ WHERE
 	ClaimsSLAComplianceTable.Team IN (@Team)
 	AND ClaimsSLAComplianceTable.fee_earner_code IN (@Name)
 	AND ISNULL(CASE WHEN ClaimsSLAComplianceTable.client_group_name = '' THEN 'None' ELSE ClaimsSLAComplianceTable.client_group_name END,'None') IN (@ClientGroup)
-	AND ISNULL(ClaimsSLAComplianceTable.[Present Position],'Missing') IN (@PresentPosition)
+	AND ISNULL(RTRIM(ClaimsSLAComplianceTable.[Present Position]),'Missing') IN (@PresentPosition)
 	AND ClaimsSLAComplianceTable.Status IN (@Status)
 	AND ((ClaimsSLAComplianceTable.[Date Opened] &gt;= @StartDate OR @StartDate IS NULL) AND  ClaimsSLAComplianceTable.[Date Opened] &lt;=  @EndDate  OR @EndDate IS NULL)
 	AND (CASE 
@@ -2796,47 +2796,6 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="ParamClients">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT client_group_name FROM
-(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
-FROM red_dw.dbo.dim_client) AS AllData
-ORDER BY AllData.client_group_name</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="client_group_name">
-          <DataField>client_group_name</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="ParamPP">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT ISNULL([present_position],'Missing')  AS [present_position]
-FROM red_dw.dbo.dim_detail_core_details</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="present_position">
-          <DataField>present_position</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="ParamStatus">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT CASE WHEN date_closed_case_management IS NULL THEN 'Open' ELSE 'Closed' END AS [Status]
-FROM red_dw.dbo.dim_matter_header_current</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="Status">
-          <DataField>Status</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
     <DataSet Name="ClaimsSLACompliance">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
@@ -2869,7 +2828,7 @@ WHERE
 	ClaimsSLAComplianceTable.Team IN (@Team)
 	AND ClaimsSLAComplianceTable.fee_earner_code IN (@Name)
 	AND ISNULL(CASE WHEN ClaimsSLAComplianceTable.client_group_name = '' THEN 'None' ELSE ClaimsSLAComplianceTable.client_group_name END,'None') IN (@ClientGroup)
-	AND ISNULL(ClaimsSLAComplianceTable.[Present Position],'Missing') IN (@PresentPosition)
+	AND ISNULL(RTRIM(ClaimsSLAComplianceTable.[Present Position]),'Missing') IN (@PresentPosition)
 	AND ClaimsSLAComplianceTable.Status IN (@Status)
 	AND ((ClaimsSLAComplianceTable.[Date Opened] &gt;= @StartDate OR @StartDate IS NULL) AND  ClaimsSLAComplianceTable.[Date Opened] &lt;=  @EndDate  OR @EndDate IS NULL)</CommandText>
       </Query>
@@ -2930,6 +2889,10 @@ WHERE
           <DataField>Present Position</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="NHS_Instruction_Type__N1001_Only_">
+          <DataField>NHS Instruction Type (N1001 Only)</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Date_Opened">
           <DataField>Date Opened</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
@@ -2966,17 +2929,17 @@ WHERE
           <DataField>Date Initial Report Due (if extended)</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
-        <Field Name="Days_to_Send_Intial_Report">
-          <DataField>Days to Send Intial Report</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="Days_without_Initial_Report">
-          <DataField>Days without Initial Report</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
+        <Field Name="Initial_Report_Rules">
+          <DataField>Initial Report Rules</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Date_Subsequent_SLA_Report_Sent">
           <DataField>Date Subsequent SLA Report Sent</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="inverted_initial_rule">
+          <DataField>inverted_initial_rule</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Days_without_Subsequent_Report">
           <DataField>Days without Subsequent Report</DataField>
@@ -3032,11 +2995,11 @@ WHERE
         </Field>
         <Field Name="Update_Report_SLA__working_days_">
           <DataField>Update Report SLA (working days)</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.Double</rd:TypeName>
         </Field>
         <Field Name="Update_Report_SLA_hidden_on_report_for_highlighting">
           <DataField>Update Report SLA hidden on report for highlighting</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.Double</rd:TypeName>
         </Field>
         <Field Name="File_Opening_RAG">
           <DataField>File Opening RAG</DataField>
@@ -3044,6 +3007,10 @@ WHERE
         </Field>
         <Field Name="NEW_Initial_Report_RAG">
           <DataField>NEW Initial Report RAG</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="nhs_sla_instruction_type">
+          <DataField>nhs_sla_instruction_type</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="RagWithouthSub">
@@ -3077,6 +3044,35 @@ WHERE
         <Field Name="Subsequent_Report_is_Overdue">
           <DataField>Subsequent Report is Overdue</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_present_position">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT 
+	ISNULL([present_position],'Missing')  AS [present_position]
+FROM red_dw.dbo.dim_detail_core_details</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="present_position">
+          <DataField>present_position</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_client_group">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT client_group_name FROM
+(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
+FROM red_dw.dbo.dim_client) AS AllData
+ORDER BY AllData.client_group_name</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_group_name">
+          <DataField>client_group_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -4551,10 +4547,16 @@ WHERE
                   <Width>1in</Width>
                 </TablixColumn>
                 <TablixColumn>
+                  <Width>2.00694in</Width>
+                </TablixColumn>
+                <TablixColumn>
                   <Width>1in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.36111in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1in</Width>
@@ -4579,6 +4581,9 @@ WHERE
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1.375in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.75in</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -5038,6 +5043,47 @@ WHERE
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox1">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Initial Report Rules</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox86">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -5086,7 +5132,7 @@ WHERE
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Working Days to Send Initial Report</Value>
+                                  <Value>Days to Send Initial Report</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5116,6 +5162,48 @@ WHERE
                             <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                           </Style>
                         </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox5">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Subsequent Report SLA</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox5</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -5431,6 +5519,47 @@ WHERE
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox104</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox3">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>NHS Instruction Type N1001 Only </Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox3</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -5919,6 +6048,48 @@ WHERE
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Initial_Report_Rules">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Initial_Report_Rules.Value</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Initial_Report_Rules</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Date_Initial_Report_Sent">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -5987,6 +6158,48 @@ WHERE
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>days_to_first_report_lifecycle</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                            </Border>
+                            <BackgroundColor>=Fields!NEW_Initial_Report_RAG.Value</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Update_Report_SLA">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Update_Report_SLA.Value</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=IIF(Fields!days_to_first_report_lifecycle.Value&lt;0,"Red","Black")</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Update_Report_SLA</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -6343,12 +6556,57 @@ WHERE
                         </Textbox>
                       </CellContents>
                     </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="NHS_Instruction_Type__N1001_Only_">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!NHS_Instruction_Type__N1001_Only_.Value</Value>
+                                  <Style>
+                                    <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                    <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                    <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                    <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style>
+                                <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                              </Style>
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>NHS_Instruction_Type__N1001_Only_</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                              <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                            </Border>
+                            <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                            <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                            <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                            <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                            <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                            <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
                   </TablixCells>
                 </TablixRow>
               </TablixRows>
             </TablixBody>
             <TablixColumnHierarchy>
               <TablixMembers>
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
@@ -6398,7 +6656,7 @@ WHERE
             </SortExpressions>
             <Top>1.72222in</Top>
             <Height>1.15972in</Height>
-            <Width>23.88472in</Width>
+            <Width>29.00277in</Width>
             <ZIndex>1</ZIndex>
             <Style>
               <Border>
@@ -6443,7 +6701,7 @@ WHERE
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>23.88472in</Width>
+      <Width>29.00278in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -7049,11 +7307,36 @@ WHERE
       <DataType>String</DataType>
       <Prompt>Present Position</Prompt>
       <ValidValues>
-        <DataSetReference>
-          <DataSetName>ParamPP</DataSetName>
-          <ValueField>present_position</ValueField>
-          <LabelField>present_position</LabelField>
-        </DataSetReference>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>Claim and costs outstanding</Value>
+            <Label>Claim and costs outstanding</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Claim concluded but costs outstanding</Value>
+            <Label>Claim concluded but costs outstanding</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Claim and costs concluded but recovery outstanding</Value>
+            <Label>Claim and costs concluded but recovery outstanding</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Missing</Value>
+            <Label>Missing</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Final bill due - claim and costs concluded</Value>
+            <Label>Final bill due - claim and costs concluded</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Final bill sent - unpaid</Value>
+            <Label>Final bill sent - unpaid</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>To be closed/minor balances to be clear</Value>
+            <Label>To be closed/minor balances to be clear</Label>
+          </ParameterValue>
+        </ParameterValues>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
@@ -7062,7 +7345,7 @@ WHERE
       <Prompt>Client Group</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>ParamClients</DataSetName>
+          <DataSetName>param_client_group</DataSetName>
           <ValueField>client_group_name</ValueField>
           <LabelField>client_group_name</LabelField>
         </DataSetReference>
@@ -7073,11 +7356,16 @@ WHERE
       <DataType>String</DataType>
       <Prompt>Status</Prompt>
       <ValidValues>
-        <DataSetReference>
-          <DataSetName>ParamStatus</DataSetName>
-          <ValueField>Status</ValueField>
-          <LabelField>Status</LabelField>
-        </DataSetReference>
+        <ParameterValues>
+          <ParameterValue>
+            <Value>Open</Value>
+            <Label>Open</Label>
+          </ParameterValue>
+          <ParameterValue>
+            <Value>Closed</Value>
+            <Label>Closed</Label>
+          </ParameterValue>
+        </ParameterValues>
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
