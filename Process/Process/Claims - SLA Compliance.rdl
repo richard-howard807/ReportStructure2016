@@ -2719,15 +2719,125 @@ WHERE
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="Teams">
+    <DataSet Name="param_present_position">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT 
+	ISNULL([present_position],'Missing')  AS [present_position]
+FROM red_dw.dbo.dim_detail_core_details</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="present_position">
+          <DataField>present_position</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_client_group">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT client_group_name FROM
+(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
+FROM red_dw.dbo.dim_client) AS AllData
+ORDER BY AllData.client_group_name</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_group_name">
+          <DataField>client_group_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_department">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
         <CommandText>EVALUATE(
 CALCULATETABLE(
 SUMMARIZE(
 fact_dimension_main
-,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]
 ),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+)
+)
+ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]
+),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+)
+)
+ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]
+),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+)
+)
+ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_">
+          <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_team">
+      <Query>
+        <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="param_department">
+            <Value>=Join(Parameters!param_department.Value, "|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>EVALUATE(
+CALCULATETABLE(
+SUMMARIZE(
+fact_dimension_main
+,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
+),PATHCONTAINS(@param_department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area])
 ,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
@@ -2760,7 +2870,7 @@ CALCULATETABLE(
 SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
-),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+),PATHCONTAINS(@param_department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area])
 ,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
@@ -2778,12 +2888,25 @@ CALCULATETABLE(
 SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_team]
-),PATHCONTAINS("Legal Ops - Claims",dim_fed_hierarchy_history_matter_owner[matter_owner_business_line])
+),PATHCONTAINS(@param_department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area])
 ,NOT ISBLANK(dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
-              <ParameterDefinitions />
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>param_department</Name>
+                  <DefaultValues>
+                    <DefaultValue>Casualty</DefaultValue>
+                  </DefaultValues>
+                  <Caption>param_department</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
             </Query>
           </QueryDefinition>
         </rd:DesignerState>
@@ -2795,12 +2918,12 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="Name">
+    <DataSet Name="param_name">
       <Query>
         <DataSourceName>SSAS_SVR_LIV_DWH_03_CD</DataSourceName>
         <QueryParameters>
-          <QueryParameter Name="Team">
-            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
+          <QueryParameter Name="param_team">
+            <Value>=Join(Parameters!Team.Value, "|")</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>EVALUATE(
@@ -2809,7 +2932,7 @@ SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_name]
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code]
-),PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+),PATHCONTAINS(@param_team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</CommandText>
@@ -2848,7 +2971,7 @@ SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_name]
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code]
-),PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+),PATHCONTAINS(@param_team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]&lt;/QueryText&gt;
@@ -2866,17 +2989,17 @@ SUMMARIZE(
 fact_dimension_main
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_name]
 ,dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code]
-),PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
+),PATHCONTAINS(@param_team,dim_fed_hierarchy_history_matter_owner[matter_owner_team])
 )
 )
 ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
               <ParameterDefinitions>
                 <ParameterDefinition>
-                  <Name>Team</Name>
+                  <Name>param_team</Name>
                   <DefaultValues>
                     <DefaultValue>0</DefaultValue>
                   </DefaultValues>
-                  <Caption>Team</Caption>
+                  <Caption>param_team</Caption>
                   <ParameterValuesQuery>
                     <ParameterizedStatement>
                       <ReferencedParameters />
@@ -2895,35 +3018,6 @@ ORDER BY dim_fed_hierarchy_history_matter_owner[matter_owner_name]</Statement>
         </Field>
         <Field Name="dim_fed_hierarchy_history_matter_owner_matter_owner_fed_code_">
           <DataField>dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="param_present_position">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT 
-	ISNULL([present_position],'Missing')  AS [present_position]
-FROM red_dw.dbo.dim_detail_core_details</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="present_position">
-          <DataField>present_position</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
-    </DataSet>
-    <DataSet Name="param_client_group">
-      <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT client_group_name FROM
-(SELECT DISTINCT ISNULL(CASE WHEN client_group_name='' THEN 'None' ELSE client_group_name END,'None') AS client_group_name
-FROM red_dw.dbo.dim_client) AS AllData
-ORDER BY AllData.client_group_name</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="client_group_name">
-          <DataField>client_group_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -9002,7 +9096,7 @@ ORDER BY AllData.client_group_name</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Initial_Report_Rules.Value</Value>
+                                      <Value>=IIf(Fields!Do_Clients_Require_an_Initial_Report_.Value = "No", "Initial report not needed", Fields!Initial_Report_Rules.Value)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -10334,7 +10428,7 @@ ORDER BY AllData.client_group_name</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Initial Report Rules</Value>
+                                      <Value>Initial SLA Report Rules</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -11873,7 +11967,11 @@ iif(round(AVG(IIf(IsNothing(Fields!inverted_avglifecycle.Value),Nothing,Fields!i
                     </TablixMember>
                     <TablixMember />
                     <TablixMember />
-                    <TablixMember />
+                    <TablixMember>
+                      <Visibility>
+                        <Hidden>true</Hidden>
+                      </Visibility>
+                    </TablixMember>
                     <TablixMember>
                       <Visibility>
                         <Hidden>true</Hidden>
@@ -12555,6 +12653,25 @@ iif(round(AVG(IIf(IsNothing(Fields!inverted_avglifecycle.Value),Nothing,Fields!i
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="param_department">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_department</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>param_department</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_department</DataSetName>
+          <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_</ValueField>
+          <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_practice_area_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
     <ReportParameter Name="StartDate">
       <DataType>DateTime</DataType>
       <Nullable>true</Nullable>
@@ -12579,14 +12696,14 @@ iif(round(AVG(IIf(IsNothing(Fields!inverted_avglifecycle.Value),Nothing,Fields!i
       <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
-          <DataSetName>Teams</DataSetName>
+          <DataSetName>param_team</DataSetName>
           <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</ValueField>
         </DataSetReference>
       </DefaultValue>
       <Prompt>Team</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>Teams</DataSetName>
+          <DataSetName>param_team</DataSetName>
           <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</ValueField>
           <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_team_</LabelField>
         </DataSetReference>
@@ -12597,14 +12714,14 @@ iif(round(AVG(IIf(IsNothing(Fields!inverted_avglifecycle.Value),Nothing,Fields!i
       <DataType>String</DataType>
       <DefaultValue>
         <DataSetReference>
-          <DataSetName>Name</DataSetName>
+          <DataSetName>param_name</DataSetName>
           <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_fed_code_</ValueField>
         </DataSetReference>
       </DefaultValue>
       <Prompt>Name</Prompt>
       <ValidValues>
         <DataSetReference>
-          <DataSetName>Name</DataSetName>
+          <DataSetName>param_name</DataSetName>
           <ValueField>dim_fed_hierarchy_history_matter_owner_matter_owner_fed_code_</ValueField>
           <LabelField>dim_fed_hierarchy_history_matter_owner_matter_owner_name_</LabelField>
         </DataSetReference>
@@ -12701,12 +12818,17 @@ iif(round(AVG(IIf(IsNothing(Fields!inverted_avglifecycle.Value),Nothing,Fields!i
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>5</NumberOfRows>
+      <NumberOfRows>6</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>0</RowIndex>
+          <ParameterName>param_department</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -12734,12 +12856,12 @@ iif(round(AVG(IIf(IsNothing(Fields!inverted_avglifecycle.Value),Nothing,Fields!i
           <ParameterName>PresentPosition</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>4</RowIndex>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>3</RowIndex>
           <ParameterName>ClientGroup</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
+          <ColumnIndex>0</ColumnIndex>
           <RowIndex>4</RowIndex>
           <ParameterName>Status</ParameterName>
         </CellDefinition>
