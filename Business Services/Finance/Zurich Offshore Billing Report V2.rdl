@@ -2456,12 +2456,15 @@ WHERE  name ='Zurich_offshores.png'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>
+
+
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 
 --=====================================================================================================================================
 -- Table to find any other outstanding invoices for Zurich to pay that are on the same matters as @InvoiceNo list provided by user
 --=====================================================================================================================================
 DROP TABLE IF EXISTS #outstanding_invoices
+DROP TABLE IF EXISTS #claimant_name
 
 SELECT 
 	all_data.Number
@@ -2493,32 +2496,20 @@ FROM (
 							ON Matter.MattIndex = InvMaster.LeadMatter
 					WHERE 
 						InvPayor.InvNumber IN (@InvoiceNo)
-						--InvPayor.InvNumber IN ('01970650', 
-						--						'01968874', 
-						--						'01968874', 
-						--						'01974305', 
-						--						'01974510', 
-						--						'01783375', 
-						--						'01844261', 
-						--						'01866466', 
-						--						'01882536', 
-						--						'01905796'
+						--InvPayor.InvNumber IN (
+						--						'02033887',
+						--						'02003512',
+						--						'02028224'
 						--						)
 					)	AS invoice_matters
 			ON invoice_matters.Number = Matter.Number
 	WHERE 
 		InvPayor.BalAmt &gt;0
 		AND InvPayor.InvNumber NOT IN (@InvoiceNo)
-		--AND InvPayor.InvNumber NOT IN ('01970650', 
-		--								'01968874', 
-		--								'01968874', 
-		--								'01974305', 
-		--								'01974510', 
-		--								'01783375', 
-		--								'01844261', 
-		--								'01866466', 
-		--								'01882536', 
-		--								'01905796'
+		--AND InvPayor.InvNumber NOT IN (
+		--								'02033887',
+		--								'02003512',
+		--								'02028224'
 		--								)
 		AND CASE
 				WHEN (LOWER(Payor.DisplayName) LIKE '%zurich%')THEN
@@ -2532,7 +2523,28 @@ WHERE
 	all_data.rnk = 1
 
 --=====================================================================================================================================
-
+-- table to get full claimant name. dwh only picks up surname and initial
+--=====================================================================================================================================
+SELECT 
+	dbFile.fileID
+	, STRING_AGG(CAST(dbContactIndividual.contChristianNames + ' ' + dbContactIndividual.contSurname AS NVARCHAR(MAX)), ', ')		AS clm_name
+INTO #claimant_name
+--SELECT dbClient.clNo + '-' + dbFile.fileNo AS ms_ref, COUNT(*)
+FROM MS_Prod.config.dbFile
+	INNER JOIN MS_Prod.config.dbClient
+		ON dbClient.clID = dbFile.clID
+	INNER JOIN MS_Prod.config.dbAssociates
+		ON dbAssociates.fileID = dbFile.fileID
+	INNER JOIN MS_Prod.config.dbContact
+		ON dbContact.contID = dbAssociates.contID
+	LEFT OUTER JOIN MS_Prod..dbContactIndividual
+		ON dbContactIndividual.contID = dbContact.contID
+WHERE 1 = 1
+	AND dbAssociates.assocType = 'CLAIMANT'
+	AND dbAssociates.assocActive = 1
+GROUP BY
+	dbFile.fileID
+--======================================================================================================================================
 
 
 
@@ -2548,7 +2560,7 @@ SELECT DISTINCT
 	, TE_3E_Prod.dbo.Matter.Number																						AS [3E Reference]
 	, COALESCE(dim_detail_core_details.zurich_policy_holdername_of_insured, 
 		dim_client_involvement.insuredclient_name, dim_matter_header_current.matter_description)						AS [Policyholder Name]
-	, COALESCE(dim_claimant_thirdparty_involvement.claimant_name, dim_detail_claim.zurich_claimants_name)				AS [Claimant Name]
+	, COALESCE(#claimant_name.clm_name COLLATE DATABASE_DEFAULT, dim_detail_claim.zurich_claimants_name)				AS [Claimant Name]
 	, CAST(dim_detail_core_details.incident_date AS DATE)																AS [Incident Date]
 	, dim_detail_core_details.clients_claims_handler_surname_forename													AS [Zurich Claim Handler]
 	, CASE 
@@ -2657,8 +2669,6 @@ FROM TE_3E_Prod.dbo.InvPayor
 		ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
 	LEFT OUTER JOIN red_dw.dbo.dim_client_involvement 
 		ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
-	LEFT OUTER JOIN red_dw.dbo.dim_claimant_thirdparty_involvement
-		ON dim_claimant_thirdparty_involvement.dim_claimant_thirdpart_key = fact_dimension_main.dim_claimant_thirdpart_key
 	LEFT OUTER JOIN red_dw.dbo.dim_detail_client 
 		ON dim_detail_client.dim_detail_client_key = fact_dimension_main.dim_detail_client_key
 	LEFT OUTER JOIN red_dw.dbo.dim_bill_debt_narrative 
@@ -2669,24 +2679,22 @@ FROM TE_3E_Prod.dbo.InvPayor
 		ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
 	LEFT OUTER JOIN #outstanding_invoices
 		ON #outstanding_invoices.Number = Matter.Number
+	LEFT OUTER JOIN #claimant_name
+		ON #claimant_name.fileID = dim_matter_header_current.ms_fileid
 WHERE 
 	InvPayor.InvNumber IN (@InvoiceNo)
-	--InvPayor.InvNumber IN ('01970650', 
-	--						'01968874', 
-	--						'01968874', 
-	--						'01974305', 
-	--						'01974510', 
-	--						'01783375', 
-	--						'01844261', 
-	--						'01866466', 
-	--						'01882536', 
-	--						'01905796'
+	--InvPayor.InvNumber IN (
+	--						'02033887',
+	--						'02003512',
+	--						'02028224'
 	--						)
 	AND InvPayor.BalAmt &gt;0
 	AND dim_bill.outstanding_flag = 'Y'
 
 	ORDER BY 
-		InvPayor.InvNumber</CommandText>
+		InvPayor.InvNumber
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Name">
@@ -5483,6 +5491,7 @@ WHERE
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
