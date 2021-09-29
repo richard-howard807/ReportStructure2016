@@ -7,10 +7,10 @@
       <rd:SecurityType>Integrated</rd:SecurityType>
       <rd:DataSourceID>8e7fab94-5770-42f6-9a55-42799876a92a</rd:DataSourceID>
     </DataSource>
-    <DataSource Name="CaseAudit">
-      <DataSourceReference>CaseAuditonSVR-LIV-SQL-01</DataSourceReference>
+    <DataSource Name="DataWarehouseServerSQL2012">
+      <DataSourceReference>Data Warehouse Server SQL2012</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>726eacab-66b9-41be-8a79-89aabb4f67de</rd:DataSourceID>
+      <rd:DataSourceID>13a25910-b4e0-40b6-ad0d-b735457fbf54</rd:DataSourceID>
     </DataSource>
   </DataSources>
   <DataSets>
@@ -2449,7 +2449,7 @@ WHERE  name ='Case_Audit_Detail.png'</CommandText>
     </DataSet>
     <DataSet Name="DS_Detail">
       <Query>
-        <DataSourceName>CaseAudit</DataSourceName>
+        <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@Start">
             <Value>=Parameters!Start.Value</Value>
@@ -2457,20 +2457,96 @@ WHERE  name ='Case_Audit_Detail.png'</CommandText>
           <QueryParameter Name="@End">
             <Value>=Parameters!End.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!TeamName.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Auditee">
+            <Value>=Parameters!Auditee.Value</Value>
+          </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT        Audits.AuditID, Teams.TeamName AS [Team Name], Audits.ClientCode + '-' + Audits.MatterCode AS Reference, Audits.[Matter Description] AS Description, 
-                         Auditee.Name AS Auditee, Audits.AuditDate AS [Audit Date], Auditor.Name AS Auditor, 
-                         CASE WHEN Audits.OverallScore = 0 THEN 0 WHEN Audits.TotalPossibleScore = 0 THEN 0 ELSE CAST(Audits.OverallScore AS DECIMAL(10, 2)) 
-                         / CAST(Audits.TotalPossibleScore AS DECIMAL(10, 2)) * 100 END AS [Score %], Audits.SentAcknowledgeEmail AS [Email Sent], 
-                         Audits.AcknowledgedDate AS Acknowledged, AcknEmp.Name AS [Acknowledging FE], CASE WHEN Audits.Draft = 1 THEN 1 ELSE 0 END AS Draft, 
-                         CASE WHEN Audits.SentAcknowledgeEmail IS NULL THEN 1 ELSE 0 END AS NotSent
-FROM            Audits AS Audits INNER JOIN
-                         Teams AS Teams ON Audits.TeamID = Teams.TeamID INNER JOIN
-                         Employees AS Auditor ON Audits.Auditor = Auditor.EmployeeId INNER JOIN
-                         Employees AS Auditee ON Audits.Auditee1 = Auditee.EmployeeId LEFT OUTER JOIN
-                         Employees AS AcknEmp ON Audits.AcknowledgingFE = AcknEmp.EmployeeId
-WHERE        (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
-                         AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End)</CommandText>
+        <CommandText>SELECT 
+	Audits.AuditID
+	, Teams.TeamName AS [Team Name]
+	, Audits.ClientCode + '-' + Audits.MatterCode AS Reference
+	, Audits.[Matter Description] AS Description
+	, Auditee.Name AS Auditee
+	, Audits.AuditDate AS [Audit Date]
+	, Auditor.Name AS Auditor
+	, CASE 
+		WHEN Audits.OverallScore = 0 THEN 
+			0 
+		WHEN Audits.TotalPossibleScore = 0 THEN 
+			0 
+		ELSE 
+			CAST(Audits.OverallScore AS DECIMAL(10, 2)) / CAST(Audits.TotalPossibleScore AS DECIMAL(10, 2)) * 100 
+	  END										AS [Score %]
+	, Audits.SentAcknowledgeEmail AS [Email Sent]
+	, Audits.AcknowledgedDate AS Acknowledged
+	, AcknEmp.Name AS [Acknowledging FE]
+	, CASE 
+		WHEN Audits.Draft = 1 THEN 
+			1 
+		ELSE 
+			0 
+	  END									AS Draft
+	, CASE 
+		WHEN Audits.SentAcknowledgeEmail IS NULL THEN 
+			1 
+		ELSE 
+			0 
+	  END									AS NotSent
+FROM [CaseAudit].dbo.Audits AS Audits 
+	INNER JOIN [CaseAudit].dbo.Teams AS Teams 
+		ON Audits.TeamID = Teams.TeamID 
+	INNER JOIN [CaseAudit].dbo.Employees AS Auditor 
+		ON CONVERT(NVARCHAR(255), Audits.Auditor) = Auditor.EmployeeId 
+	INNER JOIN [CaseAudit].dbo.Employees AS Auditee 
+		ON CONVERT(NVARCHAR(255), Audits.Auditee1) = Auditee.EmployeeId 
+	LEFT OUTER JOIN [CaseAudit].dbo.Employees AS AcknEmp 
+		ON CONVERT(NVARCHAR(255), Audits.AcknowledgingFE) = AcknEmp.EmployeeId
+WHERE
+	(Audits.IsDeleted = 0) 
+	AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') 
+	AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
+    AND (Audits.AuditDate &gt;= @Start) 
+	AND (Audits.AuditDate &lt; @End)
+	AND Teams.TeamName IN (@Team)
+	AND Auditee.Name IN (@Auditee)
+
+UNION 
+
+SELECT 
+	dim_ac_audits.audit_id	
+	, auditee.hierarchylevel4hist COLLATE DATABASE_DEFAULT
+	, dim_matter_header_current.master_client_code + '-' + dim_matter_header_current.master_matter_number	 COLLATE DATABASE_DEFAULT
+	, dim_matter_header_current.matter_description COLLATE DATABASE_DEFAULT
+	, dim_ac_audits.auditee_1_name COLLATE DATABASE_DEFAULT
+	, dim_ac_audits.created_at 
+	, auditor.name
+	, dim_ac_audits.score
+	, NULL
+	, NULL
+	, NULL
+	, 0
+	, 0
+	
+--SELECT *
+FROM red_dw.dbo.dim_ac_audits
+	INNER JOIN red_dw.dbo.dim_ac_audit_details
+		ON dim_ac_audits.dim_ac_audits_key = dim_ac_audit_details.dim_ac_audits_key
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history AS auditee
+		ON auditee.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+	LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS auditor
+		ON auditor.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditor_fed_hierarchy_history_key 
+WHERE
+	dim_matter_header_current.master_client_code NOT IN ('Unknown', '30645')
+	AND dim_ac_audits.created_at &gt;= @Start
+	AND dim_ac_audits.created_at &lt; @End
+	AND auditee.hierarchylevel4hist &lt;&gt; 'Unknown'
+	AND auditee.hierarchylevel4hist IN (@Team)
+	AND dim_ac_audits.auditee_1_name IN (@Auditee)</CommandText>
       </Query>
       <Fields>
         <Field Name="AuditID">
@@ -2529,7 +2605,7 @@ WHERE        (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT 
     </DataSet>
     <DataSet Name="DS_team_param">
       <Query>
-        <DataSourceName>CaseAudit</DataSourceName>
+        <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@Start">
             <Value>=Parameters!Start.Value</Value>
@@ -2538,19 +2614,94 @@ WHERE        (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT 
             <Value>=Parameters!End.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT        Teams.TeamName AS [Team Name]
-FROM            Audits AS Audits INNER JOIN
-                         Teams AS Teams ON Audits.TeamID = Teams.TeamID INNER JOIN
-                         Employees AS Auditor ON Audits.Auditor = Auditor.EmployeeId INNER JOIN
-                         Employees AS Auditee ON Audits.Auditee1 = Auditee.EmployeeId LEFT OUTER JOIN
-                         Employees AS AcknEmp ON Audits.AcknowledgingFE = AcknEmp.EmployeeId
-WHERE        (Audits.IsDeleted = 0) AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
-                         AND (Audits.AuditDate &gt;= @Start) AND (Audits.AuditDate &lt; @End)
-GROUP BY Teams.TeamName</CommandText>
+        <CommandText>SELECT DISTINCT Teams.TeamName AS [Team Name]
+FROM [CaseAudit].dbo.Audits AS Audits 
+	INNER JOIN [CaseAudit].dbo.Teams AS Teams 
+		ON Audits.TeamID = Teams.TeamID 
+WHERE 
+	(Audits.IsDeleted = 0) 
+	AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') 
+	AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
+    AND (Audits.AuditDate &gt;= @Start) 
+	AND (Audits.AuditDate &lt; @End)
+
+UNION
+
+SELECT DISTINCT dim_fed_hierarchy_history.hierarchylevel4hist COLLATE DATABASE_DEFAULT
+FROM red_dw.dbo.dim_ac_audits
+	INNER JOIN red_dw.dbo.dim_ac_audit_details
+		ON dim_ac_audits.dim_ac_audits_key = dim_ac_audit_details.dim_ac_audits_key
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+WHERE
+	dim_matter_header_current.master_client_code NOT IN ('Unknown', '30645')
+	AND dim_ac_audits.created_at &gt;= @Start
+	AND dim_ac_audits.created_at &lt; @End
+	AND dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
+
+ORDER BY
+	[Team Name]</CommandText>
       </Query>
       <Fields>
         <Field Name="Team_Name">
           <DataField>Team Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="auditee_param">
+      <Query>
+        <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Start">
+            <Value>=Parameters!Start.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@End">
+            <Value>=Parameters!End.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!TeamName.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT Auditee.Name AS [Auditee Name]
+FROM [CaseAudit].dbo.Audits AS Audits 
+	INNER JOIN [CaseAudit].dbo.Teams AS Teams 
+		ON Audits.TeamID = Teams.TeamID 
+	INNER JOIN [CaseAudit].dbo.Employees AS Auditee 
+		ON CONVERT(NVARCHAR(255), Audits.Auditee1) = Auditee.EmployeeId
+WHERE 
+	(Audits.IsDeleted = 0) 
+	AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') 
+	AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
+    AND (Audits.AuditDate &gt;= @Start) 
+	AND (Audits.AuditDate &lt; @End)
+	AND Teams.TeamName IN (@Team)
+
+UNION
+
+SELECT DISTINCT dim_ac_audits.auditee_1_name COLLATE DATABASE_DEFAULT
+FROM red_dw.dbo.dim_ac_audits
+	INNER JOIN red_dw.dbo.dim_ac_audit_details
+		ON dim_ac_audits.dim_ac_audits_key = dim_ac_audit_details.dim_ac_audits_key
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+WHERE
+	dim_matter_header_current.master_client_code NOT IN ('Unknown', '30645')
+	AND dim_ac_audits.created_at &gt;= @Start
+	AND dim_ac_audits.created_at &lt; @End
+	AND dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
+	AND dim_fed_hierarchy_history .hierarchylevel4hist IN (@Team)
+
+ORDER BY
+	[Auditee Name]</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Auditee_Name">
+          <DataField>Auditee Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4114,50 +4265,6 @@ IIF(Fields!Score__.Value &gt;= 70 , "Orange","Red"))</BackgroundColor>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>DS_Detail</DataSetName>
-                <Filters>
-                  <Filter>
-                    <FilterExpression>=iif(Fields!Auditee.Value = Parameters!Auditee.Value or Parameters!Auditee.Value = "%", 1 ,0)</FilterExpression>
-                    <Operator>Equal</Operator>
-                    <FilterValues>
-                      <FilterValue DataType="Integer">1</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                  <Filter>
-                    <FilterExpression>=iif(Fields!Team_Name.Value = Parameters!Team.Value or Parameters!Team.Value = "%", 1,0)</FilterExpression>
-                    <Operator>Equal</Operator>
-                    <FilterValues>
-                      <FilterValue DataType="Integer">1</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                  <Filter>
-                    <FilterExpression>=iif(Fields!Auditor.Value = Parameters!Auditor.Value or Parameters!Auditor.Value = "%", 1, 0)</FilterExpression>
-                    <Operator>Equal</Operator>
-                    <FilterValues>
-                      <FilterValue DataType="Integer">1</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                  <Filter>
-                    <FilterExpression>=Fields!NotSent.Value</FilterExpression>
-                    <Operator>In</Operator>
-                    <FilterValues>
-                      <FilterValue>=Parameters!NotSent.Value</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                  <Filter>
-                    <FilterExpression>=Fields!Draft.Value</FilterExpression>
-                    <Operator>In</Operator>
-                    <FilterValues>
-                      <FilterValue>=Parameters!Draft.Value</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                  <Filter>
-                    <FilterExpression>=Fields!Team_Name.Value</FilterExpression>
-                    <Operator>In</Operator>
-                    <FilterValues>
-                      <FilterValue>=SPLIT(JOIN(Parameters!TeamName.Value,","),",")</FilterValue>
-                    </FilterValues>
-                  </Filter>
-                </Filters>
                 <SortExpressions>
                   <SortExpression>
                     <Value>=Fields!Team_Name.Value</Value>
@@ -4844,87 +4951,6 @@ IIF(Fields!Score__.Value &gt;= 70 , "Orange","Red"))</BackgroundColor>
       <Prompt>End</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
-    <ReportParameter Name="Auditee">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>%</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Auditee</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Team">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>%</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Team</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Auditor">
-      <DataType>String</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>%</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Auditor</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Draft">
-      <DataType>Integer</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>0</Value>
-          <Value>1</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>Draft</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>0</Value>
-            <Label>0</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>1</Value>
-            <Label>1</Label>
-          </ParameterValue>
-        </ParameterValues>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
-    <ReportParameter Name="NotSent">
-      <DataType>Integer</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>0</Value>
-          <Value>1</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>NotSent</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>0</Value>
-            <Label>0</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>1</Value>
-            <Label>1</Label>
-          </ParameterValue>
-        </ParameterValues>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
     <ReportParameter Name="TeamName">
       <DataType>String</DataType>
       <DefaultValue>
@@ -4937,10 +4963,22 @@ IIF(Fields!Score__.Value &gt;= 70 , "Orange","Red"))</BackgroundColor>
       <Hidden>true</Hidden>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="Auditee">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>auditee_param</DataSetName>
+          <ValueField>Auditee_Name</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Auditee</Prompt>
+      <Hidden>true</Hidden>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>8</NumberOfColumns>
+      <NumberOfColumns>3</NumberOfColumns>
       <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
@@ -4959,34 +4997,14 @@ IIF(Fields!Score__.Value &gt;= 70 , "Orange","Red"))</BackgroundColor>
           <ParameterName>End</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>3</ColumnIndex>
-          <RowIndex>0</RowIndex>
-          <ParameterName>Auditee</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>4</ColumnIndex>
-          <RowIndex>0</RowIndex>
-          <ParameterName>Team</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>5</ColumnIndex>
-          <RowIndex>0</RowIndex>
-          <ParameterName>Auditor</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>6</ColumnIndex>
-          <RowIndex>0</RowIndex>
-          <ParameterName>Draft</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>7</ColumnIndex>
-          <RowIndex>0</RowIndex>
-          <ParameterName>NotSent</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>TeamName</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Auditee</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
