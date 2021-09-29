@@ -2463,6 +2463,9 @@ WHERE  name ='Case_Audit_Detail.png'</CommandText>
           <QueryParameter Name="@Auditee">
             <Value>=Parameters!Auditee.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@Auditor">
+            <Value>=Parameters!Auditor.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT 
 	Audits.AuditID
@@ -2512,6 +2515,7 @@ WHERE
 	AND (Audits.AuditDate &lt; @End)
 	AND Teams.TeamName IN (@Team)
 	AND Auditee.Name IN (@Auditee)
+	AND Auditor.Name IN (@Auditor)
 
 UNION 
 
@@ -2546,7 +2550,8 @@ WHERE
 	AND dim_ac_audits.created_at &lt; @End
 	AND auditee.hierarchylevel4hist &lt;&gt; 'Unknown'
 	AND auditee.hierarchylevel4hist IN (@Team)
-	AND dim_ac_audits.auditee_1_name IN (@Auditee)</CommandText>
+	AND dim_ac_audits.auditee_1_name IN (@Auditee)
+	AND auditor.name IN (@Auditor)</CommandText>
       </Query>
       <Fields>
         <Field Name="AuditID">
@@ -2702,6 +2707,56 @@ ORDER BY
       <Fields>
         <Field Name="Auditee_Name">
           <DataField>Auditee Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="auditor_param">
+      <Query>
+        <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Start">
+            <Value>=Parameters!Start.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@End">
+            <Value>=Parameters!End.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT Auditor.Name AS [Auditor Name]
+FROM [CaseAudit].dbo.Audits AS Audits 
+	INNER JOIN [CaseAudit].dbo.Teams AS Teams 
+		ON Audits.TeamID = Teams.TeamID 
+	INNER JOIN [CaseAudit].dbo.Employees AS Auditor 
+		ON CONVERT(NVARCHAR(36), Audits.Auditor) = Auditor.EmployeeId
+WHERE 
+	(Audits.IsDeleted = 0) 
+	AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') 
+	AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
+    AND (Audits.AuditDate &gt;= @Start) 
+	AND (Audits.AuditDate &lt; @End)
+
+UNION
+
+SELECT DISTINCT dim_fed_hierarchy_history.name
+FROM red_dw.dbo.dim_ac_audits
+	INNER JOIN red_dw.dbo.dim_ac_audit_details
+		ON dim_ac_audits.dim_ac_audits_key = dim_ac_audit_details.dim_ac_audits_key
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+WHERE
+	dim_matter_header_current.master_client_code NOT IN ('Unknown', '30645')
+	AND dim_ac_audits.created_at &gt;= @Start
+	AND dim_ac_audits.created_at &lt; @End
+	AND dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
+
+ORDER BY
+	[Auditor Name]</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Auditor_Name">
+          <DataField>Auditor Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4975,6 +5030,18 @@ IIF(Fields!Score__.Value &gt;= 70 , "Orange","Red"))</BackgroundColor>
       <Hidden>true</Hidden>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="Auditor">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>auditor_param</DataSetName>
+          <ValueField>Auditor_Name</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Auditor</Prompt>
+      <Hidden>true</Hidden>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -5005,6 +5072,11 @@ IIF(Fields!Score__.Value &gt;= 70 , "Orange","Red"))</BackgroundColor>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Auditee</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>2</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Auditor</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
