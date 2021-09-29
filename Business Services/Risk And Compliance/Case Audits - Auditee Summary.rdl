@@ -2460,6 +2460,9 @@ WHERE  name ='Case_Audits_Auditee_Summary.png'</CommandText>
           <QueryParameter Name="@Team">
             <Value>=Parameters!TeamName.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@Auditee">
+            <Value>=Parameters!Auditee.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>SELECT 
 	Audits.AuditID
@@ -2508,18 +2511,19 @@ WHERE
     AND (Audits.AuditDate &gt;= @Start) 
 	AND (Audits.AuditDate &lt; @End)
 	AND Teams.TeamName IN (@Team)
+	AND Auditee.Name IN (@Auditee)
 
 UNION 
 
 SELECT 
 	dim_ac_audits.audit_id	
-	, dim_fed_hierarchy_history.hierarchylevel4hist COLLATE DATABASE_DEFAULT
+	, auditee.hierarchylevel4hist COLLATE DATABASE_DEFAULT
 	, dim_matter_header_current.master_client_code + '-' + dim_matter_header_current.master_matter_number	 COLLATE DATABASE_DEFAULT
 	, dim_matter_header_current.matter_description COLLATE DATABASE_DEFAULT
 	, dim_ac_audits.auditee_1_name COLLATE DATABASE_DEFAULT
 	, dim_ac_audits.created_at 
-	, NULL
-	, 0
+	, auditor.name
+	, dim_ac_audits.score
 	, NULL
 	, NULL
 	, NULL
@@ -2532,15 +2536,17 @@ FROM red_dw.dbo.dim_ac_audits
 		ON dim_ac_audits.dim_ac_audits_key = dim_ac_audit_details.dim_ac_audits_key
 	INNER JOIN red_dw.dbo.dim_matter_header_current
 		ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
-	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
-		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history AS auditee
+		ON auditee.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+	LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS auditor
+		ON auditor.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditor_fed_hierarchy_history_key 
 WHERE
 	dim_matter_header_current.master_client_code NOT IN ('Unknown', '30645')
 	AND dim_ac_audits.created_at &gt;= @Start
 	AND dim_ac_audits.created_at &lt; @End
-	AND dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
-	AND dim_fed_hierarchy_history.hierarchylevel4hist IN (@Team)
-</CommandText>
+	AND auditee.hierarchylevel4hist &lt;&gt; 'Unknown'
+	AND auditee.hierarchylevel4hist IN (@Team)
+	AND dim_ac_audits.auditee_1_name IN (@Auditee)</CommandText>
       </Query>
       <Fields>
         <Field Name="AuditID">
@@ -2641,6 +2647,61 @@ ORDER BY
       <Fields>
         <Field Name="Team_Name">
           <DataField>Team Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="auditee_param">
+      <Query>
+        <DataSourceName>DataWarehouseServerSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Start">
+            <Value>=Parameters!Start.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@End">
+            <Value>=Parameters!End.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!TeamName.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT Auditee.Name AS [Auditee Name]
+FROM [CaseAudit].dbo.Audits AS Audits 
+	INNER JOIN [CaseAudit].dbo.Teams AS Teams 
+		ON Audits.TeamID = Teams.TeamID 
+	INNER JOIN [CaseAudit].dbo.Employees AS Auditee 
+		ON CONVERT(NVARCHAR(255), Audits.Auditee1) = Auditee.EmployeeId
+WHERE 
+	(Audits.IsDeleted = 0) 
+	AND (UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%') 
+	AND (UPPER(Audits.ClientCode + '-' + Audits.MatterCode) NOT LIKE '%TEST%') 
+    AND (Audits.AuditDate &gt;= @Start) 
+	AND (Audits.AuditDate &lt; @End)
+	AND Teams.TeamName IN (@Team)
+
+UNION
+
+SELECT DISTINCT dim_ac_audits.auditee_1_name COLLATE DATABASE_DEFAULT
+FROM red_dw.dbo.dim_ac_audits
+	INNER JOIN red_dw.dbo.dim_ac_audit_details
+		ON dim_ac_audits.dim_ac_audits_key = dim_ac_audit_details.dim_ac_audits_key
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+WHERE
+	dim_matter_header_current.master_client_code NOT IN ('Unknown', '30645')
+	AND dim_ac_audits.created_at &gt;= @Start
+	AND dim_ac_audits.created_at &lt; @End
+	AND dim_fed_hierarchy_history.hierarchylevel4hist &lt;&gt; 'Unknown'
+	AND dim_fed_hierarchy_history .hierarchylevel4hist IN (@Team)
+
+ORDER BY
+	[Auditee Name]</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Auditee_Name">
+          <DataField>Auditee Name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -2776,23 +2837,11 @@ ORDER BY
                                         <Parameter Name="End">
                                           <Value>=Parameters!End.Value</Value>
                                         </Parameter>
-                                        <Parameter Name="Auditee">
-                                          <Value>=Fields!Auditee.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="Team">
-                                          <Value>=Fields!Team_Name.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="Auditor">
-                                          <Value>=Parameters!Auditor.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="Draft">
-                                          <Value>=Parameters!Draft.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="NotSent">
-                                          <Value>=Parameters!NotSent.Value</Value>
-                                        </Parameter>
                                         <Parameter Name="TeamName">
                                           <Value>=SPLIT(JOIN(Parameters!TeamName.Value,","),",")</Value>
+                                        </Parameter>
+                                        <Parameter Name="Auditee">
+                                          <Value>=Fields!Auditee.Value</Value>
                                         </Parameter>
                                       </Parameters>
                                     </Drillthrough>
@@ -2883,20 +2932,11 @@ ORDER BY
                                         <Parameter Name="End">
                                           <Value>=Parameters!End.Value</Value>
                                         </Parameter>
-                                        <Parameter Name="Team">
+                                        <Parameter Name="TeamName">
                                           <Value>=Fields!Team_Name.Value</Value>
                                         </Parameter>
-                                        <Parameter Name="Draft">
-                                          <Value>=Parameters!Draft.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="NotSent">
-                                          <Value>=Parameters!NotSent.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="Auditor">
-                                          <Value>=Parameters!Auditor.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="TeamName">
-                                          <Value>=SPLIT(JOIN(Parameters!TeamName.Value,","),",")</Value>
+                                        <Parameter Name="Auditee">
+                                          <Value>=SPLIT(JOIN(Parameters!Auditee.Value,","),",")</Value>
                                         </Parameter>
                                       </Parameters>
                                     </Drillthrough>
@@ -2939,6 +2979,7 @@ ORDER BY
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -2986,17 +3027,11 @@ ORDER BY
                                         <Parameter Name="End">
                                           <Value>=Parameters!End.Value</Value>
                                         </Parameter>
-                                        <Parameter Name="Draft">
-                                          <Value>=Parameters!Draft.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="NotSent">
-                                          <Value>=Parameters!NotSent.Value</Value>
-                                        </Parameter>
-                                        <Parameter Name="Auditor">
-                                          <Value>=Parameters!Auditor.Value</Value>
-                                        </Parameter>
                                         <Parameter Name="TeamName">
                                           <Value>=SPLIT(JOIN(Parameters!TeamName.Value,","),",")</Value>
+                                        </Parameter>
+                                        <Parameter Name="Auditee">
+                                          <Value>=SPLIT(JOIN(Parameters!Auditee.Value,","),",")</Value>
                                         </Parameter>
                                       </Parameters>
                                     </Drillthrough>
@@ -4266,89 +4301,6 @@ ORDER BY
       </DefaultValue>
       <Prompt>End of Audit</Prompt>
     </ReportParameter>
-    <ReportParameter Name="Auditee">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <DefaultValue>
-        <Values>
-          <Value>%</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Auditee</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Team">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <DefaultValue>
-        <Values>
-          <Value>%</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Team</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Auditor">
-      <DataType>String</DataType>
-      <Nullable>true</Nullable>
-      <DefaultValue>
-        <Values>
-          <Value>%</Value>
-        </Values>
-      </DefaultValue>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Auditor</Prompt>
-      <Hidden>true</Hidden>
-    </ReportParameter>
-    <ReportParameter Name="Draft">
-      <DataType>Integer</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>0</Value>
-          <Value>1</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>Draft</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>0</Value>
-            <Label>0</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>1</Value>
-            <Label>1</Label>
-          </ParameterValue>
-        </ParameterValues>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
-    <ReportParameter Name="NotSent">
-      <DataType>Integer</DataType>
-      <DefaultValue>
-        <Values>
-          <Value>0</Value>
-        </Values>
-      </DefaultValue>
-      <Prompt>NotSent</Prompt>
-      <Hidden>true</Hidden>
-      <ValidValues>
-        <ParameterValues>
-          <ParameterValue>
-            <Value>0</Value>
-            <Label>0</Label>
-          </ParameterValue>
-          <ParameterValue>
-            <Value>1</Value>
-            <Label>1</Label>
-          </ParameterValue>
-        </ParameterValues>
-      </ValidValues>
-      <MultiValue>true</MultiValue>
-    </ReportParameter>
     <ReportParameter Name="TeamName">
       <DataType>String</DataType>
       <DefaultValue>
@@ -4367,11 +4319,23 @@ ORDER BY
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="Auditee">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>auditee_param</DataSetName>
+          <ValueField>Auditee_Name</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Auditee</Prompt>
+      <Hidden>true</Hidden>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>5</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4391,32 +4355,12 @@ ORDER BY
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
-          <ParameterName>Auditee</ParameterName>
+          <ParameterName>TeamName</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>2</RowIndex>
-          <ParameterName>Team</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>2</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>Auditor</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>3</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>Draft</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>4</ColumnIndex>
-          <RowIndex>2</RowIndex>
-          <ParameterName>NotSent</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
-          <RowIndex>3</RowIndex>
-          <ParameterName>TeamName</ParameterName>
+          <ParameterName>Auditee</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
