@@ -7,10 +7,10 @@
       <rd:SecurityType>Integrated</rd:SecurityType>
       <rd:DataSourceID>8e7fab94-5770-42f6-9a55-42799876a92a</rd:DataSourceID>
     </DataSource>
-    <DataSource Name="CaseAudits">
-      <DataSourceReference>CaseAuditonSVR-LIV-SQL-01</DataSourceReference>
+    <DataSource Name="ReportingOnSQL2012">
+      <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>379f1377-32b5-45c7-893e-69e488dae6fb</rd:DataSourceID>
+      <rd:DataSourceID>0f05b437-f51e-406f-928b-ac5248304474</rd:DataSourceID>
     </DataSource>
   </DataSources>
   <DataSets>
@@ -2449,7 +2449,7 @@ WHERE  name ='Case_Audit_Summary_Details.png'</CommandText>
     </DataSet>
     <DataSet Name="DS_AuditDetail">
       <Query>
-        <DataSourceName>CaseAudits</DataSourceName>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@RunDate">
             <Value>=Parameters!RunDate.Value</Value>
@@ -2458,47 +2458,134 @@ WHERE  name ='Case_Audit_Summary_Details.png'</CommandText>
             <Value>=Parameters!EmployeeID.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>DECLARE @StartDate date = @RunDate DECLARE @AuditYearStart char(10), @AuditYearEnd char(10), @Q1 char(10), @Q2 char(10), @Q3 CHAR(10), @Q4 CHAR(10);
-SET                @AuditYearStart =
-                             (SELECT        CONVERT(DATE, cast(CASE WHEN DATEPART(mm, @StartDate) IN (10, 11, 12) THEN DATEPART(yy, @StartDate) WHEN DATEPART(mm, @StartDate) 
-                                                         IN (1, 2, 3, 4, 5, 6, 7, 8, 9) THEN DATEPART(yy, @StartDate) - 1 END AS char(4)) + '1001', 103))
-SET                @AuditYearEnd =
-                             (SELECT        CONVERT(DATE, cast(CASE WHEN DATEPART(mm, @StartDate) IN (1, 2, 3, 4, 5, 6, 7, 8, 9) THEN DATEPART(yy, @StartDate) WHEN DATEPART(mm, 
-                                                         @StartDate) IN (10, 11, 12) THEN DATEPART(yy, @StartDate) + 1 END AS char(4)) + '0930', 103))
-SET                @Q1 = @AuditYearStart
-SET                @Q2 = DATEADD(MONTH, 3, CONVERT(DATE, @Q1))
-SET                @Q3 = DATEADD(MONTH, 3, CONVERT(DATE, @Q2))
-SET                @Q4 = DATEADD(MONTH, 3, CONVERT(DATE, @Q3))
-                             SELECT        Data.employeeid, Data.Name, Data.ClientCode, Data.MatterCode, Data.[Matter Description], Data.AuditDate, Data.AuditedAs
-                              FROM            (SELECT        A1.EmployeeId AS [employeeid], A1.Name AS Name, Audits.AuditDate, Audits.ClientCode, Audits.MatterCode, Audits.[Matter Description],
-                                                                                  'Auditee 1' AS [AuditedAs]
-                                                        FROM            [CaseAudit].[dbo].[Audits] Audits INNER JOIN
-                                                                                  CaseAudit.dbo.Employees A1 ON Audits.Auditee1 = A1.EmployeeId
-                                                        WHERE        Audits.IsDeleted = 0 AND UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND UPPER(Audits.ClientCode + '-' + Audits.MatterCode) 
-                                                                                  NOT LIKE '%TEST%' AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY, 1, @AuditYearEnd)
-                                                        UNION ALL
-                                                        SELECT        A2.EmployeeId AS [employeeid], A2.Name AS Name, Audits.AuditDate, Audits.ClientCode, Audits.MatterCode, Audits.[Matter Description],
-                                                                                 'Auditee 2' AS [AuditedAs]
-                                                        FROM            [CaseAudit].[dbo].[Audits] Audits INNER JOIN
-                                                                                 CaseAudit.dbo.Employees A2 ON Audits.Auditee2 = A2.EmployeeId
-                                                        WHERE        A2.EmployeeId IS NOT NULL AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY, 1, @AuditYearEnd) AND 
-                                                                                 Audits.IsDeleted = 0 AND UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND UPPER(Audits.ClientCode + '-' + Audits.MatterCode) 
-                                                                                 NOT LIKE '%TEST%'
-                                                        UNION ALL
-                                                        SELECT        A3.EmployeeId AS employeeid, A3.Name AS Name, Audits.AuditDate, Audits.ClientCode, Audits.MatterCode, Audits.[Matter Description],
-					 'Auditee 3' AS [AuditedAs]
-                                                        FROM            [CaseAudit].[dbo].[Audits] Audits INNER JOIN
-                                                                                 CaseAudit.dbo.Employees A3 ON Audits.Auditee3 = A3.EmployeeId
-                                                        WHERE        A3.EmployeeId IS NOT NULL AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY, 1, @AuditYearEnd) AND 
-                                                                                 Audits.IsDeleted = 0 AND UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND UPPER(Audits.ClientCode + '-' + Audits.MatterCode) 
-                                                                                 NOT LIKE '%TEST%') AS Data
-                              WHERE        Data.employeeid = @EmployeeID
-                              ORDER BY Data.Name</CommandText>
+        <CommandText>DECLARE @StartDate date = @RunDate
+
+	declare @AuditYearStart char(10),
+			@AuditYearEnd   char(10),
+			@Q1 char(10),
+			@Q2 char(10),
+			@Q3 CHAR(10),
+			@Q4 CHAR(10);
+		
+	set @AuditYearStart = (select CONVERT(DATE,cast(case when DATEPART(mm,@StartDate) in (10,11,12) then DATEPART(yy,@StartDate)
+										 when DATEPART(mm,@StartDate) in (1,2,3,4,5,6,7,8,9) then DATEPART(yy,@StartDate)-1 end as char(4)) + '1001',103))
+									 
+	set @AuditYearEnd = (select CONVERT(DATE,cast(case when DATEPART(mm,@StartDate) in (1,2,3,4,5,6,7,8,9) then DATEPART(yy,@StartDate)
+										 when DATEPART(mm,@StartDate) in (10,11,12) then DATEPART(yy,@StartDate)+1 end as char(4)) + '0930',103))	
+									 
+	SET @Q1 = @AuditYearStart
+									 
+	SET @Q2 = DATEADD(MONTH,3,CONVERT(DATE,@Q1))
+	
+	SET @Q3 = DATEADD(MONTH,3,CONVERT(DATE,@Q2))
+
+	SET @Q4 = DATEADD(MONTH,3,CONVERT(DATE,@Q3))
+
+SELECT Data.employeeid, Data.Name, Data.ClientCode, Data.MatterCode, Data.[Matter Description], Data.AuditDate, Data.AuditedAs
+FROM 
+(
+	SELECT A1.EmployeeId AS [employeeid], A1.Name AS Name, Audits.AuditDate, Audits.ClientCode, Audits.MatterCode, Audits.[Matter Description],
+           'Auditee 1' AS [AuditedAs]
+	FROM [CaseAudit].[dbo].[Audits] Audits
+		INNER JOIN CaseAudit.dbo.Employees A1 ON CONVERT(NVARCHAR(36), Audits.Auditee1) = A1.EmployeeId
+	WHERE 
+		Audits.IsDeleted = 0 AND 
+		UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
+		UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%' AND 
+		Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+	UNION ALL
+	SELECT A2.EmployeeId AS [employeeid], A2.Name AS Name, Audits.AuditDate, Audits.ClientCode, Audits.MatterCode, Audits.[Matter Description],
+           'Auditee 2' AS [AuditedAs]
+	FROM [CaseAudit].[dbo].[Audits] Audits
+		INNER JOIN CaseAudit.dbo.Employees A2 ON CONVERT(NVARCHAR(36), Audits.Auditee2) = A2.EmployeeId
+	WHERE 
+		A2.EmployeeId IS NOT NULL	
+		AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+		AND	Audits.IsDeleted = 0 AND 
+		UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
+		UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%'
+	UNION ALL
+	SELECT A3.EmployeeId AS employeeid, A3.Name AS Name, Audits.AuditDate, Audits.ClientCode, Audits.MatterCode, Audits.[Matter Description],
+		   'Auditee 3' AS [AuditedAs]
+	FROM [CaseAudit].[dbo].[Audits] Audits
+		INNER JOIN CaseAudit.dbo.Employees A3 ON CONVERT(NVARCHAR(36), Audits.Auditee3) = A3.EmployeeId
+	WHERE 
+		A3.EmployeeId IS NOT NULL	
+		AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+		AND	Audits.IsDeleted = 0 AND 
+		UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
+		UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%'
+	-----------------------------------------Red_dw data----------------------------------------------------------
+	UNION ALL
+	--auditee 1
+	SELECT 
+		dim_fed_hierarchy_history.employeeid
+		, dim_fed_hierarchy_history.name COLLATE DATABASE_DEFAULT
+		, dim_ac_audits.created_at
+		, dim_ac_audits.client_code COLLATE DATABASE_DEFAULT
+		, dim_ac_audits.matter_number  COLLATE DATABASE_DEFAULT
+		, dim_matter_header_current.matter_description COLLATE DATABASE_DEFAULT
+		, 'Auditee 1'
+	FROM red_dw.dbo.dim_ac_audits
+		INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+			ON dim_ac_audits.dim_auditee1_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+		INNER JOIN red_dw.dbo.dim_matter_header_current	
+			ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	WHERE
+		dim_fed_hierarchy_history.name &lt;&gt; 'Unknown'
+		AND dim_ac_audits.dim_matter_header_curr_key &lt;&gt; 0
+		AND dim_ac_audits.client_code &lt;&gt; '00030645'
+		AND dim_ac_audits.created_at BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+	UNION ALL
+	--auditee 2
+	SELECT 
+		dim_fed_hierarchy_history.employeeid
+		, dim_fed_hierarchy_history.name COLLATE DATABASE_DEFAULT
+		, dim_ac_audits.created_at
+		, dim_ac_audits.client_code COLLATE DATABASE_DEFAULT
+		, dim_ac_audits.matter_number COLLATE DATABASE_DEFAULT
+		, dim_matter_header_current.matter_description COLLATE DATABASE_DEFAULT
+		, 'Auditee 2'
+	FROM red_dw.dbo.dim_ac_audits
+		INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+			ON dim_ac_audits.dim_auditee2_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+		INNER JOIN red_dw.dbo.dim_matter_header_current	
+			ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	WHERE
+		dim_fed_hierarchy_history.name &lt;&gt; 'Unknown'
+		AND dim_ac_audits.dim_matter_header_curr_key &lt;&gt; 0
+		AND dim_ac_audits.client_code &lt;&gt; '00030645'
+		AND dim_ac_audits.created_at BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+	UNION ALL
+	--auditee 3
+	SELECT 
+		dim_fed_hierarchy_history.employeeid
+		, dim_fed_hierarchy_history.name COLLATE DATABASE_DEFAULT
+		, dim_ac_audits.created_at
+		, dim_ac_audits.client_code COLLATE DATABASE_DEFAULT
+		, dim_ac_audits.matter_number COLLATE DATABASE_DEFAULT
+		, dim_matter_header_current.matter_description COLLATE DATABASE_DEFAULT
+		, 'Auditee 3'
+	FROM red_dw.dbo.dim_ac_audits
+		INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+			ON dim_ac_audits.dim_auditee3_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+		INNER JOIN red_dw.dbo.dim_matter_header_current	
+			ON dim_matter_header_current.dim_matter_header_curr_key = dim_ac_audits.dim_matter_header_curr_key
+	WHERE
+		dim_fed_hierarchy_history.name &lt;&gt; 'Unknown'
+		AND dim_ac_audits.dim_matter_header_curr_key &lt;&gt; 0
+		AND dim_ac_audits.client_code &lt;&gt; '00030645'
+		AND dim_ac_audits.created_at BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+) AS Data
+WHERE        
+	Data.employeeid = @EmployeeID
+ORDER BY 
+	Data.Name</CommandText>
       </Query>
       <Fields>
         <Field Name="employeeid">
           <DataField>employeeid</DataField>
-          <rd:TypeName>System.Guid</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Name">
           <DataField>Name</DataField>
