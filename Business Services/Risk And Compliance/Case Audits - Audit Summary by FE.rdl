@@ -7,11 +7,6 @@
       <rd:SecurityType>Integrated</rd:SecurityType>
       <rd:DataSourceID>8e7fab94-5770-42f6-9a55-42799876a92a</rd:DataSourceID>
     </DataSource>
-    <DataSource Name="CaseAudit">
-      <DataSourceReference>CaseAuditonSVR-LIV-SQL-01</DataSourceReference>
-      <rd:SecurityType>None</rd:SecurityType>
-      <rd:DataSourceID>eddf92ff-70e8-4380-8ee2-3e231b5b1a95</rd:DataSourceID>
-    </DataSource>
     <DataSource Name="SQL2012">
       <DataSourceReference>ReportingOnSQL2012</DataSourceReference>
       <rd:SecurityType>None</rd:SecurityType>
@@ -2461,35 +2456,286 @@ WHERE  name ='Case_Audit_Summary_by_Fee_Earner.png'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>DECLARE @StartDate date = @RunDate DECLARE @AuditYearStart CHAR(10), @AuditYearEnd CHAR(10);
-SET                @AuditYearStart =
-                             (SELECT        CONVERT(DATE, cast(CASE WHEN DATEPART(mm, @StartDate) IN (10, 11, 12) THEN DATEPART(yy, @StartDate) WHEN DATEPART(mm, @StartDate) 
+SET @AuditYearStart = (SELECT CONVERT(DATE, cast(CASE WHEN DATEPART(mm, @StartDate) IN (10, 11, 12) THEN DATEPART(yy, @StartDate) WHEN DATEPART(mm, @StartDate) 
                                                          IN (1, 2, 3, 4, 5, 6, 7, 8, 9) THEN DATEPART(yy, @StartDate) - 1 END AS char(4)) + '1001', 103))
-SET                @AuditYearEnd =
-                             (SELECT        CONVERT(DATE, cast(CASE WHEN DATEPART(mm, @StartDate) IN (1, 2, 3, 4, 5, 6, 7, 8, 9) THEN DATEPART(yy, @StartDate) WHEN DATEPART(mm, 
+SET @AuditYearEnd = (SELECT        CONVERT(DATE, cast(CASE WHEN DATEPART(mm, @StartDate) IN (1, 2, 3, 4, 5, 6, 7, 8, 9) THEN DATEPART(yy, @StartDate) WHEN DATEPART(mm, 
                                                          @StartDate) IN (10, 11, 12) THEN DATEPART(yy, @StartDate) + 1 END AS char(4)) + '0930', 103))
-                             SELECT        employeeid, name
-           FROM            red_dw.dbo.fact_agg_kpi_monthly_rollup agg_kpi_monthly_rollup INNER JOIN
-                                                       red_dw.dbo.dim_fed_hierarchy_history ON 
-                                                       dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = agg_kpi_monthly_rollup.dim_fed_hierarchy_history_key
-                              WHERE        fed_level_budget_value &lt;&gt; 0 AND dim_gl_date_key &gt;= REPLACE(@AuditYearStart, '-', '') AND dim_gl_date_key &lt; REPLACE(@AuditYearEnd, '-', '') 
-                                                       AND name &lt;&gt; 'Budget Balance' AND fed_code &lt;&gt; 'Unknown'
-                              GROUP BY employeeid, name
-                              ORDER BY name</CommandText>
+SELECT DISTINCT dim_fed_hierarchy_history.* --DISTINCT dim_employee.employeeid, dim_fed_hierarchy_history.name
+FROM red_dw.dbo.ds_sh_valid_hierarchy_x
+-- filters to teams only with a budget for fin_year
+	INNER JOIN (
+				SELECT * --DISTINCT fact_budget_activity.employee_hierarchy_business_key
+				FROM red_dw.dbo.fact_budget_activity
+				WHERE 1 = 1
+					AND fact_budget_activity.dim_budget_date_key &gt;= REPLACE(@AuditYearStart, '-', '') 
+					AND fact_budget_activity.dim_budget_date_key &lt; REPLACE(@AuditYearEnd, '-', '') 
+					AND fact_budget_activity.team_level_budget_value &gt; 0
+				) AS  teams	
+		ON teams.employee_hierarchy_business_key = ds_sh_valid_hierarchy_x.path
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+		ON dim_fed_hierarchy_history.hierarchynode = ds_sh_valid_hierarchy_x.hierarchynode
+			AND dim_fed_hierarchy_history.dss_current_flag = 'Y'
+				AND dim_fed_hierarchy_history.activeud = 1
+					AND dim_fed_hierarchy_history.windowsusername IS NOT NULL
+	INNER JOIN red_dw.dbo.dim_employee
+		ON dim_employee.employeeid = dim_fed_hierarchy_history.employeeid
+WHERE
+	ds_sh_valid_hierarchy_x.dss_current_flag = 'Y' 
+	AND ds_sh_valid_hierarchy_x.disabled = 0
+	AND ds_sh_valid_hierarchy_x.hierarchylevel4 IS NOT NULL 
+ORDER BY
+	dim_fed_hierarchy_history.name</CommandText>
       </Query>
       <Fields>
+        <Field Name="dim_fed_hierarchy_history_key">
+          <DataField>dim_fed_hierarchy_history_key</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
         <Field Name="employeeid">
           <DataField>employeeid</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dim_employee_key">
+          <DataField>dim_employee_key</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
         <Field Name="name">
           <DataField>name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="source_system_id">
+          <DataField>source_system_id</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="fed_hierarchy_business_key">
+          <DataField>fed_hierarchy_business_key</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="fed_code">
+          <DataField>fed_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="activeud">
+          <DataField>activeud</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
+        </Field>
+        <Field Name="fed_code_effective_start_date">
+          <DataField>fed_code_effective_start_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="jobtitle">
+          <DataField>jobtitle</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="fte">
+          <DataField>fte</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="linemanageridud">
+          <DataField>linemanageridud</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="linemanagername">
+          <DataField>linemanagername</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="reportingbcmidud">
+          <DataField>reportingbcmidud</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="reportingbcmname">
+          <DataField>reportingbcmname</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="worksforemployeeid">
+          <DataField>worksforemployeeid</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="worksforname">
+          <DataField>worksforname</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="display_name">
+          <DataField>display_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="windowsusername">
+          <DataField>windowsusername</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchynode">
+          <DataField>hierarchynode</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="hierarchynodehist">
+          <DataField>hierarchynodehist</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel1hist">
+          <DataField>hierarchylevel1hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel2hist">
+          <DataField>hierarchylevel2hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel3hist">
+          <DataField>hierarchylevel3hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel4hist">
+          <DataField>hierarchylevel4hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel5hist">
+          <DataField>hierarchylevel5hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel6hist">
+          <DataField>hierarchylevel6hist</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel1">
+          <DataField>hierarchylevel1</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel2">
+          <DataField>hierarchylevel2</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel3">
+          <DataField>hierarchylevel3</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel4">
+          <DataField>hierarchylevel4</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel5">
+          <DataField>hierarchylevel5</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel6">
+          <DataField>hierarchylevel6</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchynodehistnorm">
+          <DataField>hierarchynodehistnorm</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel1histnorm">
+          <DataField>hierarchylevel1histnorm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel2histnorm">
+          <DataField>hierarchylevel2histnorm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel3histnorm">
+          <DataField>hierarchylevel3histnorm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel4histnorm">
+          <DataField>hierarchylevel4histnorm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel5histnorm">
+          <DataField>hierarchylevel5histnorm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel6histnorm">
+          <DataField>hierarchylevel6histnorm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="level">
+          <DataField>level</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="securitylevel">
+          <DataField>securitylevel</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="effective_start_date">
+          <DataField>effective_start_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="leaver">
+          <DataField>leaver</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="warning_flag">
+          <DataField>warning_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchynodehist_pre_francis">
+          <DataField>hierarchynodehist_pre_francis</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel1hist_pre_francis">
+          <DataField>hierarchylevel1hist_pre_francis</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel2hist_pre_francis">
+          <DataField>hierarchylevel2hist_pre_francis</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel3hist_pre_francis">
+          <DataField>hierarchylevel3hist_pre_francis</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel4hist_pre_francis">
+          <DataField>hierarchylevel4hist_pre_francis</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel5hist_pre_francis">
+          <DataField>hierarchylevel5hist_pre_francis</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="hierarchylevel6hist_pre_francis">
+          <DataField>hierarchylevel6hist_pre_francis</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="management_role_one">
+          <DataField>management_role_one</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="management_role_two">
+          <DataField>management_role_two</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="latest_hierarchy_flag">
+          <DataField>latest_hierarchy_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dss_update_time">
+          <DataField>dss_update_time</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="dss_start_date">
+          <DataField>dss_start_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="dss_end_date">
+          <DataField>dss_end_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="dss_current_flag">
+          <DataField>dss_current_flag</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dss_version">
+          <DataField>dss_version</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="cost_handler">
+          <DataField>cost_handler</DataField>
+          <rd:TypeName>System.Boolean</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
     <DataSet Name="DS_Audits">
       <Query>
-        <DataSourceName>CaseAudit</DataSourceName>
+        <DataSourceName>SQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@RunDate">
             <Value>=Parameters!RunDate.Value</Value>
@@ -2519,43 +2765,82 @@ SET                @AuditYearEnd =
 	SET @Q4 = DATEADD(MONTH,3,CONVERT(DATE,@Q3))
 
 SELECT Data.employeeid, Data.Name, 
-SUM(CASE WHEN Data.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd) THEN 1 ELSE 0 END) AS [Total in Audit Year],
-SUM(CASE WHEN Data.AuditDate BETWEEN @Q1 AND @Q2 THEN 1 ELSE 0 END) AS [Q1 Audits],
-SUM(CASE WHEN Data.AuditDate BETWEEN @Q2 AND @Q3 THEN 1 ELSE 0 END) AS [Q2 Audits],
-SUM(CASE WHEN Data.AuditDate BETWEEN @Q3 AND @Q4 THEN 1 ELSE 0 END) AS [Q3 Audits],
-SUM(CASE WHEN Data.AuditDate BETWEEN @Q4 AND @AuditYearEnd THEN 1 ELSE 0 END) AS [Q4 Audits]
+	SUM(CASE WHEN Data.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd) THEN 1 ELSE 0 END) AS [Total in Audit Year],
+	SUM(CASE WHEN Data.AuditDate BETWEEN @Q1 AND @Q2 THEN 1 ELSE 0 END) AS [Q1 Audits],
+	SUM(CASE WHEN Data.AuditDate BETWEEN @Q2 AND @Q3 THEN 1 ELSE 0 END) AS [Q2 Audits],
+	SUM(CASE WHEN Data.AuditDate BETWEEN @Q3 AND @Q4 THEN 1 ELSE 0 END) AS [Q3 Audits],
+	SUM(CASE WHEN Data.AuditDate BETWEEN @Q4 AND @AuditYearEnd THEN 1 ELSE 0 END) AS [Q4 Audits]
 FROM 
 (
-SELECT A1.EmployeeId AS [employeeid], A1.Name AS Name, Audits.AuditDate
-FROM [CaseAudit].[dbo].[Audits] Audits
-INNER JOIN CaseAudit.dbo.Employees A1 ON Audits.Auditee1 = A1.EmployeeId
-WHERE Audits.IsDeleted = 0 AND 
-UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
-UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%' AND 
-Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
-UNION ALL
-SELECT A2.EmployeeId AS [employeeid], A2.Name AS Name, Audits.AuditDate
-FROM [CaseAudit].[dbo].[Audits] Audits
-INNER JOIN CaseAudit.dbo.Employees A2 ON Audits.Auditee2 = A2.EmployeeId
-WHERE A2.EmployeeId IS NOT NULL	 AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
-AND	Audits.IsDeleted = 0 AND 
-UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
-UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%'
-UNION ALL
-SELECT A3.EmployeeId AS employeeid, A3.Name AS Name, Audits.AuditDate
-FROM [CaseAudit].[dbo].[Audits] Audits
-INNER JOIN CaseAudit.dbo.Employees A3 ON Audits.Auditee3 = A3.EmployeeId
-WHERE A3.EmployeeId IS NOT NULL	AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
-AND	Audits.IsDeleted = 0 AND 
-UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
-UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%'
+	SELECT A1.EmployeeId AS [employeeid], A1.Name AS Name, Audits.AuditDate
+	FROM [CaseAudit].[dbo].[Audits] Audits
+		INNER JOIN CaseAudit.dbo.Employees A1 ON CONVERT(NVARCHAR(36), Audits.Auditee1) = A1.EmployeeId
+	WHERE 
+		Audits.IsDeleted = 0 AND 
+		UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
+		UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%' AND 
+		Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+	UNION ALL
+	SELECT A2.EmployeeId AS [employeeid], A2.Name AS Name, Audits.AuditDate
+	FROM [CaseAudit].[dbo].[Audits] Audits
+		INNER JOIN CaseAudit.dbo.Employees A2 ON CONVERT(NVARCHAR(36), Audits.Auditee2) = A2.EmployeeId
+	WHERE 
+		A2.EmployeeId IS NOT NULL	
+		AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+		AND	Audits.IsDeleted = 0 AND 
+		UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
+		UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%'
+	UNION ALL
+	SELECT A3.EmployeeId AS employeeid, A3.Name AS Name, Audits.AuditDate
+	FROM [CaseAudit].[dbo].[Audits] Audits
+		INNER JOIN CaseAudit.dbo.Employees A3 ON CONVERT(NVARCHAR(36), Audits.Auditee3) = A3.EmployeeId
+	WHERE 
+		A3.EmployeeId IS NOT NULL	
+		AND Audits.AuditDate BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+		AND	Audits.IsDeleted = 0 AND 
+		UPPER(Audits.[Matter Description]) NOT LIKE '%TEST%' AND 
+		UPPER(Audits.ClientCode+'-'+Audits.MatterCode) NOT LIKE '%TEST%'
+	-----------------------------------------Red_dw data----------------------------------------------------------
+	UNION ALL
+	--auditee 1
+	SELECT dim_fed_hierarchy_history.employeeid, dim_fed_hierarchy_history.name, dim_ac_audits.created_at
+	FROM red_dw.dbo.dim_ac_audits
+		INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+			ON dim_ac_audits.dim_auditee1_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+	WHERE
+		dim_fed_hierarchy_history.name &lt;&gt; 'Unknown'
+		AND dim_ac_audits.dim_matter_header_curr_key &lt;&gt; 0
+		AND dim_ac_audits.client_code &lt;&gt; '00030645'
+		AND dim_ac_audits.created_at BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+	UNION ALL
+	--auditee 2
+	SELECT dim_fed_hierarchy_history.employeeid, dim_fed_hierarchy_history.name, dim_ac_audits.created_at
+	FROM red_dw.dbo.dim_ac_audits
+		INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+			ON dim_ac_audits.dim_auditee2_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+	WHERE
+		dim_fed_hierarchy_history.name &lt;&gt; 'Unknown'
+		AND dim_ac_audits.dim_matter_header_curr_key &lt;&gt; 0
+		AND dim_ac_audits.client_code &lt;&gt; '00030645'
+		AND dim_ac_audits.created_at BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
+	UNION ALL
+	--auditee 3
+	SELECT dim_fed_hierarchy_history.employeeid, dim_fed_hierarchy_history.name, dim_ac_audits.created_at
+	FROM red_dw.dbo.dim_ac_audits
+		INNER JOIN red_dw.dbo.dim_fed_hierarchy_history 
+			ON dim_ac_audits.dim_auditee3_hierarchy_history_key = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+	WHERE
+		dim_fed_hierarchy_history.name &lt;&gt; 'Unknown'
+		AND dim_ac_audits.dim_matter_header_curr_key &lt;&gt; 0
+		AND dim_ac_audits.client_code &lt;&gt; '00030645'
+		AND dim_ac_audits.created_at BETWEEN @AuditYearStart AND DATEADD(DAY,1,@AuditYearEnd)
 ) AS Data
 GROUP BY Data.employeeid, Data.Name</CommandText>
       </Query>
       <Fields>
         <Field Name="employeeid">
           <DataField>employeeid</DataField>
-          <rd:TypeName>System.Guid</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Name">
           <DataField>Name</DataField>
@@ -2585,7 +2870,7 @@ GROUP BY Data.employeeid, Data.Name</CommandText>
     </DataSet>
     <DataSet Name="DS_AuditDates">
       <Query>
-        <DataSourceName>CaseAudit</DataSourceName>
+        <DataSourceName>SQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@RunDate">
             <Value>=Parameters!RunDate.Value</Value>
@@ -2769,7 +3054,7 @@ GROUP BY employeeid, name, reportingbcmname, hierarchylevel4</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value rd:LocID="=First(Fields!tblDataHeader_ValueLocID.Value, &quot;DefaultProperties&quot;)" xmlns:p20="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">(with billing targets in reporting period)</Value>
+                                      <Value rd:LocID="=First(Fields!tblDataHeader_ValueLocID.Value, &quot;DefaultProperties&quot;)" xmlns:p20="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">(with team billing targets in reporting period)</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
