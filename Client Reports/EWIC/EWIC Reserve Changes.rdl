@@ -2463,7 +2463,7 @@ WHERE  name ='EWIC Reserve Changes.png'</CommandText>
         <CommandText>IF OBJECT_ID(N'tempdb..#CurrentMonth') IS NOT NULL BEGIN DROP TABLE #CurrentMonth END
 
 --DECLARE @SnapshotDate AS DATE
---SET @SnapshotDate='2021-08-19'
+--SET @SnapshotDate='2021-10-01'
 
 BEGIN
 WITH Transactions AS (
@@ -2549,19 +2549,22 @@ SELECT #CurrentMonth.[Claim_Number]
       
 	  FROM #CurrentMonth
 	  
-	  LEFT OUTER JOIN (SELECT ClaimNumber,
-Case When [Loss Number] = '' Then ClaimNumber
+	  LEFT OUTER JOIN (Select a.Claim_Number
+,Case When [Loss Number] = '' Then a.Claim_Number
 Else [Loss Number] End As [EWIC Ref] 
-,ClaimantName
-FROM eastwest.Reporting.EastWest_9_ZurichClaims
-WHERE ControlDate=(SELECT MAX(ControlDate) FROM [EastWest].Reporting.EastWest_9_ZurichClaims)) AS Ref
- ON #CurrentMonth.Claim_Number=Ref.ClaimNumber
-LEFT OUTER JOIN 
-(
-SELECT DISTINCT Claim_Number,Claim_Handler_Code,Claim_Status FROM EastWest.[dbo].[ReserveSnapshot]
-WHERE CONVERT(Date,SnapshotDate,103)=CONVERT(DATE,@SnapshotDate,103)
-) AS Extra
- ON #CurrentMonth.Claim_Number=Extra.Claim_Number
+,[Claimant Name] AS ClaimantName
+,a.Claim_Status
+,a.Claim_Handler_Code
+
+FROM[SVR-LIV-3PTY-01].Wellington_Live.dbo.dqvwCustomClaimFields AS a WITH(NOLOCK)
+INNER JOIN  [SVR-LIV-3PTY-01].[Wellington_Live].[dbo].[dqvwClaim_Register] AS b WITH(NOLOCK)
+ ON b.Claim_Number = a.Claim_Number
+ LEFT OUTER JOIN [SVR-LIV-3PTY-01].[Wellington_Live].[dbo].zvwClaimDetail WITH(NOLOCK)
+ ON zvwClaimDetail.[Claim Number] = a.Claim_Number 
+--WHERE a.Claim_Status NOT IN ('CLOSED','CANC')
+) AS Ref
+ ON #CurrentMonth.Claim_Number=Ref.Claim_Number COLLATE DATABASE_DEFAULT
+
 WHERE ISNULL(Claim_Status,'') NOT IN ('CLOSED','CANC')
 
 GROUP BY #CurrentMonth.Claim_Number,Triang_Element,Claim_Handler_Code,Ref.[EWIC Ref],Claim_Status,ClaimantName</CommandText>
