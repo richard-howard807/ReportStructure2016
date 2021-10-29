@@ -2454,9 +2454,21 @@ WHERE  name ='Internal_Audits.png'</CommandText>
           <QueryParameter Name="@Template">
             <Value>=JOIN(Parameters!Template.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="@StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Department">
+            <Value>=Parameters!Department.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=Parameters!Team.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
-        <CommandText>audit.ACInternalAudits_Questions</CommandText>
+        <CommandText>audit.ACInternalAudits_Questions_TEST</CommandText>
       </Query>
       <Fields>
         <Field Name="employeeid">
@@ -2570,6 +2582,211 @@ WHERE dim_ac_audit_type_key IN
       <Fields>
         <Field Name="Template">
           <DataField>Template</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Param_Department">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Template">
+            <Value>=Parameters!Template.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>DROP TABLE IF EXISTS #Template
+drop table if exists #Audits
+
+
+SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Template)
+
+
+	
+		SELECT dim_ac_audits_key, pvt3.employeeid
+			, name AS [Auditee Name]
+			, auditeekey AS [Auditee key]
+			, pvt3.auditee_emp_key
+			, CASE WHEN position LIKE '%1%' THEN 1
+			WHEN position LIKE '%2%' THEN 2
+			WHEN position LIKE '%3%' THEN 3 END AS [Auditee Poistion]
+			, [Client Code]
+			, [Matter Number]
+			, [Date]
+			, [Status]
+			, [Template]
+			, [Auditor]
+			, pvt3.fin_quarter
+			, pvt3.fin_quarter_no
+			, pvt3.fin_year
+		into #Audits
+		FROM (SELECT dim_ac_audits.dim_ac_audits_key,
+				auditor.employeeid
+				, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+				, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+				, audite1.employeeid Auditee_Emp_key_1
+				, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+				, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+				, audite2.employeeid Auditee_Emp_key_2
+				, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+				, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+				, audite3.employeeid Auditee_Emp_key_3
+				, dim_ac_audits.client_code AS [Client Code]
+				, dim_ac_audits.matter_number AS [Matter Number]
+				, dim_ac_audits.completed_at AS [Date]
+				, dim_ac_audits.status AS [Status]
+				, dim_ac_audit_type.name AS [Template]
+				, auditor.name AS [Auditor]
+				, dim_date.fin_quarter
+				, dim_date.fin_quarter_no
+				, dim_date.fin_year
+
+				--	SELECT * from red_dw..dim_date
+				from red_dw.dbo.dim_ac_audits
+				LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+				ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+				LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+				ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+
+				INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+				inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+
+				inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+				left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+				left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+
+				WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+				and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+		) src
+
+		UNPIVOT (name FOR position IN ([Auditee Name 1], [Auditee Name 2], [Auditee Name 3]))pvt1
+		UNPIVOT (auditeekey FOR akey IN ([Auditee Key 1], [Auditee Key 2], [Auditee Key 3]))pvt2
+		UNPIVOT (auditee_emp_key FOR empkey IN ([Auditee_Emp_key_1], [Auditee_Emp_key_2], [Auditee_Emp_key_3]))pvt3
+
+
+		WHERE  RIGHT(akey,1)=RIGHT(position,1)
+		and  RIGHT(empkey,1)=RIGHT(position,1)
+		
+
+
+SELECT distinct
+	 dim_fed_hierarchy_history.hierarchylevel3hist Department
+	
+from #Audits
+inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+
+UNION 
+
+SELECT 'All'</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Department">
+          <DataField>Department</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Param_Team">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Template">
+            <Value>=Parameters!Template.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Department">
+            <Value>=Parameters!Department.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>DROP TABLE IF EXISTS #Template
+drop table if exists #Audits
+
+
+SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Template)
+
+
+	
+		SELECT dim_ac_audits_key, pvt3.employeeid
+			, name AS [Auditee Name]
+			, auditeekey AS [Auditee key]
+			, pvt3.auditee_emp_key
+			, CASE WHEN position LIKE '%1%' THEN 1
+			WHEN position LIKE '%2%' THEN 2
+			WHEN position LIKE '%3%' THEN 3 END AS [Auditee Poistion]
+			, [Client Code]
+			, [Matter Number]
+			, [Date]
+			, [Status]
+			, [Template]
+			, [Auditor]
+			, pvt3.fin_quarter
+			, pvt3.fin_quarter_no
+			, pvt3.fin_year
+		into #Audits
+		FROM (SELECT dim_ac_audits.dim_ac_audits_key,
+				auditor.employeeid
+				, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+				, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+				, audite1.employeeid Auditee_Emp_key_1
+				, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+				, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+				, audite2.employeeid Auditee_Emp_key_2
+				, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+				, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+				, audite3.employeeid Auditee_Emp_key_3
+				, dim_ac_audits.client_code AS [Client Code]
+				, dim_ac_audits.matter_number AS [Matter Number]
+				, dim_ac_audits.completed_at AS [Date]
+				, dim_ac_audits.status AS [Status]
+				, dim_ac_audit_type.name AS [Template]
+				, auditor.name AS [Auditor]
+				, dim_date.fin_quarter
+				, dim_date.fin_quarter_no
+				, dim_date.fin_year
+
+				--	SELECT * from red_dw..dim_date
+				from red_dw.dbo.dim_ac_audits
+				LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+				ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+				LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+				ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+
+				INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+				inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+
+				inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+				left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+				left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+
+				WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+				and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+		) src
+
+		UNPIVOT (name FOR position IN ([Auditee Name 1], [Auditee Name 2], [Auditee Name 3]))pvt1
+		UNPIVOT (auditeekey FOR akey IN ([Auditee Key 1], [Auditee Key 2], [Auditee Key 3]))pvt2
+		UNPIVOT (auditee_emp_key FOR empkey IN ([Auditee_Emp_key_1], [Auditee_Emp_key_2], [Auditee_Emp_key_3]))pvt3
+
+
+		WHERE  RIGHT(akey,1)=RIGHT(position,1)
+		and  RIGHT(empkey,1)=RIGHT(position,1)
+		
+
+
+SELECT DISTINCT	
+	 dim_fed_hierarchy_history.hierarchylevel4hist Team
+	
+from #Audits
+inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+
+AND TRIM(dim_fed_hierarchy_history.hierarchylevel3hist) = CASE WHEN @Department = 'All' THEN dim_fed_hierarchy_history.hierarchylevel3hist ELSE @Department END
+
+UNION 
+
+SELECT 'All'</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Team">
+          <DataField>Team</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -3442,6 +3659,11 @@ WHERE dim_ac_audit_type_key IN
                                   <Color>LightGrey</Color>
                                   <Style>Solid</Style>
                                 </Border>
+                                <BackgroundColor>=IIF(Fields!response.Value = "Green", "Green", 
+IIF(Fields!response.Value = "Red", "Red", 
+IIF(Fields!response.Value = "Amber", "Yellow",
+IIF(Fields!response.Value = "NA", "LightGrey",
+"White"))))</BackgroundColor>
                                 <PaddingLeft>2pt</PaddingLeft>
                                 <PaddingRight>2pt</PaddingRight>
                                 <PaddingTop>2pt</PaddingTop>
@@ -3926,7 +4148,6 @@ WHERE dim_ac_audit_type_key IN
                                                           <PaddingBottom>2pt</PaddingBottom>
                                                         </Style>
                                                       </Textbox>
-                                                      <rd:Selected>true</rd:Selected>
                                                     </CellContents>
                                                   </TablixHeader>
                                                   <TablixMembers>
@@ -4141,9 +4362,9 @@ WHERE dim_ac_audit_type_key IN
                 </Actions>
               </ActionInfo>
               <Top>0.13889in</Top>
-              <Left>0.07056cm</Left>
-              <Height>0.65624in</Height>
-              <Width>1.9in</Width>
+              <Left>0.10584cm</Left>
+              <Height>0.66582in</Height>
+              <Width>2in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo1_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -4194,9 +4415,9 @@ WHERE dim_ac_audit_type_key IN
                 </Actions>
               </ActionInfo>
               <Top>0.13889in</Top>
-              <Left>1.94167in</Left>
+              <Left>2.04167in</Left>
               <Height>0.64235in</Height>
-              <Width>16.53333in</Width>
+              <Width>16.43333in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -4281,6 +4502,7 @@ WHERE dim_ac_audit_type_key IN
                   </Style>
                 </Paragraph>
               </Paragraphs>
+              <Top>0cm</Top>
               <Left>0.03528cm</Left>
               <Height>0.25in</Height>
               <Width>18.43333in</Width>
@@ -4577,11 +4799,53 @@ WHERE dim_ac_audit_type_key IN
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="Department">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>="All"</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Department</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Param_Department</DataSetName>
+          <ValueField>Department</ValueField>
+          <LabelField>Department</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
+    <ReportParameter Name="StartDate">
+      <DataType>DateTime</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>Start Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="EndDate">
+      <DataType>DateTime</DataType>
+      <Nullable>true</Nullable>
+      <Prompt>End Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>="All"</Value>
+        </Values>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Param_Team</DataSetName>
+          <ValueField>Team</ValueField>
+          <LabelField>Team</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
-      <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfColumns>2</NumberOfColumns>
+      <NumberOfRows>6</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4592,6 +4856,26 @@ WHERE dim_ac_audit_type_key IN
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
           <ParameterName>Template</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>StartDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>EndDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Department</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>3</RowIndex>
+          <ParameterName>Team</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
