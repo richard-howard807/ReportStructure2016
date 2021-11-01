@@ -2591,7 +2591,7 @@ WHERE dim_ac_audit_type_key IN
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@Template">
-            <Value>=Parameters!Template.Value</Value>
+            <Value>=JOIN(Parameters!Template.Value,"|")</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandText>DROP TABLE IF EXISTS #Template
@@ -2691,7 +2691,7 @@ SELECT 'All'</CommandText>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@Template">
-            <Value>=Parameters!Template.Value</Value>
+            <Value>=JOIN(Parameters!Template.Value,"|")</Value>
           </QueryParameter>
           <QueryParameter Name="@Department">
             <Value>=Parameters!Department.Value</Value>
@@ -2703,7 +2703,7 @@ drop table if exists #Audits
 
 SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Template)
 
-
+--declare @Department nvarchar(max) = 'All'
 	
 		SELECT dim_ac_audits_key, pvt3.employeeid
 			, name AS [Auditee Name]
@@ -2773,14 +2773,16 @@ SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Temp
 
 SELECT DISTINCT	
 	 dim_fed_hierarchy_history.hierarchylevel4hist Team
-	
 from #Audits
 inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
 inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
 
-AND TRIM(dim_fed_hierarchy_history.hierarchylevel3hist) = CASE WHEN @Department = 'All' THEN dim_fed_hierarchy_history.hierarchylevel3hist ELSE @Department END
+-- AND TRIM(dim_fed_hierarchy_history.hierarchylevel3hist) = CASE WHEN @Department = 'All' THEN dim_fed_hierarchy_history.hierarchylevel3hist ELSE @Department END
+
+where iif(@Department = 'All', 'All', hierarchylevel3hist) in (@Department)
 
 UNION 
+
 
 SELECT 'All'</CommandText>
       </Query>
@@ -3763,7 +3765,6 @@ IIF(Fields!response.Value = "NA", "LightGrey",
                                   <PaddingBottom>2pt</PaddingBottom>
                                 </Style>
                               </Textbox>
-                              <rd:Selected>true</rd:Selected>
                             </CellContents>
                           </TablixHeader>
                           <TablixMembers>
