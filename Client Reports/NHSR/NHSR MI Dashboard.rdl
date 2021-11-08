@@ -2707,7 +2707,8 @@ GROUP BY
     <DataSet Name="nhs_kpi_audit_summary">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>DECLARE @StartDate DATE = '20200501'
+        <CommandText>
+DECLARE @StartDate DATE = '20200501'
 	DECLARE @EndDate DATE = '20211130'
 
 -- used to set fin year headings for NHSR MI Dashboard report
@@ -2721,12 +2722,17 @@ SELECT
 	, dim_matter_header_history.master_matter_number
 	, dim_matter_header_history.fee_earner_code
 	, dim_parent_detail.nhs_audit_date AS audit_date
+	, dim_fed_hierarchy_history.name
+	, dim_fed_hierarchy_history.hierarchylevel4hist
 INTO #handler_time_of_audit
 --select dim_matter_header_history.*, nhs_audit_date
 FROM red_dw.dbo.dim_matter_header_history
 	INNER JOIN red_dw.dbo.dim_parent_detail
 		ON dim_parent_detail.client_code = dim_matter_header_history.client_code
 			AND dim_parent_detail.matter_number = dim_matter_header_history.matter_number
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+		ON dim_matter_header_history.fee_earner_code = dim_fed_hierarchy_history.fed_code
+			AND CAST(dim_parent_detail.nhs_audit_date AS DATE) BETWEEN CAST(dim_fed_hierarchy_history.dss_start_date AS DATE) AND CAST(dim_fed_hierarchy_history.dss_end_date AS DATE)
 WHERE
 	CAST(dim_parent_detail.nhs_audit_date AS DATE) BETWEEN CAST(dim_matter_header_history.dss_start_date AS DATE) AND CAST(dim_matter_header_history.dss_end_date AS DATE)
 	AND dim_matter_header_history.master_client_code = 'N1001'
@@ -2742,9 +2748,9 @@ SELECT DISTINCT
 FROM (
 	SELECT 
 	RTRIM(dim_matter_header_current.master_client_code) + '-' + RTRIM(dim_matter_header_current.master_matter_number)  AS [Weightmans reference AS [Panel Ref]
-	,[name] AS [Panel fee earner]
+	,#handler_time_of_audit.name AS [Panel fee earner]
 	,dim_detail_health.[nhs_scheme] AS [Scheme]
-	,hierarchylevel4hist [Team]
+	,#handler_time_of_audit.hierarchylevel4hist [Team]
 	, current_team.current_team
 	,[red_dw].[dbo].[datetimelocal](dim_parent_detail.nhs_audit_date) AS [Audit Date]
 	, 'Q' + TRIM(STR(dim_date.fin_quarter_no))		AS fin_quarter_formatted
@@ -2869,9 +2875,6 @@ FROM (
 		ON #handler_time_of_audit.master_client_code = dim_matter_header_current.master_client_code
 			AND #handler_time_of_audit.master_matter_number = dim_matter_header_current.master_matter_number
 				AND #handler_time_of_audit.audit_date = dim_date.audit_date
-	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
-	 ON dim_fed_hierarchy_history.fed_code = #handler_time_of_audit.fee_earner_code
-		AND CAST(dim_date.audit_date AS DATE) BETWEEN CAST(dim_fed_hierarchy_history.dss_start_date AS DATE) AND CAST(dim_fed_hierarchy_history.dss_end_date AS DATE)  --dss_current_flag='Y'
 	LEFT OUTER JOIN (
 						SELECT DISTINCT
 							ds_sh_valid_hierarchy_x.hierarchylevel3
@@ -2892,7 +2895,7 @@ FROM (
 						WHERE
 							ds_sh_valid_hierarchy_x.hierarchylevel4 IS NOT NULL
 				) AS current_team
-		ON current_team.old_team = dim_fed_hierarchy_history.hierarchylevel4hist
+		ON current_team.old_team = #handler_time_of_audit.hierarchylevel4hist
 	WHERE dim_matter_header_current.master_client_code='N1001'
 	AND dim_matter_header_current.reporting_exclusions=0
 	AND [red_dw].[dbo].[datetimelocal](dim_parent_detail.nhs_audit_date) BETWEEN @StartDate AND @EndDate
@@ -9176,12 +9179,12 @@ WHERE  name ='Value_Adds.png'</CommandText>
                     <TablixMember>
                       <Group Name="Team">
                         <GroupExpressions>
-                          <GroupExpression>=Fields!Team.Value</GroupExpression>
+                          <GroupExpression>=Fields!current_team.Value</GroupExpression>
                         </GroupExpressions>
                       </Group>
                       <SortExpressions>
                         <SortExpression>
-                          <Value>=Fields!Team.Value</Value>
+                          <Value>=Fields!current_team.Value</Value>
                         </SortExpression>
                       </SortExpressions>
                       <TablixMembers>
@@ -9348,6 +9351,7 @@ WHERE  name ='Value_Adds.png'</CommandText>
                                   <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                                 </Style>
                               </Textbox>
+                              <rd:Selected>true</rd:Selected>
                             </CellContents>
                           </TablixHeader>
                           <Visibility>
