@@ -3218,7 +3218,8 @@ ORDER BY
     <DataSet Name="ReportFilter">
       <Query>
         <DataSourceName>Data_Warehouse_Server_SQL2012</DataSourceName>
-        <CommandText>SELECT ms_fileid,
+        <CommandText>
+SELECT ms_fileid,
 RTRIM(dim_detail_client.client_code) client_code,
 RTRIM(dim_detail_client.matter_number) matter_number,
 matter_description,
@@ -3254,38 +3255,42 @@ WHEN dim_detail_core_details.fixed_fee = 'Yes' THEN
 ISNULL(fact_detail_cost_budgeting.[aigtotalbudgetfixedfee], 0)+ ISNULL(fact_detail_cost_budgeting.[aig_costs_practice_area_only_budget], 0)
 
 END AS [Total Budget in MS]
-
-FROM red_dw.dbo.fact_dimension_main 
-LEFT JOIN red_dw.dbo.fact_finance_summary ON  fact_dimension_main.master_fact_key = red_dw.dbo.fact_finance_summary.master_fact_key
-LEFT JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
-LEFT JOIN red_dw.dbo.dim_detail_client ON  fact_dimension_main.dim_detail_client_key = dim_detail_client.dim_detail_client_key 
-LEFT JOIN red_dw.dbo.fact_detail_cost_budgeting ON fact_detail_cost_budgeting.master_fact_key = fact_finance_summary.master_fact_key
-LEFT JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
-LEFT JOIN (
-			SELECT aig_litigation_number lit_number,SUM(portal_bill_total_excl_vat) lit_total FROM red_dw.dbo.fact_dimension_main 
-			LEFT JOIN red_dw.dbo.fact_finance_summary ON  fact_dimension_main.master_fact_key = red_dw.dbo.fact_finance_summary.master_fact_key
-			LEFT JOIN red_dw.dbo.dim_detail_client ON  fact_dimension_main.dim_detail_client_key = dim_detail_client.dim_detail_client_key  
-			GROUP BY aig_litigation_number
-			HAVING SUM(portal_bill_total_excl_vat) &gt; 0 --and aig_litigation_number IS NOT null
-		  ) lit_number ON lit_number.lit_number = aig_litigation_number
-LEFT JOIN  (SELECT profstatus profstatus,altnumber,loadnumber, sum(ds_sh_3e_profmaster.totamt - ds_sh_3e_profmaster.taxamt) portal_bill_total_excl_vat_vew FROM dbo.ds_sh_3e_profmaster
-			LEFT JOIN dbo.ds_sh_3e_matter ON leadmatter = mattindex
-			group by ds_sh_3e_profmaster.profstatus
-                   , ds_sh_3e_matter.altnumber
-                   , ds_sh_3e_matter.loadnumber) prof 
-ON loadnumber COLLATE DATABASE_DEFAULT = LTRIM(RTRIM(dim_detail_client.client_code)) +'-'+LTRIM(RTRIM(dim_detail_client.matter_number)) COLLATE DATABASE_DEFAULT OR 
-prof.altnumber COLLATE DATABASE_DEFAULT = LTRIM(RTRIM(dim_detail_client.client_code)) +'-'+LTRIM(RTRIM(dim_detail_client.matter_number)) COLLATE DATABASE_DEFAULT
-LEFT OUTER JOIN red_dw.dbo.dim_client_involvement
- ON dim_client_involvement.client_code = dim_matter_header_current.client_code
- AND dim_client_involvement.matter_number = dim_matter_header_current.matter_number
+, portal_bill_total_excl_vat_vew
+	FROM red_dw.dbo.fact_dimension_main 
+	LEFT JOIN red_dw.dbo.fact_finance_summary ON  fact_dimension_main.master_fact_key = red_dw.dbo.fact_finance_summary.master_fact_key
+	LEFT JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+	LEFT JOIN red_dw.dbo.dim_detail_client ON  fact_dimension_main.dim_detail_client_key = dim_detail_client.dim_detail_client_key 
+	LEFT JOIN red_dw.dbo.fact_detail_cost_budgeting ON fact_detail_cost_budgeting.master_fact_key = fact_finance_summary.master_fact_key
+	LEFT JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+	LEFT JOIN (
+				SELECT aig_litigation_number lit_number,SUM(portal_bill_total_excl_vat) lit_total 
+				from red_dw.dbo.fact_dimension_main 
+				LEFT JOIN red_dw.dbo.fact_finance_summary ON  fact_dimension_main.master_fact_key = red_dw.dbo.fact_finance_summary.master_fact_key
+				LEFT JOIN red_dw.dbo.dim_detail_client ON  fact_dimension_main.dim_detail_client_key = dim_detail_client.dim_detail_client_key  
+				GROUP BY aig_litigation_number
+				HAVING SUM(portal_bill_total_excl_vat) &gt; 0 --and aig_litigation_number IS NOT null
+			  ) lit_number ON lit_number.lit_number = aig_litigation_number
+	LEFT JOIN  (SELECT profstatus profstatus,altnumber,loadnumber, sum(ds_sh_3e_profmaster.totamt - ds_sh_3e_profmaster.taxamt) portal_bill_total_excl_vat_vew 
+				from dbo.ds_sh_3e_profmaster
+				LEFT JOIN dbo.ds_sh_3e_matter ON leadmatter = mattindex
+				where ds_sh_3e_profmaster.invmaster is null
+				group by ds_sh_3e_profmaster.profstatus
+					   , ds_sh_3e_matter.altnumber
+					   , ds_sh_3e_matter.loadnumber) prof 
+	ON loadnumber COLLATE DATABASE_DEFAULT = LTRIM(RTRIM(dim_detail_client.client_code)) +'-'+LTRIM(RTRIM(dim_detail_client.matter_number)) COLLATE DATABASE_DEFAULT OR 
+	prof.altnumber COLLATE DATABASE_DEFAULT = LTRIM(RTRIM(dim_detail_client.client_code)) +'-'+LTRIM(RTRIM(dim_detail_client.matter_number)) COLLATE DATABASE_DEFAULT
+	LEFT OUTER JOIN red_dw.dbo.dim_client_involvement
+	 ON dim_client_involvement.client_code = dim_matter_header_current.client_code
+	 AND dim_client_involvement.matter_number = dim_matter_header_current.matter_number
 
 WHERE 
 portal_bill_total_excl_vat_vew &gt; 0
 --portal_bill_total_excl_vat &gt; 0 
 and profstatus  in ('Approved')
 and altnumber LIKE 'A2002%'
---and dim_matter_header_current.ms_fileid = 5029081
+--and dim_matter_header_current.ms_fileid = 5052812
 ORDER BY  altnumber
+
 
 
 
@@ -3377,6 +3382,10 @@ ORDER BY  altnumber
         </Field>
         <Field Name="Total_Budget_in_MS">
           <DataField>Total Budget in MS</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="portal_bill_total_excl_vat_vew">
+          <DataField>portal_bill_total_excl_vat_vew</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
