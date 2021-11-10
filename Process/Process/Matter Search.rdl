@@ -973,7 +973,7 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
             <Value>=Parameters!ClientGroup.Value</Value>
           </QueryParameter>
           <QueryParameter Name="ClientCode">
-            <Value>=Parameters!ClientCode.Value</Value>
+            <Value>=IIF(ISNumeric(Parameters!ClientCode.Value)=TRUE, RIGHT("0000000"+Parameters!ClientCode.Value,8),Parameters!ClientCode.Value)</Value>
           </QueryParameter>
           <QueryParameter Name="OpenDateFrom">
             <Value>=iif(isnothing(Parameters!OpenDateFrom.Value), "19000101", format(CDATE(Parameters!OpenDateFrom.Value), "yyyyMMdd"))</Value>
@@ -987,9 +987,6 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
           <QueryParameter Name="WorkType">
             <Value>=join(Parameters!WorkType.Value, "|")</Value>
           </QueryParameter>
-          <QueryParameter Name="Team">
-            <Value>=Parameters!Team.Value</Value>
-          </QueryParameter>
           <QueryParameter Name="Partner">
             <Value>=Parameters!Partner.Value</Value>
           </QueryParameter>
@@ -1001,6 +998,10 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
           </QueryParameter>
           <QueryParameter Name="CloseDateTo">
             <Value>=iif(isnothing(Parameters!CloseDateTo.Value), "30000101", format(CDATE(Parameters!CloseDateTo.Value), "yyyyMMdd"))</Value>
+          </QueryParameter>
+          <QueryParameter Name="Team">
+            <Value>=join(Parameters!Team.Value, "|")</Value>
+            <rd:UserDefined>true</rd:UserDefined>
           </QueryParameter>
         </QueryParameters>
         <CommandText>define measure TimeTransactions[WIPMins] =
@@ -1019,7 +1020,7 @@ filter(
               value("01/01/1753 00:00:00"), "Open",
               "Closed" )
                      ),
-                  dimClient[ClientGroupName] = if(@ClientGroup = blank(), dimClient[ClientGroupName], @ClientGroup),
+           dimClient[ClientGroupName] = if(@ClientGroup = blank(), dimClient[ClientGroupName], @ClientGroup),
           dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
           dimDateMatterOpened[DateMatterOpenedKey] &gt;= if(value(@OpenDateFrom) = blank(), 19900101, value(@OpenDateFrom)),
           dimDateMatterOpened[DateMatterOpenedKey] &lt;= if(value(@OpenDateTo) = blank(), 30000101, value(@OpenDateTo)),
@@ -1028,282 +1029,30 @@ filter(
           dimMatterFEDHierarchy[MatterFEDCode] = if(@FEDCode = blank(), dimMatterFEDHierarchy[MatterFEDCode], @FEDCode),
           Matter[PartnerCode] = if(@Partner = blank(), Matter[PartnerCode], @Partner),
           pathcontains(@WorkType, dimWorkType[WorkTypeDesc]),
-          dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team)
-           ),
-pathcontains(@Status, [MatterStatus])
-)
+          pathcontains(@Team, dimMatterFEDHierarchy[MatterTeam])
+//          dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team)
+            ),
+				pathcontains(@Status, [MatterStatus])
+			)
 
            )</CommandText>
-        <rd:DesignerState>
-          <QueryDefinition xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
-            <CommandType>DMX</CommandType>
-            <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-              <Select>
-                <Items>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>Matter[MatterID]</ColumnName>
-                    </ID>
-                    <ItemCaption>Matter[MatterID]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dimDateMatterClosed[DateMatterClosedDate]</ColumnName>
-                    </ID>
-                    <ItemCaption>dimDateMatterClosed[DateMatterClosedDate]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[ChargeableHours]</ColumnName>
-                    </ID>
-                    <ItemCaption>[ChargeableHours]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[WIPMins]</ColumnName>
-                    </ID>
-                    <ItemCaption>[WIPMins]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[MatterStatus]</ColumnName>
-                    </ID>
-                    <ItemCaption>[MatterStatus]</ItemCaption>
-                  </Item>
-                </Items>
-              </Select>
-              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
-&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;SelectTablesControlState&gt;
-    &lt;Tables /&gt;
-  &lt;/SelectTablesControlState&gt;
-  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
-  &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;define measure TimeTransactions[WIPMins] =
-	calculate([ChargeableMinutes], TimeTransactions[TransactionType] = "Unbilled")
-
-evaluate (
-filter(
-  calculatetable (
-      summarize (
-               TimeTransactions,
-               Matter[MatterID],
-               dimDateMatterClosed[DateMatterClosedDate],
-  "ChargeableHours",   [ChargeableMinutes] / 60,
-"WIPMins", [WIPMins] / 60,
-   "MatterStatus", switch( dimDateMatterClosed[DateMatterClosedDate],
-              value("01/01/1753 00:00:00"), "Open",
-              "Closed" )
-                     ),
-                  dimClient[ClientGroupName] = if(@ClientGroup = blank(), dimClient[ClientGroupName], @ClientGroup),
-          dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
-          dimDateMatterOpened[DateMatterOpenedKey] &amp;gt;= if(value(@OpenDateFrom) = blank(), 19900101, value(@OpenDateFrom)),
-          dimDateMatterOpened[DateMatterOpenedKey] &amp;lt;= if(value(@OpenDateTo) = blank(), 30000101, value(@OpenDateTo)),
-          if(dimDateMatterClosed[DateMatterClosedKey] = blank(), 0, dimDateMatterClosed[DateMatterClosedKey]) &amp;gt;= if(value(@CloseDateFrom) = blank(), -1, value(@CloseDateFrom)),
-          if(dimDateMatterClosed[DateMatterClosedKey] = blank(), 0, dimDateMatterClosed[DateMatterClosedKey]) &amp;lt;= if(value(@CloseDateTo) = blank(), 30000101, value(@CloseDateTo)),
-          dimMatterFEDHierarchy[MatterFEDCode] = if(@FEDCode = blank(), dimMatterFEDHierarchy[MatterFEDCode], @FEDCode),
-          Matter[PartnerCode] = if(@Partner = blank(), Matter[PartnerCode], @Partner),
-          pathcontains(@WorkType, dimWorkType[WorkTypeDesc]),
-          dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team)
-           ),
-pathcontains(@Status, [MatterStatus])
-)
-
-           )&lt;/QueryText&gt;
-  &lt;DatabaseId /&gt;
-  &lt;MiningStructureId /&gt;
-  &lt;MiningModelId /&gt;
-  &lt;ColumnMappings /&gt;
-  &lt;GridRows /&gt;
-&lt;/DataminingQueryBuilderState&gt;</Data>
-            </QuerySpecification>
-            <Query>
-              <Statement>define measure TimeTransactions[WIPMins] =
-	calculate([ChargeableMinutes], TimeTransactions[TransactionType] = "Unbilled")
-
-evaluate (
-filter(
-  calculatetable (
-      summarize (
-               TimeTransactions,
-               Matter[MatterID],
-               dimDateMatterClosed[DateMatterClosedDate],
-  "ChargeableHours",   [ChargeableMinutes] / 60,
-"WIPMins", [WIPMins] / 60,
-   "MatterStatus", switch( dimDateMatterClosed[DateMatterClosedDate],
-              value("01/01/1753 00:00:00"), "Open",
-              "Closed" )
-                     ),
-                  dimClient[ClientGroupName] = if(@ClientGroup = blank(), dimClient[ClientGroupName], @ClientGroup),
-          dimClient[ClientCode] = if(@ClientCode = blank(), dimClient[ClientCode], @ClientCode),
-          dimDateMatterOpened[DateMatterOpenedKey] &gt;= if(value(@OpenDateFrom) = blank(), 19900101, value(@OpenDateFrom)),
-          dimDateMatterOpened[DateMatterOpenedKey] &lt;= if(value(@OpenDateTo) = blank(), 30000101, value(@OpenDateTo)),
-          if(dimDateMatterClosed[DateMatterClosedKey] = blank(), 0, dimDateMatterClosed[DateMatterClosedKey]) &gt;= if(value(@CloseDateFrom) = blank(), -1, value(@CloseDateFrom)),
-          if(dimDateMatterClosed[DateMatterClosedKey] = blank(), 0, dimDateMatterClosed[DateMatterClosedKey]) &lt;= if(value(@CloseDateTo) = blank(), 30000101, value(@CloseDateTo)),
-          dimMatterFEDHierarchy[MatterFEDCode] = if(@FEDCode = blank(), dimMatterFEDHierarchy[MatterFEDCode], @FEDCode),
-          Matter[PartnerCode] = if(@Partner = blank(), Matter[PartnerCode], @Partner),
-          pathcontains(@WorkType, dimWorkType[WorkTypeDesc]),
-          dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team)
-           ),
-pathcontains(@Status, [MatterStatus])
-)
-
-           )</Statement>
-              <ParameterDefinitions>
-                <ParameterDefinition>
-                  <Name>ClientGroup</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>ClientGroup</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>ClientCode</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>ClientCode</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>OpenDateFrom</Name>
-                  <DefaultValues>
-                    <DefaultValue>0</DefaultValue>
-                  </DefaultValues>
-                  <Caption>OpenDateFrom</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>OpenDateTo</Name>
-                  <DefaultValues>
-                    <DefaultValue>0</DefaultValue>
-                  </DefaultValues>
-                  <Caption>OpenDateTo</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>FEDCode</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>FEDCode</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>WorkType</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>WorkType</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>Team</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>Team</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>Partner</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>Partner</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>CloseDateFrom</Name>
-                  <DefaultValues>
-                    <DefaultValue>0</DefaultValue>
-                  </DefaultValues>
-                  <Caption>CloseDateFrom</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>CloseDateTo</Name>
-                  <DefaultValues>
-                    <DefaultValue>0</DefaultValue>
-                  </DefaultValues>
-                  <Caption>CloseDateTo</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-                <ParameterDefinition>
-                  <Name>Status</Name>
-                  <DefaultValues>
-                    <DefaultValue />
-                  </DefaultValues>
-                  <Caption>Status</Caption>
-                  <ParameterValuesQuery>
-                    <ParameterizedStatement>
-                      <ReferencedParameters />
-                    </ParameterizedStatement>
-                  </ParameterValuesQuery>
-                </ParameterDefinition>
-              </ParameterDefinitions>
-            </Query>
-          </QueryDefinition>
-        </rd:DesignerState>
       </Query>
       <Fields>
         <Field Name="Matter_MatterID_">
           <DataField>Matter[MatterID]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.Int64</rd:TypeName>
         </Field>
         <Field Name="dimDateMatterClosed_DateMatterClosedDate_">
           <DataField>dimDateMatterClosed[DateMatterClosedDate]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="ID_ChargeableHours_">
           <DataField>[ChargeableHours]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.Double</rd:TypeName>
         </Field>
         <Field Name="ID_WIPMins_">
           <DataField>[WIPMins]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.Double</rd:TypeName>
         </Field>
         <Field Name="ID_MatterStatus_">
           <DataField>[MatterStatus]</DataField>
