@@ -2458,7 +2458,14 @@ WHERE  name ='Ramac_Holdings_MI_Report.png'</CommandText>
 	, dim_file_notes.external_file_notes		AS [Present Position]
 	, dim_detail_finance.output_wip_percentage_complete		AS [Percent Complete]
 	, dim_detail_finance.output_wip_fee_arrangement		AS [Fee Arrangement]
-	, fact_detail_property.fee_estimate			AS [Fee Estimate]
+	, CASE
+		WHEN dim_detail_finance.output_wip_fee_arrangement = 'Hourly rate' THEN 
+			fact_detail_property.fee_estimate
+		WHEN dim_detail_finance.output_wip_fee_arrangement = 'Fixed Fee/Fee Quote/Capped Fee' THEN
+			fact_finance_summary.fixed_fee_amount
+		ELSE
+			NULL
+	 END						AS [Fee Estimate]
 	, ISNULL(fact_finance_summary.defence_costs_billed, 0)		AS [Own Costs Billed]
 	, ISNULL(fact_finance_summary.disbursements_billed, 0)		AS [Disbursements Billed]
 	, ISNULL(fact_finance_summary.client_account_balance_of_matter, 0)		AS [Client Balance]
@@ -2480,7 +2487,8 @@ WHERE
 	AND dim_matter_header_current.reporting_exclusions = 0
 	AND dim_matter_header_current.date_closed_case_management IS NULL
 ORDER BY
-	[Date Opened] DESC	</CommandText>
+	[Date Opened] DESC	
+</CommandText>
       </Query>
       <Fields>
         <Field Name="MS_Reference">
@@ -2709,7 +2717,6 @@ ORDER BY
                                 <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
