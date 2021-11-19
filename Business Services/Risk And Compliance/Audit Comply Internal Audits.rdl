@@ -2457,6 +2457,9 @@ WHERE  name ='Internal_Audits.png'</CommandText>
           <QueryParameter Name="@AuditYear">
             <Value>=Parameters!AuditYear.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@hsd_director">
+            <Value>=Join(Parameters!hsd_director.Value, "|")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>audit.ACInternalAudits</CommandText>
@@ -2572,6 +2575,57 @@ WHERE dim_date.calendar_date BETWEEN '2021-09-01' AND GETDATE()</CommandText>
       <Fields>
         <Field Name="audit_year">
           <DataField>audit_year</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_hsd_director">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>DROP TABLE IF EXISTS #hsd_director_data
+
+SELECT DISTINCT 
+	dim_fed_hierarchy_history.name
+	, dim_fed_hierarchy_history.employeeid
+	, defaults.fee_earner_code
+INTO #hsd_director_data
+from red_dw.dbo.dim_fed_hierarchy_history
+left outer join ( select dim_matter_header_current.fee_earner_code
+					from red_dw.dbo.dim_matter_header_current
+					where dim_matter_header_current.date_closed_case_management is null
+					and dim_matter_header_current.date_opened_case_management &gt;= (select min(dim_date.calendar_date) from red_dw.dbo.dim_date where dim_date.current_fin_year = 'Previous')
+					group by dim_matter_header_current.fee_earner_code
+					having count (dim_matter_header_current.matter_number) &gt; 5
+) defaults on dim_fed_hierarchy_history.fed_code = defaults.fee_earner_code
+where 1=1
+and (dim_fed_hierarchy_history.management_role_one in ('HoSD','Director')
+or dim_fed_hierarchy_history.management_role_two in ('HoSD','Director'))
+and dim_fed_hierarchy_history.hierarchylevel2hist in ('Legal Ops - Claims', 'Legal Ops - LTA')
+AND dim_fed_hierarchy_history.activeud = 1
+AND dim_fed_hierarchy_history.dss_current_flag = 'Y'
+AND dim_fed_hierarchy_history.leaver = 0
+
+
+SELECT 
+	*
+	, IIF(#hsd_director_data.fee_earner_code IS NULL, #hsd_director_data.employeeid, (SELECT TOP 1 #hsd_director_data.employeeid FROM #hsd_director_data WHERE #hsd_director_data.fee_earner_code IS NULL)) AS default_emp
+FROM #hsd_director_data</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="name">
+          <DataField>name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="employeeid">
+          <DataField>employeeid</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="fee_earner_code">
+          <DataField>fee_earner_code</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="default_emp">
+          <DataField>default_emp</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -8336,6 +8390,11 @@ WHERE dim_date.calendar_date BETWEEN '2021-09-01' AND GETDATE()</CommandText>
     </ReportParameter>
     <ReportParameter Name="report_format">
       <DataType>String</DataType>
+      <DefaultValue>
+        <Values>
+          <Value>listed</Value>
+        </Values>
+      </DefaultValue>
       <Prompt>Report Format</Prompt>
       <ValidValues>
         <ParameterValues>
@@ -8385,11 +8444,29 @@ WHERE dim_date.calendar_date BETWEEN '2021-09-01' AND GETDATE()</CommandText>
         </DataSetReference>
       </ValidValues>
     </ReportParameter>
+    <ReportParameter Name="hsd_director">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_hsd_director</DataSetName>
+          <ValueField>default_emp</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Exclude HSD/Director</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_hsd_director</DataSetName>
+          <ValueField>employeeid</ValueField>
+          <LabelField>name</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfRows>5</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -8399,17 +8476,22 @@ WHERE dim_date.calendar_date BETWEEN '2021-09-01' AND GETDATE()</CommandText>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
-          <ParameterName>Template</ParameterName>
+          <ParameterName>report_format</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>3</RowIndex>
-          <ParameterName>AuditYear</ParameterName>
+          <ParameterName>Template</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>1</RowIndex>
-          <ParameterName>report_format</ParameterName>
+          <ParameterName>AuditYear</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>4</RowIndex>
+          <ParameterName>hsd_director</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
