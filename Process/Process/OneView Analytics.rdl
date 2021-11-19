@@ -2514,7 +2514,12 @@ SELECT DISTINCT
 	--	RIGHT('0' + CAST(DATEDIFF(SECOND, #log_visit.visit_first_action_time, #log_visit.visit_last_action_time)%60 AS VARCHAR(2)), 2)					AS [Total Time Logged on]
 	, #log_link_visit_action.server_time
 	, CAST(#log_action.name AS VARCHAR(255))				AS [URL Visited]	
-	, REVERSE(LEFT(REVERSE(CAST(#log_action.name AS VARCHAR(255))), CHARINDEX('/', REVERSE(CAST(#log_action.name AS VARCHAR(255))))))				AS [Site Page]
+	, CASE
+		WHEN RIGHT(CAST(#log_action.name AS VARCHAR(400)), 1) = '/' THEN
+			REVERSE(LEFT(REVERSE(LEFT(CAST(#log_action.name AS VARCHAR(400)), LEN(CAST(#log_action.name AS VARCHAR(400)))-1)), CHARINDEX('/', REVERSE(LEFT(CAST(#log_action.name AS VARCHAR(400)), LEN(CAST(#log_action.name AS VARCHAR(400)))-1)))-1))
+		ELSE
+			REPLACE(REVERSE(LEFT(REVERSE(CAST(#log_action.name AS VARCHAR(400))), CHARINDEX('/', REVERSE(CAST(#log_action.name AS VARCHAR(400))))-1)), '?', '/')
+	  END				AS [Site Page]
 	, CAST(#log_link_visit_action.server_time AS DATE)			AS [Date Logged on]
 --SELECT *
 FROM #log_visit
