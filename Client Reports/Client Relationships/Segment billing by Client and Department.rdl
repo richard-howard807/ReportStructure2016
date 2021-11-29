@@ -3060,6 +3060,26 @@ AND dim_bill_date.bill_date BETWEEN @DateFrom AND @DateTo </CommandText>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="DateRange">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT MIN(bill_date) AS date_from
+,MAX(bill_date) AS date_to
+FROM red_dw.dbo.dim_bill_date
+WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="date_from">
+          <DataField>date_from</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="date_to">
+          <DataField>date_to</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -4711,9 +4731,6 @@ iif( sum(Fields!Fee_Earner_Profit_Costs.Value) &gt;= sum(Fields!Profit_Costs_Pre
                       </TablixMembers>
                     </TablixMember>
                   </TablixMembers>
-                  <Visibility>
-                    <Hidden>=iif(sum(Fields!Profit_Costs_Previous_Period.Value) + sum(Fields!Fee_Earner_Profit_Costs.Value) &gt; 0, False, True)</Hidden>
-                  </Visibility>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
@@ -4945,18 +4962,20 @@ iif( sum(Fields!Fee_Earner_Profit_Costs.Value) &gt;= sum(Fields!Profit_Costs_Pre
     <ReportParameter Name="DateFrom">
       <DataType>DateTime</DataType>
       <DefaultValue>
-        <Values>
-          <Value>05/01/2020 00:00:00</Value>
-        </Values>
+        <DataSetReference>
+          <DataSetName>DateRange</DataSetName>
+          <ValueField>date_from</ValueField>
+        </DataSetReference>
       </DefaultValue>
       <Prompt>Date From</Prompt>
     </ReportParameter>
     <ReportParameter Name="DateTo">
       <DataType>DateTime</DataType>
       <DefaultValue>
-        <Values>
-          <Value>=IIF(dateadd("m",0,dateserial(year(Today),month(Today),0)) = DateAdd("d", 0,"29/2/2020"), DateAdd("d", 0,"28/2/2020"), dateadd("m",0,dateserial(year(Today),month(Today),0)))</Value>
-        </Values>
+        <DataSetReference>
+          <DataSetName>DateRange</DataSetName>
+          <ValueField>date_to</ValueField>
+        </DataSetReference>
       </DefaultValue>
       <Prompt>Date To</Prompt>
     </ReportParameter>
