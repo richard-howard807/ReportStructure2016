@@ -638,11 +638,20 @@ strtoset(@Segment)</Statement>
     <DataSet Name="sqlQueryDates">
       <Query>
         <DataSourceName>sqlDates</DataSourceName>
-        <CommandText>SELECT MIN(bill_date) AS date_from
+        <CommandText>DECLARE @FinYear AS INT
+SET @FinYear=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))
+
+DECLARE @FinMonth AS INT
+SET @FinMonth=(SELECT bill_fin_month_no FROM red_dw.dbo.dim_bill_date
+WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))
+
+
+SELECT MIN(bill_date) AS date_from
 ,MAX(bill_date) AS date_to
 FROM red_dw.dbo.dim_bill_date
-WHERE bill_fin_year=(SELECT bill_fin_year FROM red_dw.dbo.dim_bill_date
-WHERE CONVERT(DATE,bill_date,103)=CONVERT(DATE,GETDATE(),103))</CommandText>
+WHERE bill_fin_year=@FinYear AND bill_fin_month_no&lt;=@FinMonth
+</CommandText>
       </Query>
       <Fields>
         <Field Name="date_from">
