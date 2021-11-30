@@ -3826,20 +3826,36 @@ fact_dimension_main
     </DataSet>
     <DataSet Name="FCC_Payor">
       <Query>
-        <DataSourceName>SSAS_SVR_LIV_DWH_03_PAYOR</DataSourceName>
-        <CommandText>EVALUATE(
-CALCULATETABLE(
-SUMMARIZE(
-fact_payor_debt_detail
-, dim_matter_header_current[client code]
-, dim_matter_header_current[Matter Number]
-, dim_payor[payor_name]
-, fact_payor_debt_detail[total balance]
-)
-, dim_matter_header_current[client code]="W20163"
-, SEARCH("*FCC*",dim_payor[payor_name],1,0)&gt;0
-)
-)</CommandText>
+        <DataSourceName>Reporting</DataSourceName>
+        <CommandText>
+
+SELECT  
+
+dim_matter_header_curr_key,
+
+ [client code] = TRIM(dim_matter_header_current.[client_code])
+, [Matter Number] = TRIM(dim_matter_header_current.[matter_number])
+,[payor_name] =Payor.DisplayName
+, SUM(InvPayor.OrgAmt) [total balance]
+
+	
+FROM  TE_3E_Prod.dbo.InvPayor  
+INNER JOIN TE_3E_Prod.dbo.InvMaster ON InvMaster.InvIndex = InvPayor.InvMaster
+INNER JOIN TE_3E_Prod.dbo.Matter ON Matter.MattIndex = InvMaster.LeadMatter
+INNER JOIN TE_3E_Prod.dbo.Client ON Client.ClientIndex = Matter.Client
+INNER JOIN TE_3E_Prod.dbo.Payor ON Payor.PayorIndex = InvPayor.Payor
+
+LEFT JOIN red_dw.dbo.dim_matter_header_current ON master_client_code + '-' + master_matter_number = Matter.Number COLLATE DATABASE_DEFAULT
+
+WHERE Payor.DisplayName LIKE '%FCC%'
+
+GROUP BY 
+
+dim_matter_header_curr_key,
+
+ dim_matter_header_current.[client_code]
+,dim_matter_header_current.[matter_number]
+,Payor.DisplayName</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
             <CommandType>DMX</CommandType>
@@ -3921,21 +3937,25 @@ fact_payor_debt_detail
         </rd:DesignerState>
       </Query>
       <Fields>
-        <Field Name="dim_matter_header_current_client_code_">
-          <DataField>dim_matter_header_current[client code]</DataField>
+        <Field Name="dim_matter_header_curr_key">
+          <DataField>dim_matter_header_curr_key</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="client_code">
+          <DataField>client code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="dim_matter_header_current_Matter_Number_">
-          <DataField>dim_matter_header_current[Matter Number]</DataField>
+        <Field Name="Matter_Number">
+          <DataField>Matter Number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="dim_payor_payor_name_">
-          <DataField>dim_payor[payor_name]</DataField>
+        <Field Name="payor_name">
+          <DataField>payor_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="fact_payor_debt_detail_total_balance_">
-          <DataField>fact_payor_debt_detail[total balance]</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+        <Field Name="total_balance">
+          <DataField>total balance</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -11960,8 +11980,8 @@ ISNOTHING(Fields!dim_detail_outcome_date_costs_settled_.Value) = FALSE
                                   <TextRuns>
                                     <TextRun>
                                       <Value>=Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
-Fields!dim_matter_header_current_client_code_.Value &amp; Fields!dim_matter_header_current_Matter_Number_.Value,
-Fields!fact_payor_debt_detail_total_balance_.Value, "FCC_Payor")</Value>
+Fields!client_code.Value &amp; Fields!Matter_Number.Value,
+Fields!total_balance.Value, "FCC_Payor")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
