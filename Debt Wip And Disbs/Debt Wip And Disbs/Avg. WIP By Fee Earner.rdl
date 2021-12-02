@@ -28,20 +28,32 @@ Parameters!Level.Value = "Firm", replace(Parameters!FEDCode.Value, "[Dim Fed Hie
           <QueryParameter Name="Day">
             <Value>=Parameters!Day.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="MaxMonth">
+            <Value>=Parameters!maxmonth.Value</Value>
+          </QueryParameter>
         </QueryParameters>
-        <CommandText>with member [Measures].[DrilldownValue] as
-        [Employee - Matter Owner].[Hierarchy].CurrentMember.UniqueName
+        <CommandText>WITH
+MEMBER
+   [Measures].[Average WIP] AS
+'([Measures].[Wip Value]/[Measures].[Traing Day Count])'
 
+
+MEMBER
+   [Measures].[Average WIP YTD] AS
+(
+iif([WIP Date].[Financial].currentMember.membervalue = @MaxMonth, ([Measures].[YTD WIP Value]/[Measures].[YTD Trading Days]), null) 
+)
 
 
 SELECT 
 NON EMPTY 
 {
 [Measures].[Wip Value],
-[Measures].[DrilldownValue],
 [Measures].[Traing Day Count],
 [Measures].[YTD Trading Days],
-[Measures].[YTD Wip Value]
+[Measures].[YTD Wip Value],
+[Measures].[Average WIP],
+[Measures].[Average WIP YTD]
 
 } ON COLUMNS, 
 
@@ -168,14 +180,6 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])</CommandText>
                   </Item>
                   <Item>
                     <ID xsi:type="Measure">
-                      <MeasureName>DrilldownValue</MeasureName>
-                      <UniqueName>[Measures].[DrilldownValue]</UniqueName>
-                    </ID>
-                    <ItemCaption>DrilldownValue</ItemCaption>
-                    <FormattedValue>true</FormattedValue>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Measure">
                       <MeasureName>Traing Day Count</MeasureName>
                       <UniqueName>[Measures].[Traing Day Count]</UniqueName>
                     </ID>
@@ -198,6 +202,22 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])</CommandText>
                     <ItemCaption>YTD WIP Value</ItemCaption>
                     <FormattedValue>true</FormattedValue>
                   </Item>
+                  <Item>
+                    <ID xsi:type="Measure">
+                      <MeasureName>Average WIP</MeasureName>
+                      <UniqueName>[Measures].[Average WIP]</UniqueName>
+                    </ID>
+                    <ItemCaption>Average WIP</ItemCaption>
+                    <FormattedValue>true</FormattedValue>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Measure">
+                      <MeasureName>Average WIP YTD</MeasureName>
+                      <UniqueName>[Measures].[Average WIP YTD]</UniqueName>
+                    </ID>
+                    <ItemCaption>Average WIP YTD</ItemCaption>
+                    <FormattedValue>true</FormattedValue>
+                  </Item>
                 </Items>
               </Select>
               <AutoExecute>false</AutoExecute>
@@ -210,19 +230,28 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])</CommandText>
               <QueryProperties />
             </QuerySpecification>
             <Query>
-              <Statement>with member [Measures].[DrilldownValue] as
-        [Employee - Matter Owner].[Hierarchy].CurrentMember.UniqueName
+              <Statement>WITH
+MEMBER
+   [Measures].[Average WIP] AS
+'([Measures].[Wip Value]/[Measures].[Traing Day Count])'
 
+
+MEMBER
+   [Measures].[Average WIP YTD] AS
+(
+iif([WIP Date].[Financial].currentMember.membervalue = @MaxMonth, ([Measures].[YTD WIP Value]/[Measures].[YTD Trading Days]), null) 
+)
 
 
 SELECT 
 NON EMPTY 
 {
 [Measures].[Wip Value],
-[Measures].[DrilldownValue],
 [Measures].[Traing Day Count],
 [Measures].[YTD Trading Days],
-[Measures].[YTD Wip Value]
+[Measures].[YTD Wip Value],
+[Measures].[Average WIP],
+[Measures].[Average WIP YTD]
 
 } ON COLUMNS, 
 
@@ -275,6 +304,18 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])
                   </ParameterValuesQuery>
                   <MultipleValues>true</MultipleValues>
                 </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>MaxMonth</Name>
+                  <DefaultValues>
+                    <DefaultValue>2022-03 (Jul-2021)</DefaultValue>
+                  </DefaultValues>
+                  <Caption>MaxMonth</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
               </ParameterDefinitions>
             </Query>
           </QueryDefinition>
@@ -321,10 +362,6 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[Traing Day Count]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="DrilldownValue">
-          <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[DrilldownValue]" /&gt;</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
-        </Field>
         <Field Name="YTD_Trading_Days">
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[YTD Trading Days]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
@@ -335,6 +372,14 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])
         </Field>
         <Field Name="YTD_WIP_Value">
           <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[YTD WIP Value]" /&gt;</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Average_WIP">
+          <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[Average WIP]" /&gt;</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Average_WIP_YTD">
+          <DataField>&lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;Field xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:type="Measure" UniqueName="[Measures].[Average WIP YTD]" /&gt;</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
@@ -399,20 +444,6 @@ where ([WIP Date].[Traing Day Flag].&amp;[True])
           </FilterValues>
         </Filter>
       </Filters>
-    </DataSet>
-    <DataSet Name="paramdefault_Day">
-      <Query>
-        <DataSourceName>SQL12</DataSourceName>
-        <CommandText>SELECT        '[Dim WIP Date].[Dim Date Key].&amp;[' + CAST(dim_date_key AS varchar(10)) + ']' AS Yesterday
-FROM            dim_date
-WHERE        (calendar_date = CAST(GETDATE() - 1 AS date))</CommandText>
-      </Query>
-      <Fields>
-        <Field Name="Yesterday">
-          <DataField>Yesterday</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
-      </Fields>
     </DataSet>
     <DataSet Name="Day">
       <Query>
@@ -2989,6 +3020,42 @@ order by 1 desc</CommandText>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="ParamMaxMonth">
+      <Query>
+        <DataSourceName>SQL12</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Year">
+            <Value>=Parameters!Year.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Day">
+            <Value>=Parameters!Day.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>
+
+select distinct dim_date.fin_period fin_period, '[WIP Date].[Financial].[Financial Period].['+dim_date.fin_period +']' mdx_period
+from dbo.dim_date
+where  dim_date.fin_year = @Year
+and dim_date.fin_month_no in (
+				select distinct max(dim_date.fin_month_no) fin_month_no
+				from dbo.dim_date
+				where '[WIP Date].[Financial].[Financial Period].['+dim_date.fin_period +']' in (@Day)
+				and dim_date.fin_year = @Year
+				and dim_date.current_fin_month in ('Current','Previous', 'Historic') 
+
+				)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="fin_period">
+          <DataField>fin_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="mdx_period">
+          <DataField>mdx_period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -3064,7 +3131,7 @@ order by 1 desc</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(SUM(Fields!Traing_Day_Count.Value) &gt; 0, SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value), 0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3094,15 +3161,14 @@ order by 1 desc</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox3">
+                        <Textbox Name="Average_WIP_YTD2">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(MAX(Fields!YTD_Trading_Days.Value) &gt; 0,
-	 SUM(Fields!YTD_WIP_Value.Value) / SUM(Fields!YTD_Trading_Days.Value),0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP_YTD.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3114,7 +3180,7 @@ order by 1 desc</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox3</rd:DefaultName>
+                          <rd:DefaultName>Average_WIP_YTD2</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3127,6 +3193,7 @@ order by 1 desc</CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                       <DataElementOutput>Output</DataElementOutput>
                     </TablixCell>
@@ -3186,14 +3253,14 @@ order by 1 desc</CommandText>
                     <TablixCell />
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox8">
+                        <Textbox Name="Average_WIP2">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(SUM(Fields!Traing_Day_Count.Value) &gt; 0, SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value), 0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3204,7 +3271,7 @@ order by 1 desc</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox8</rd:DefaultName>
+                          <rd:DefaultName>Average_WIP2</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3222,15 +3289,14 @@ order by 1 desc</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox4">
+                        <Textbox Name="Average_WIP_YTD1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(MAX(Fields!YTD_Trading_Days.Value) &gt; 0,
-	 SUM(Fields!YTD_WIP_Value.Value) / SUM(Fields!YTD_Trading_Days.Value),0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP_YTD.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3242,7 +3308,7 @@ order by 1 desc</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox4</rd:DefaultName>
+                          <rd:DefaultName>Average_WIP_YTD1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3255,6 +3321,7 @@ order by 1 desc</CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                       <DataElementOutput>Output</DataElementOutput>
                     </TablixCell>
@@ -3314,18 +3381,14 @@ order by 1 desc</CommandText>
                     <TablixCell />
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox7">
+                        <Textbox Name="Average_WIP1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=
-sum(CDbl( 
-SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
-)
-)</Value>
+                                  <Value>=Sum(Fields!Average_WIP.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3336,7 +3399,44 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox7</rd:DefaultName>
+                          <rd:DefaultName>Average_WIP1</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>Silver</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                      <DataElementOutput>Output</DataElementOutput>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Average_WIP_YTD">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Sum(Fields!Average_WIP_YTD.Value)</Value>
+                                  <Style>
+                                    <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Normal</FontWeight>
+                                    <Format>'£'#,0;('£'#,0)</Format>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Average_WIP_YTD</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3350,44 +3450,6 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                           </Style>
                         </Textbox>
                         <rd:Selected>true</rd:Selected>
-                      </CellContents>
-                      <DataElementOutput>Output</DataElementOutput>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Textbox6">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>=iif(MAX(Fields!YTD_Trading_Days.Value) &gt; 0,
-	 SUM(Fields!YTD_WIP_Value.Value) / SUM(Fields!YTD_Trading_Days.Value),0)</Value>
-                                  <Style>
-                                    <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                    <FontSize>8pt</FontSize>
-                                    <FontWeight>Normal</FontWeight>
-                                    <Format>'£'#,0;('£'#,0)</Format>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Textbox6</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>Solid</Style>
-                            </Border>
-                            <BackgroundColor>Silver</BackgroundColor>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                          </Style>
-                        </Textbox>
                       </CellContents>
                       <DataElementOutput>Output</DataElementOutput>
                     </TablixCell>
@@ -3444,14 +3506,14 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                     <TablixCell />
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Avg__WIP_Value">
+                        <Textbox Name="Average_WIP">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(SUM(Fields!Traing_Day_Count.Value) &gt; 0, SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value), 0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3462,7 +3524,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Avg__WIP_Value</rd:DefaultName>
+                          <rd:DefaultName>Average_WIP</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3487,8 +3549,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(LAST(Fields!YTD_Trading_Days.Value) &gt; 0,
-	 LAST(Fields!YTD_WIP_Value.Value) / LAST(Fields!YTD_Trading_Days.Value),0)</Value>
+                                  <Value>=LAST(Fields!Average_WIP_YTD.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>8pt</FontSize>
@@ -3512,6 +3573,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                       <DataElementOutput>Output</DataElementOutput>
                     </TablixCell>
@@ -3559,14 +3621,14 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                     <TablixCell />
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox9">
+                        <Textbox Name="Average_WIP3">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(SUM(Fields!Traing_Day_Count.Value) &gt; 0, SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value), 0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3577,7 +3639,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox9</rd:DefaultName>
+                          <rd:DefaultName>Average_WIP3</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3595,15 +3657,14 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox1">
+                        <Textbox Name="Textbox32">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=iif(MAX(Fields!YTD_Trading_Days.Value) &gt; 0,
-	 SUM(Fields!YTD_WIP_Value.Value) / SUM(Fields!YTD_Trading_Days.Value),0)</Value>
+                                  <Value>=Sum(Fields!Average_WIP_YTD.Value)</Value>
                                   <Style>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3614,7 +3675,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox1</rd:DefaultName>
+                          <rd:DefaultName>Textbox32</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3627,6 +3688,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                       <DataElementOutput>Output</DataElementOutput>
                     </TablixCell>
@@ -3952,7 +4014,7 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
         <Height>1.88528in</Height>
         <Style />
       </Body>
-      <Width>12.13441in</Width>
+      <Width>12.47693in</Width>
       <Page>
         <PageHeader>
           <Height>0.75222in</Height>
@@ -4389,11 +4451,21 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
       </DefaultValue>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="maxmonth">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ParamMaxMonth</DataSetName>
+          <ValueField>fin_period</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Hidden>true</Hidden>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>4</NumberOfRows>
+      <NumberOfRows>5</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4424,6 +4496,11 @@ SUM(Fields!Wip_Value.Value) / SUM(Fields!Traing_Day_Count.Value)
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>3</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>4</RowIndex>
+          <ParameterName>maxmonth</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
