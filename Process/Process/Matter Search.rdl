@@ -993,9 +993,6 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
           <QueryParameter Name="CloseDateFrom">
             <Value>=iif(isnothing(Parameters!CloseDateFrom.Value), "-1", format(CDATE(Parameters!CloseDateFrom.Value), "yyyyMMdd"))</Value>
           </QueryParameter>
-          <QueryParameter Name="Status">
-            <Value>=join(Parameters!Status.Value, "|")</Value>
-          </QueryParameter>
           <QueryParameter Name="CloseDateTo">
             <Value>=iif(isnothing(Parameters!CloseDateTo.Value), "30000101", format(CDATE(Parameters!CloseDateTo.Value), "yyyyMMdd"))</Value>
           </QueryParameter>
@@ -1008,7 +1005,6 @@ order by dim_fed_hierarchy_history_matter_owner[matter_owner_team]</Statement>
 	calculate([ChargeableMinutes], TimeTransactions[TransactionType] = "Unbilled")
 
 evaluate (
-filter(
   calculatetable (
       summarize (
                TimeTransactions,
@@ -1016,8 +1012,7 @@ filter(
                dimDateMatterClosed[DateMatterClosedDate],
   "ChargeableHours",   [ChargeableMinutes] / 60,
 "WIPMins", [WIPMins] / 60,
-   "MatterStatus", switch( dimDateMatterClosed[DateMatterClosedDate],
-              value("01/01/1753 00:00:00"), "Open",
+   "MatterStatus", if( dimDateMatterClosed[DateMatterClosedDate] = blank(),  "Open",
               "Closed" )
                      ),
            dimClient[ClientGroupName] = if(@ClientGroup = blank(), dimClient[ClientGroupName], @ClientGroup),
@@ -1031,9 +1026,7 @@ filter(
           pathcontains(@WorkType, dimWorkType[WorkTypeDesc]),
           pathcontains(@Team, dimMatterFEDHierarchy[MatterTeam])
 //          dimMatterFEDHierarchy[MatterTeam] = if(@Team = blank(), dimMatterFEDHierarchy[MatterTeam], @Team)
-            ),
-				pathcontains(@Status, [MatterStatus])
-			)
+            )
 
            )</CommandText>
       </Query>
@@ -4872,6 +4865,7 @@ Fields!ID_ChargeableHours_.Value, "ChargeableHours")
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
