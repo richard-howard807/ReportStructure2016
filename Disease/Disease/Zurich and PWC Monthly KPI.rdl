@@ -2450,7 +2450,12 @@ WHERE  name ='Monthly_KPI.png'</CommandText>
     <DataSet Name="monthly_kpi_sql">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>DECLARE @fin_year AS INT = 2022
+        <QueryParameters>
+          <QueryParameter Name="@fin_year">
+            <Value>=Parameters!fin_year.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>--DECLARE @fin_year AS INT = 2022
 
 DROP TABLE IF EXISTS #last_bill_date
 DROP TABLE IF EXISTS #zurich_pwc_matters
@@ -2477,8 +2482,10 @@ GROUP BY
 SELECT 
 	dim_detail_core_details.dim_matter_header_curr_key
 	, CASE
-		WHEN dim_matter_header_current.master_client_code = 'Z1001' THEN	
+		WHEN dim_matter_header_current.master_client_code = 'Z1001' AND dim_detail_core_details.injury_type_code = 'D17' THEN	
 			'Zurich ' + dim_detail_core_details.track + ' NIHL'
+		WHEN dim_matter_header_current.master_client_code = 'Z1001' AND dim_detail_core_details.injury_type_code &lt;&gt; 'D17' THEN	
+			'Zurich ' + dim_detail_core_details.track + ' Non-NIHL'
 		WHEN RTRIM(dim_detail_core_details.capita_disease_type) IN ('Deafness', 'NIHL') THEN
 			'PWC Deafness'
 		WHEN RTRIM(dim_detail_core_details.capita_disease_type) IN ('Mesothelioma', 'Asbestosis', 'Living Mesothelioma', 'Fatal Mesothelioma') THEN	
@@ -2525,9 +2532,9 @@ FROM red_dw.dbo.dim_matter_header_current
 		ON dim_date.calendar_date = #last_bill_date.last_bill_date
 WHERE
 	(CASE
-			WHEN dim_matter_header_current.master_client_code = 'Z1001' AND dim_detail_core_details.track = 'Multi Track' AND dim_detail_core_details.injury_type_code = 'D17' THEN
+			WHEN dim_matter_header_current.master_client_code = 'Z1001' AND dim_detail_core_details.track = 'Multi Track' AND dim_detail_core_details.injury_type_code LIKE 'D%' THEN
 				1
-			WHEN dim_matter_header_current.master_client_code = 'Z1001' AND dim_detail_core_details.track = 'Fast Track' AND dim_matter_header_current.date_opened_case_management &gt;= '2020-04-01' AND dim_detail_core_details.injury_type_code = 'D17'  THEN
+			WHEN dim_matter_header_current.master_client_code = 'Z1001' AND dim_detail_core_details.track = 'Fast Track' AND dim_matter_header_current.date_opened_case_management &gt;= '2020-04-01' AND dim_detail_core_details.injury_type_code LIKE 'D%'  THEN
 				1
 			WHEN dim_matter_header_current.master_client_code IN ('W15349', 'W15373') AND dim_detail_core_details.capita_disease_type IN ('Asbestosis', 'Deafness', 'Fatal Mesothelioma', 'Living Mesothelioma', 'Mesothelioma', 'NIHL') THEN
 				1
@@ -2593,10 +2600,11 @@ SELECT
 	, 3		AS kpi_order
 	, #zurich_pwc_matters.fin_month_name
 	, #zurich_pwc_matters.fin_month_no
-	, FORMAT(SUM(CAST(#zurich_pwc_matters.repudiated_count AS FLOAT)) / SUM(CAST(#zurich_pwc_matters.case_count AS FLOAT)), '##%')	AS kpi_figure
+	, IIF(FORMAT(SUM(CAST(#zurich_pwc_matters.repudiated_count AS FLOAT)) / SUM(CAST(#zurich_pwc_matters.case_count AS FLOAT)), '##%') = '%', '0%', 
+		FORMAT(SUM(CAST(#zurich_pwc_matters.repudiated_count AS FLOAT)) / SUM(CAST(#zurich_pwc_matters.case_count AS FLOAT)), '##%'))	AS kpi_figure
 FROM #zurich_pwc_matters
 WHERE
-	#zurich_pwc_matters.client_category &lt;&gt; 'Zurich Multi Track NIHL'
+	#zurich_pwc_matters.client_category NOT LIKE 'Zurich Multi Track%'
 GROUP BY
 	#zurich_pwc_matters.client_category
 	, #zurich_pwc_matters.client_order
@@ -2615,14 +2623,12 @@ SELECT
 	, FORMAT(AVG(defence_costs.defence_costs), '£##,###')		AS kpi_figure
 FROM #zurich_pwc_matters AS defence_costs
 WHERE
-	defence_costs.client_category &lt;&gt; 'Zurich Multi Track NIHL'
+	defence_costs.client_category NOT LIKE 'Zurich Multi Track%'
 GROUP BY
 	defence_costs.client_category
 	, defence_costs.client_order
 	, defence_costs.fin_month_name
 	, defence_costs.fin_month_no
-
-
 </CommandText>
       </Query>
       <Fields>
@@ -2907,7 +2913,6 @@ ORDER BY
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
