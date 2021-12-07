@@ -2465,9 +2465,9 @@ WHERE  name ='AIG_KPI_Report.png'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>
---DECLARE @year_type AS NVARCHAR(10) = 'Financial'
+--DECLARE @year_type AS NVARCHAR(10) = 'Calendar'
 --DECLARE @year AS INT = 2021
---DECLARE @date_period AS NVARCHAR(3) = '4'
+--DECLARE @date_period AS INT = 202107
 --DECLARE @referral_reason AS NVARCHAR(MAX) = 'dispute on liability and quantum'
 
 DROP TABLE IF EXISTS #DimDateData
@@ -2491,8 +2491,8 @@ SELECT dim_date.dim_date_key
 FROM red_dw.dbo.dim_date
 WHERE
 	dim_date.fin_year = @year
-	AND (dim_date.fin_month_name IN (@date_period)
-		OR CAST(dim_date.fin_quarter_no AS NVARCHAR(3)) IN (@date_period)
+	AND (dim_date.fin_month IN (@date_period)
+		OR dim_date.fin_quarter_no IN (@date_period)
 		)
 
 ELSE
@@ -2505,8 +2505,8 @@ SELECT dim_date.dim_date_key
 FROM red_dw.dbo.dim_date
 WHERE
 	dim_date.cal_year = @year
-	AND (dim_date.cal_month_name IN (@date_period)
-		OR CAST(dim_date.cal_quarter_no AS NVARCHAR(3)) IN (@date_period)
+	AND (dim_date.cal_month IN (@date_period)
+		OR dim_date.cal_quarter_no IN (@date_period)
 		)
 
 --========================================================================================================================================
@@ -2658,6 +2658,7 @@ WHERE 1 = 1
 	AND ISNULL(LOWER(RTRIM(dim_detail_outcome.outcome_of_case)), '') &lt;&gt; 'exclude from reports'
 ORDER BY	
 	[Date Case Opened]
+
 </CommandText>
       </Query>
       <Fields>
@@ -2929,16 +2930,8 @@ ORDER BY
     <DataSet Name="param_date_period">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@year_type">
-            <Value>=Parameters!year_type.Value</Value>
-          </QueryParameter>
-          <QueryParameter Name="@year">
-            <Value>=Parameters!year.Value</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>--DECLARE @year_type AS NVARCHAR(10) = 'Calendar'
---DECLARE @year AS INT = 2021
+        <CommandText>DECLARE @year_type AS NVARCHAR(10) = 'Calendar'
+DECLARE @year AS INT = 2021
 
 IF @year_type = 'Financial'
 
@@ -2970,7 +2963,10 @@ SELECT DISTINCT
 	, dim_date.cal_month_name AS date_period_label
 FROM red_dw.dbo.dim_date
 WHERE
-	dim_date.cal_year = @year</CommandText>
+	dim_date.cal_year = @year
+
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="date_period_value">
