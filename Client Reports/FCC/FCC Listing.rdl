@@ -2472,7 +2472,6 @@ fact_dimension_main
 , dim_client_involvement[insuredclient_name]
 , dim_client_involvement[insurerclient_reference]
 , dim_client_involvement[insuredclient_reference]
-, dim_detail_core_details[incident_location]
 , dim_client[client_code]
 , dim_matter_header_current[matter_number]
 , dim_fed_hierarchy_history_matter_owner[matter_owner_name]
@@ -2578,7 +2577,11 @@ fact_dimension_main
 , "Paid by QBE", fact_detail_paid_detail[total_settlement_value_of_the_claim_paid_by_all_the_parties]+fact_finance_summary[claimants_total_costs_paid_by_all_parties]+fact_finance_summary[total_amount_billed] --+total paid
 --, "Paid by FCC", “Damages Paid” + “Third Party Costs Paid” + “Own Costs Paid” + “CRU Paid” + NHS Costs Paid”
 )
-, PATHCONTAINS("W20163|W17427",dim_client[client_code])
+, PATHCONTAINS("W20163",dim_client[client_code]) 
+, dim_detail_outcome[outcome_of_case] &lt;&gt; "Exclude from reports"
+, dim_matter_worktype[work_type_group] &lt;&gt; "Motor"
+
+
 )
 )</CommandText>
         <rd:DesignerState>
@@ -3298,7 +3301,11 @@ fact_dimension_main
 , "Paid by QBE", fact_detail_paid_detail[total_settlement_value_of_the_claim_paid_by_all_the_parties]+fact_finance_summary[claimants_total_costs_paid_by_all_parties]+fact_finance_summary[total_amount_billed] --+total paid
 --, "Paid by FCC", “Damages Paid” + “Third Party Costs Paid” + “Own Costs Paid” + “CRU Paid” + NHS Costs Paid”
 )
-, PATHCONTAINS("W20163|W17427",dim_client[client_code])
+, PATHCONTAINS("W20163",dim_client[client_code]) 
+, dim_detail_outcome[outcome_of_case] &amp;lt;&amp;gt; "Exclude from reports"
+, dim_matter_worktype[work_type_group] &amp;lt;&amp;gt; "Motor"
+
+
 )
 )&lt;/QueryText&gt;
   &lt;DatabaseId /&gt;
@@ -3421,7 +3428,11 @@ fact_dimension_main
 , "Paid by QBE", fact_detail_paid_detail[total_settlement_value_of_the_claim_paid_by_all_the_parties]+fact_finance_summary[claimants_total_costs_paid_by_all_parties]+fact_finance_summary[total_amount_billed] --+total paid
 --, "Paid by FCC", “Damages Paid” + “Third Party Costs Paid” + “Own Costs Paid” + “CRU Paid” + NHS Costs Paid”
 )
-, PATHCONTAINS("W20163|W17427",dim_client[client_code])
+, PATHCONTAINS("W20163",dim_client[client_code]) 
+, dim_detail_outcome[outcome_of_case] &lt;&gt; "Exclude from reports"
+, dim_matter_worktype[work_type_group] &lt;&gt; "Motor"
+
+
 )
 )</Statement>
               <ParameterDefinitions />
@@ -3823,6 +3834,15 @@ fact_dimension_main
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
+      <Filters>
+        <Filter>
+          <FilterExpression>=Fields!ID_Matter_Number_.Value</FilterExpression>
+          <Operator>NotEqual</Operator>
+          <FilterValues>
+            <FilterValue>="W20163/00000000"</FilterValue>
+          </FilterValues>
+        </Filter>
+      </Filters>
     </DataSet>
     <DataSet Name="FCC_Payor">
       <Query>
@@ -3962,7 +3982,12 @@ fact_payor_debt_detail
     <DataSet Name="SQL">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT DISTINCT TRIM(dim_matter_header_current.client_code) +'/' +TRIM(dim_matter_header_current.matter_number) AS ClientMatter
+        <CommandText>DROP TABLE IF EXISTS #openinerror
+SELECT DISTINCT fileID INTO #openinerror
+FROM  MS_Prod.[config].[dbFile]
+WHERE fileStatus = 'OPENERROR'
+
+SELECT DISTINCT TRIM(dim_matter_header_current.client_code) +'/' +TRIM(dim_matter_header_current.matter_number) AS ClientMatter
    ,'Yes' AS FilterFlag
    ,dim_detail_core_details.[fcc_division] AS Division
    ,dim_detail_core_details.[fcc_region] AS Region
@@ -3975,6 +4000,7 @@ fact_payor_debt_detail
    LEFT JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
    WHERE dim_matter_header_current.client_code = 'W20163'
 
+   AND ISNULL(ms_fileid, 0) NOT IN (SELECT fileID FROM #openinerror)
     --(Protector) opened since February 2019 where “FCC” is in the Insured Client Name or Matter Description.
    OR
   
@@ -4564,7 +4590,7 @@ fact_payor_debt_detail
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Weightmans Case Manage </Value>
+                                      <Value>Weightmans Case Manager</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -9675,20 +9701,6 @@ Fields!dim_detail_core_details_insured_departmentdepot_.Value)</Value>
                                         <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
                                       </Style>
                                     </TextRun>
-                                    <TextRun>
-                                      <Value>coloo logic</Value>
-                                      <Style>
-                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
-                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
-                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
-                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
-                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
-                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
-                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
-                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
-                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
-                                      </Style>
-                                    </TextRun>
                                   </TextRuns>
                                   <Style>
                                     <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
@@ -11980,8 +11992,7 @@ ISNOTHING(Fields!dim_detail_outcome_date_costs_settled_.Value) = FALSE
                                   <TextRuns>
                                     <TextRun>
                                       <Value>=Lookup(Fields!dim_client_client_code_.Value &amp; Fields!dim_matter_header_current_matter_number_.Value,
-Fields!client_code.Value &amp; Fields!Matter_Number.Value,
-Fields!total_balance.Value, "FCC_Payor")</Value>
+Fields!client_code.Value &amp; Fields!Matter_Number.Value, Fields!total_balance.Value, "FCC_Payor")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -12188,7 +12199,7 @@ Fields!total_balance.Value, "FCC_Payor")</Value>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!ID_Damages_Paid_.Value+Fields!ID_Third_Party_Costs_Paid_.Value+Fields!fact_detail_paid_detail_cru_costs_paid_.Value+Fields!fact_detail_paid_detail_nhs_charges_paid_by_client_.Value</Value>
+                                      <Value>=Fields!ID_Damages_Paid_.Value+Fields!ID_Third_Party_Costs_Paid_.Value+Fields!fact_detail_paid_detail_cru_costs_paid_.Value+Fields!fact_detail_paid_detail_nhs_charges_paid_by_client_.Value + ReportItems!Textbox122.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -19638,6 +19649,11 @@ TRIM(CStr(Year(Fields!dim_detail_outcome_date_costs_settled_.Value))))</Value>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>FCC_CD</DataSetName>
+                <SortExpressions>
+                  <SortExpression>
+                    <Value>=Fields!dim_detail_core_details_date_instructions_received_.Value</Value>
+                  </SortExpression>
+                </SortExpressions>
                 <Top>0.9966cm</Top>
                 <Height>1.01041in</Height>
                 <Width>77.79066in</Width>
