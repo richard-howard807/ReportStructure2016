@@ -2461,13 +2461,13 @@ WHERE  name ='Internal_Audits.png'</CommandText>
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
           <QueryParameter Name="@Department">
-            <Value>=Parameters!Department.Value</Value>
+            <Value>=Join(Parameters!Department.Value, "|")</Value>
           </QueryParameter>
           <QueryParameter Name="@Team">
-            <Value>=Parameters!Team.Value</Value>
+            <Value>=Join(Parameters!Team.Value, "|")</Value>
           </QueryParameter>
           <QueryParameter Name="@Client">
-            <Value>=Parameters!Client.Value</Value>
+            <Value>=Join(Parameters!Client.Value, "|")</Value>
           </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
@@ -2703,16 +2703,10 @@ SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Temp
 
 SELECT distinct
 	 dim_fed_hierarchy_history.hierarchylevel3hist Department
-	
 from #Audits
 inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
 inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
-where dim_fed_hierarchy_history.display_name &lt;&gt; 'Unknown'
-UNION 
-
-SELECT 'All'
-
-order by 1</CommandText>
+where dim_fed_hierarchy_history.display_name &lt;&gt; 'Unknown'</CommandText>
       </Query>
       <Fields>
         <Field Name="Department">
@@ -2729,16 +2723,16 @@ order by 1</CommandText>
             <Value>=JOIN(Parameters!Template.Value,"|")</Value>
           </QueryParameter>
           <QueryParameter Name="@Department">
-            <Value>=Parameters!Department.Value</Value>
+            <Value>=Join(Parameters!Department.Value, "|")</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>
-
-DROP TABLE IF EXISTS #Template
+        <CommandText>DROP TABLE IF EXISTS #Template
+DROP TABLE IF EXISTS #Department
 drop table if exists #Audits
 
 
 SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Template)
+SELECT ListValue  INTO #Department  FROM Reporting.dbo.[udt_TallySplit]('|', @Department)
 
 --declare @Department nvarchar(max) = 'All'
 	
@@ -2814,20 +2808,124 @@ SELECT DISTINCT
 from #Audits
 inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
 inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
-
--- AND TRIM(dim_fed_hierarchy_history.hierarchylevel3hist) = CASE WHEN @Department = 'All' THEN dim_fed_hierarchy_history.hierarchylevel3hist ELSE @Department END
-
-where iif(@Department = 'All', 'All', hierarchylevel3hist) in (@Department)
-
-UNION 
-
-
-SELECT 'All'
-order by 1</CommandText>
+INNER JOIN #Department
+	ON dim_fed_hierarchy_history.hierarchylevel3hist = #Department.ListValue COLLATE DATABASE_DEFAULT</CommandText>
       </Query>
       <Fields>
         <Field Name="Team">
           <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_client">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Template">
+            <Value>=Join(Parameters!Template.Value, "|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Department">
+            <Value>=Join(Parameters!Department.Value, "|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=Join(Parameters!Team.Value, "|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>DROP TABLE IF EXISTS #Template
+DROP TABLE IF EXISTS #Department
+DROP TABLE IF EXISTS #Team
+drop table if exists #Audits
+
+
+SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Template)
+SELECT ListValue  INTO #Department  FROM Reporting.dbo.[udt_TallySplit]('|', @Department)
+SELECT ListValue  INTO #Team FROM Reporting.dbo.[udt_TallySplit]('|', @Team)
+
+--declare @Department nvarchar(max) = 'All'
+	
+		SELECT dim_ac_audits_key, pvt3.employeeid
+			, name AS [Auditee Name]
+			, auditeekey AS [Auditee key]
+			, pvt3.auditee_emp_key
+			, CASE WHEN position LIKE '%1%' THEN 1
+			WHEN position LIKE '%2%' THEN 2
+			WHEN position LIKE '%3%' THEN 3 END AS [Auditee Poistion]
+			, [Client Code]
+			, [Matter Number]
+			, [Date]
+			, [Status]
+			, [Template]
+			, [Auditor]
+			, pvt3.fin_quarter
+			, pvt3.fin_quarter_no
+			, pvt3.fin_year
+		into #Audits
+		FROM (SELECT dim_ac_audits.dim_ac_audits_key,
+				auditor.employeeid
+				, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+				, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+				, audite1.employeeid Auditee_Emp_key_1
+				, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+				, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+				, audite2.employeeid Auditee_Emp_key_2
+				, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+				, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+				, audite3.employeeid Auditee_Emp_key_3
+				, dim_ac_audits.client_code AS [Client Code]
+				, dim_ac_audits.matter_number AS [Matter Number]
+				, dim_ac_audits.completed_at AS [Date]
+				, dim_ac_audits.status AS [Status]
+				, dim_ac_audit_type.name AS [Template]
+				, auditor.name AS [Auditor]
+				, dim_date.fin_quarter
+				, dim_date.fin_quarter_no
+				, dim_date.fin_year
+
+				--	SELECT * from red_dw..dim_date
+				from red_dw.dbo.dim_ac_audits
+				LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+				ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+				LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+				ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+
+				INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+				inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+
+				inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+				left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+				left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+
+				WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+				and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+				and audite1.display_name &lt;&gt; 'Unknown'
+		) src
+
+		UNPIVOT (name FOR position IN ([Auditee Name 1], [Auditee Name 2], [Auditee Name 3]))pvt1
+		UNPIVOT (auditeekey FOR akey IN ([Auditee Key 1], [Auditee Key 2], [Auditee Key 3]))pvt2
+		UNPIVOT (auditee_emp_key FOR empkey IN ([Auditee_Emp_key_1], [Auditee_Emp_key_2], [Auditee_Emp_key_3]))pvt3
+
+
+		WHERE  RIGHT(akey,1)=RIGHT(position,1)
+		and  RIGHT(empkey,1)=RIGHT(position,1)
+		
+
+
+SELECT DISTINCT	
+	 UPPER(TRIM(#Audits.[Client Code]))	AS client_code_value
+from #Audits
+inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+INNER JOIN #Department
+	ON dim_fed_hierarchy_history.hierarchylevel3hist = #Department.ListValue COLLATE DATABASE_DEFAULT
+INNER JOIN #Team
+	ON dim_fed_hierarchy_history.hierarchylevel4hist = #Team.ListValue COLLATE DATABASE_DEFAULT
+ORDER BY
+	client_code_value</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_code_value">
+          <DataField>client_code_value</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -4443,7 +4541,7 @@ order by 1</CommandText>
                       </Style>
                     </Paragraph>
                   </Paragraphs>
-                  <Top>0.23601cm</Top>
+                  <Top>0.05962cm</Top>
                   <Height>0.24208in</Height>
                   <Width>18.43333in</Width>
                   <Visibility>
@@ -4486,8 +4584,8 @@ order by 1</CommandText>
                 </Textbox>
               </ReportItems>
               <KeepTogether>true</KeepTogether>
-              <Top>0.78124in</Top>
-              <Height>0.335in</Height>
+              <Top>0.85068in</Top>
+              <Height>0.26556in</Height>
               <Width>18.44722in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
@@ -4980,9 +5078,10 @@ order by 1</CommandText>
     <ReportParameter Name="Department">
       <DataType>String</DataType>
       <DefaultValue>
-        <Values>
-          <Value>="All"</Value>
-        </Values>
+        <DataSetReference>
+          <DataSetName>Param_Department</DataSetName>
+          <ValueField>Department</ValueField>
+        </DataSetReference>
       </DefaultValue>
       <Prompt>Department</Prompt>
       <ValidValues>
@@ -4992,6 +5091,7 @@ order by 1</CommandText>
           <LabelField>Department</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="StartDate">
       <DataType>DateTime</DataType>
@@ -5006,9 +5106,10 @@ order by 1</CommandText>
     <ReportParameter Name="Team">
       <DataType>String</DataType>
       <DefaultValue>
-        <Values>
-          <Value>="All"</Value>
-        </Values>
+        <DataSetReference>
+          <DataSetName>Param_Team</DataSetName>
+          <ValueField>Team</ValueField>
+        </DataSetReference>
       </DefaultValue>
       <Prompt>Team</Prompt>
       <ValidValues>
@@ -5018,11 +5119,25 @@ order by 1</CommandText>
           <LabelField>Team</LabelField>
         </DataSetReference>
       </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
     <ReportParameter Name="Client">
       <DataType>String</DataType>
-      <Nullable>true</Nullable>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_client</DataSetName>
+          <ValueField>client_code_value</ValueField>
+        </DataSetReference>
+      </DefaultValue>
       <Prompt>Client Number</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_client</DataSetName>
+          <ValueField>client_code_value</ValueField>
+          <LabelField>client_code_value</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
     </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
