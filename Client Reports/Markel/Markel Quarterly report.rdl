@@ -3433,6 +3433,69 @@ ORDER BY dim_matter_header_current[master_client_code]</Statement>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="defence_costs_paid">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT 
+	Matter.Number
+	--, Payor.DisplayName
+	, SUM(InvPayor.OrgAmt) - SUM(InvPayor.BalAmt)	AS total_paid
+	, SUM(InvPayor.OrgFee) - SUM(InvPayor.BalFee)	AS total_fees_paid
+	, (SUM(InvPayor.OrgHCost) + SUM(InvPayor.OrgSCost)) - (SUM(InvPayor.BalHCo) + SUM(InvPayor.BalSCo))		AS total_disbs_paid
+	, SUM(InvPayor.OrgTax) - SUM(InvPayor.BalTax)		AS total_vat_paid
+	, SUM(InvPayor.OrgOth) - SUM(InvPayor.BalOth)		AS total_other_paid
+--SELECT Matter.*
+FROM TE_3E_Prod.dbo.InvPayor  
+	INNER JOIN TE_3E_Prod.dbo.InvMaster 
+		ON InvMaster.InvIndex = InvPayor.InvMaster
+	INNER JOIN TE_3E_Prod.dbo.Matter 
+		ON Matter.MattIndex = InvMaster.LeadMatter
+	LEFT JOIN red_dw.dbo.dim_matter_header_current 
+		ON master_client_code + '-' + master_matter_number = Matter.Number collate database_default
+	INNER JOIN TE_3E_Prod.dbo.Client 
+		ON Client.ClientIndex = Matter.Client
+	INNER JOIN TE_3E_Prod.dbo.Payor 
+		ON Payor.PayorIndex = InvPayor.Payor
+	LEFT OUTER JOIN TE_3E_Prod.dbo.Site 
+		ON Site.SiteIndex = CASE WHEN Payor.StmtSite IS NULL THEN Payor.Site ELSE Payor.StmtSite END
+	LEFT OUTER JOIN TE_3E_Prod.dbo.Address 
+		ON Address.AddrIndex = Site.Address
+WHERE 1 = 1
+	--AND InvPayor.InvNumber = '02043112'
+	AND InvPayor.IsPaid = 1
+	--AND Matter.Number = 'W15699-8'
+	AND LOWER(Payor.DisplayName) LIKE '%markel%'
+GROUP BY
+	Matter.Number
+	--, Payor.DisplayName</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Number">
+          <DataField>Number</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="total_paid">
+          <DataField>total_paid</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="total_fees_paid">
+          <DataField>total_fees_paid</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="total_disbs_paid">
+          <DataField>total_disbs_paid</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="total_vat_paid">
+          <DataField>total_vat_paid</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="total_other_paid">
+          <DataField>total_other_paid</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -9566,15 +9629,9 @@ ORDER BY dim_matter_header_current[master_client_code]</Statement>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!fact_finance_summary_defence_costs_billed_.Value 
-+Fields!fact_finance_summary_disbursements_billed_.Value 
+                                  <Value>=Lookup(Fields!dim_matter_header_current_master_client_code_.Value &amp; "-" &amp; Fields!dim_matter_header_current_master_matter_number_.Value, Fields!Number.Value, Fields!total_paid.Value, "defence_costs_paid")
 + Fields!Damages.Value 
-+Fields!Costs.Value
-+(IIF(ISNOTHING(LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
-,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
-,Fields!Total_VAT_Billed_to_Markel_In_Period.Value, "MarkelTax")),0,LOOKUP(TRIM(Fields!dim_client_client_code_.Value)&amp;TRIM(Fields!dim_matter_header_current_matter_number_.Value)
-,TRIM(Fields!client_code.Value)&amp;TRIM(Fields!matter_number.Value)
-,Fields!Total_VAT_Billed_to_Markel_In_Period.Value, "MarkelTax")))</Value>
++Fields!Costs.Value</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
