@@ -2487,7 +2487,7 @@ SELECT
 	, CAST(dim_detail_outcome.date_claim_concluded AS DATE)		AS [Date Claim Concluded - DELETE BEFORE SENDING]
 	, CAST(dim_detail_outcome.date_costs_settled AS DATE)		AS [Date Costs Settled- DELETE BEFORE SENDING]
 	, #last_bill_date.last_bill_date			AS [Date of Last Bill - DELETE BEFORE SENDING]
-	, NULL		AS [Exposure Number]
+	, IIF(dim_matter_header_current.master_client_code &lt;&gt; '4908', 'N/A', NULL)		AS [Exposure Number]
 	, CAST(dim_detail_core_details.incident_date AS DATE)		AS [Date of Accident]
 	, dim_detail_core_details.incident_location		AS [Accident Location]
 	, dim_detail_claim.hastings_accident_type			AS [Accident Type]
@@ -2506,19 +2506,29 @@ SELECT
 	, dim_detail_claim.hastings_jurisdiction			AS [Jurisdiction]
 	, COALESCE(dim_detail_claim.dst_claimant_solicitor_firm, dim_claimant_thirdparty_involvement.claimantsols_name, dim_claimant_thirdparty_involvement.claimantrep_name)		AS [Claimant Solicitor Firm]
 	, fact_finance_summary.damages_reserve			AS [Reserved Damages]
-	, fact_finance_summary.tp_total_costs_claimed		AS [Reserved Claimant Costs]
+	, fact_detail_reserve_detail.claimant_costs_reserve_current		AS [Reserved Claimant Costs]
 	, fact_finance_summary.damages_paid		AS [Settled Damages]
 	, fact_finance_summary.claimants_costs_paid				AS [Settled Claiamant Costs]
 	, fact_finance_summary.total_amount_billed			AS [Total Panel Costs]
 	, fact_finance_summary.total_paid				AS [Total Claim Cost]
 	, ISNULL(fact_detail_reserve_detail.total_current_reserve, 0) - ISNULL(fact_finance_summary.total_paid, 0)		AS [Total Saving]
 	, NULL				AS [Handling Points]
-	, DATEDIFF(DAY, dim_detail_core_details.incident_date, dim_detail_core_details.date_proceedings_issued)		AS [Lifecycle Accident - Litigation]
+	, CASE
+		WHEN dim_detail_core_details.proceedings_issued = 'No' THEN
+			'N/A'
+		ELSE
+			CAST(DATEDIFF(DAY, dim_detail_core_details.incident_date, dim_detail_core_details.date_proceedings_issued) AS NVARCHAR)
+	  END						AS [Lifecycle Accident - Litigation]
 	, DATEDIFF(DAY, dim_detail_core_details.incident_date, dim_detail_outcome.date_claim_concluded)			AS [Lifecycle Accident - Settlement]
 	, DATEDIFF(DAY, dim_detail_core_details.incident_date, #last_bill_date.last_bill_date)				AS [Lifecycle Accident - Panel File Closure]
 	, DATEDIFF(DAY, dim_detail_core_details.date_instructions_received, dim_detail_outcome.date_claim_concluded)		AS [Lifecycle Instruction - Damages Settlement]
 	, DATEDIFF(DAY, dim_detail_core_details.date_instructions_received, #last_bill_date.last_bill_date)				AS [Lifecycle Instruction - Panel File Closure]
-	, DATEDIFF(DAY, dim_detail_core_details.date_proceedings_issued, dim_detail_outcome.date_claim_concluded)		AS [Lifecycle Litigation - Damages Settlement]
+	, CASE
+		WHEN dim_detail_core_details.proceedings_issued = 'No' THEN
+			'N/A'
+		ELSE
+			CAST(DATEDIFF(DAY, dim_detail_core_details.date_proceedings_issued, dim_detail_outcome.date_claim_concluded) AS NVARCHAR)
+	  END														AS [Lifecycle Litigation - Damages Settlement]
 	, DATEDIFF(DAY, dim_detail_outcome.date_claim_concluded, dim_detail_outcome.date_costs_settled)				AS [Lifecycle Damages Settlement - Costs Settlement]
 	, DATEDIFF(DAY, dim_detail_outcome.date_costs_settled, #last_bill_date.last_bill_date)					AS [Lifecycle Costs Settlement - Panel File Closure]
 	, IIF(dim_matter_header_current.master_client_code = '4908', 'Y', 'N')				AS [HISL FILE]
@@ -2546,13 +2556,15 @@ FROM red_dw.dbo.dim_matter_header_current
 	LEFT OUTER JOIN #last_bill_date
 		ON #last_bill_date.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
 WHERE 1 = 1
+	AND dim_matter_header_current.reporting_exclusions = 0
 	AND dim_matter_worktype.work_type_group = 'Motor'
 	AND dim_fed_hierarchy_history.hierarchylevel3hist = 'Large Loss'
 	AND LOWER(dim_detail_core_details.referral_reason) LIKE 'dispute%'
 	AND dim_matter_header_current.master_client_code &lt;&gt; 'M1001'
 	AND dim_matter_header_current.date_opened_case_management &gt;= '2021-05-24'
 	AND (dim_matter_header_current.date_closed_case_management IS NOT NULL OR
-		RTRIM(dim_detail_core_details.present_position) IN ('Final bill sent - unpaid', 'To be closed/minor balances to be clear'))</CommandText>
+		RTRIM(dim_detail_core_details.present_position) IN ('Final bill sent - unpaid', 'To be closed/minor balances to be clear'))
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Client_Name___DELETE_BEFORE_SENDING">
@@ -2625,7 +2637,7 @@ WHERE 1 = 1
         </Field>
         <Field Name="Exposure_Number">
           <DataField>Exposure Number</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Date_of_Accident">
           <DataField>Date of Accident</DataField>
@@ -2705,7 +2717,7 @@ WHERE 1 = 1
         </Field>
         <Field Name="Lifecycle_Accident___Litigation">
           <DataField>Lifecycle Accident - Litigation</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Lifecycle_Accident___Settlement">
           <DataField>Lifecycle Accident - Settlement</DataField>
@@ -2725,7 +2737,7 @@ WHERE 1 = 1
         </Field>
         <Field Name="Lifecycle_Litigation___Damages_Settlement">
           <DataField>Lifecycle Litigation - Damages Settlement</DataField>
-          <rd:TypeName>System.Int32</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Lifecycle_Damages_Settlement___Costs_Settlement">
           <DataField>Lifecycle Damages Settlement - Costs Settlement</DataField>
@@ -9160,7 +9172,7 @@ WHERE 1 = 1
                 </SortExpressions>
                 <Top>0.0441cm</Top>
                 <Height>0.78124in</Height>
-                <Width>53.51635in</Width>
+                <Width>53.51637in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -9174,7 +9186,7 @@ WHERE 1 = 1
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>1.02777in</Height>
-            <Width>53.51635in</Width>
+            <Width>53.51637in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -9491,7 +9503,6 @@ WHERE 1 = 1
                 </Paragraph>
               </Paragraphs>
               <Top>0.17639cm</Top>
-              <Left>0cm</Left>
               <Height>0.25in</Height>
               <Width>53.51635in</Width>
               <Visibility>
@@ -9644,7 +9655,6 @@ WHERE 1 = 1
                 </Paragraph>
               </Paragraphs>
               <Top>0.67305in</Top>
-              <Left>0cm</Left>
               <Height>0.36938in</Height>
               <Width>53.51635in</Width>
               <ZIndex>1</ZIndex>
@@ -9699,7 +9709,6 @@ WHERE 1 = 1
                 </Actions>
               </ActionInfo>
               <Top>0.38889in</Top>
-              <Left>0cm</Left>
               <Height>0.25638in</Height>
               <Width>53.51635in</Width>
               <ZIndex>2</ZIndex>
