@@ -2469,6 +2469,9 @@ WHERE  name ='Internal_Audits.png'</CommandText>
           <QueryParameter Name="@Client">
             <Value>=Join(Parameters!Client.Value, "|")</Value>
           </QueryParameter>
+          <QueryParameter Name="@Fee_Earner">
+            <Value>=Join(Parameters!FE.Value, "|")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>audit.ACInternalAudits_Questions</CommandText>
@@ -2562,6 +2565,14 @@ WHERE  name ='Internal_Audits.png'</CommandText>
           <DataField>display_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="Auditee_key">
+          <DataField>Auditee key</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Auditee_Emp_key_1">
+          <DataField>Auditee_Emp_key_1</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="audit_observations">
           <DataField>audit_observations</DataField>
           <rd:TypeName>System.String</rd:TypeName>
@@ -2635,69 +2646,44 @@ SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Temp
 
 
 	
-		SELECT dim_ac_audits_key, pvt3.employeeid
-			, name AS [Auditee Name]
-			, auditeekey AS [Auditee key]
-			, pvt3.auditee_emp_key
-			, CASE WHEN position LIKE '%1%' THEN 1
-			WHEN position LIKE '%2%' THEN 2
-			WHEN position LIKE '%3%' THEN 3 END AS [Auditee Poistion]
-			, [Client Code]
-			, [Matter Number]
-			, [Date]
-			, [Status]
-			, [Template]
-			, [Auditor]
-			, pvt3.fin_quarter
-			, pvt3.fin_quarter_no
-			, pvt3.fin_year
-		into #Audits
-		FROM (SELECT dim_ac_audits.dim_ac_audits_key,
-				auditor.employeeid
-				, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
-				, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
-				, audite1.employeeid Auditee_Emp_key_1
-				, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
-				, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
-				, audite2.employeeid Auditee_Emp_key_2
-				, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
-				, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
-				, audite3.employeeid Auditee_Emp_key_3
-				, dim_ac_audits.client_code AS [Client Code]
-				, dim_ac_audits.matter_number AS [Matter Number]
-				, dim_ac_audits.completed_at AS [Date]
-				, dim_ac_audits.status AS [Status]
-				, dim_ac_audit_type.name AS [Template]
-				, auditor.name AS [Auditor]
-				, dim_date.fin_quarter
-				, dim_date.fin_quarter_no
-				, dim_date.fin_year
+SELECT dim_ac_audits.dim_ac_audits_key,
+	auditor.employeeid
+	, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+	, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+	, audite1.employeeid Auditee_Emp_key_1
+	, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+	, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+	, audite2.employeeid Auditee_Emp_key_2
+	, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+	, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+	, audite3.employeeid Auditee_Emp_key_3
+	, dim_ac_audits.client_code AS [Client Code]
+	, dim_ac_audits.matter_number AS [Matter Number]
+	, dim_ac_audits.completed_at AS [Date]
+	, dim_ac_audits.status AS [Status]
+	, dim_ac_audit_type.name AS [Template]
+	, auditor.name AS [Auditor]
+	, dim_date.fin_quarter
+	, dim_date.fin_quarter_no
+	, dim_date.fin_year
+into #Audits
+	--	SELECT * from red_dw..dim_date
+from red_dw.dbo.dim_ac_audits
+LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
 
-				--	SELECT * from red_dw..dim_date
-				from red_dw.dbo.dim_ac_audits
-				LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
-				ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
-				LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
-				ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
 
-				INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
-				inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
 
-				inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
-				left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
-				left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
 
-				WHERE dim_ac_audits.created_at &gt;='2021-09-01'
-				and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
-		) src
-
-		UNPIVOT (name FOR position IN ([Auditee Name 1], [Auditee Name 2], [Auditee Name 3]))pvt1
-		UNPIVOT (auditeekey FOR akey IN ([Auditee Key 1], [Auditee Key 2], [Auditee Key 3]))pvt2
-		UNPIVOT (auditee_emp_key FOR empkey IN ([Auditee_Emp_key_1], [Auditee_Emp_key_2], [Auditee_Emp_key_3]))pvt3
-
-
-		WHERE  RIGHT(akey,1)=RIGHT(position,1)
-		and  RIGHT(empkey,1)=RIGHT(position,1)
 		
 
 
@@ -2705,8 +2691,10 @@ SELECT distinct
 	 dim_fed_hierarchy_history.hierarchylevel3hist Department
 from #Audits
 inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
-inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
-where dim_fed_hierarchy_history.display_name &lt;&gt; 'Unknown'</CommandText>
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key 1] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+where dim_fed_hierarchy_history.display_name &lt;&gt; 'Unknown'
+ORDER BY	
+	Department</CommandText>
       </Query>
       <Fields>
         <Field Name="Department">
@@ -2734,72 +2722,45 @@ drop table if exists #Audits
 SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Template)
 SELECT ListValue  INTO #Department  FROM Reporting.dbo.[udt_TallySplit]('|', @Department)
 
---declare @Department nvarchar(max) = 'All'
+SELECT dim_ac_audits.dim_ac_audits_key,
+	auditor.employeeid
+	, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+	, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+	, audite1.employeeid Auditee_Emp_key_1
+	, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+	, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+	, audite2.employeeid Auditee_Emp_key_2
+	, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+	, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+	, audite3.employeeid Auditee_Emp_key_3
+	, dim_ac_audits.client_code AS [Client Code]
+	, dim_ac_audits.matter_number AS [Matter Number]
+	, dim_ac_audits.completed_at AS [Date]
+	, dim_ac_audits.status AS [Status]
+	, dim_ac_audit_type.name AS [Template]
+	, auditor.name AS [Auditor]
+	, dim_date.fin_quarter
+	, dim_date.fin_quarter_no
+	, dim_date.fin_year
+INTO #Audits
+--	SELECT * from red_dw..dim_date
+from red_dw.dbo.dim_ac_audits
+LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+
+INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+
+inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+
+WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+and audite1.display_name &lt;&gt; 'Unknown'
 	
-		SELECT dim_ac_audits_key, pvt3.employeeid
-			, name AS [Auditee Name]
-			, auditeekey AS [Auditee key]
-			, pvt3.auditee_emp_key
-			, CASE WHEN position LIKE '%1%' THEN 1
-			WHEN position LIKE '%2%' THEN 2
-			WHEN position LIKE '%3%' THEN 3 END AS [Auditee Poistion]
-			, [Client Code]
-			, [Matter Number]
-			, [Date]
-			, [Status]
-			, [Template]
-			, [Auditor]
-			, pvt3.fin_quarter
-			, pvt3.fin_quarter_no
-			, pvt3.fin_year
-		into #Audits
-		FROM (SELECT dim_ac_audits.dim_ac_audits_key,
-				auditor.employeeid
-				, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
-				, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
-				, audite1.employeeid Auditee_Emp_key_1
-				, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
-				, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
-				, audite2.employeeid Auditee_Emp_key_2
-				, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
-				, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
-				, audite3.employeeid Auditee_Emp_key_3
-				, dim_ac_audits.client_code AS [Client Code]
-				, dim_ac_audits.matter_number AS [Matter Number]
-				, dim_ac_audits.completed_at AS [Date]
-				, dim_ac_audits.status AS [Status]
-				, dim_ac_audit_type.name AS [Template]
-				, auditor.name AS [Auditor]
-				, dim_date.fin_quarter
-				, dim_date.fin_quarter_no
-				, dim_date.fin_year
-
-				--	SELECT * from red_dw..dim_date
-				from red_dw.dbo.dim_ac_audits
-				LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
-				ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
-				LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
-				ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
-
-				INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
-				inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
-
-				inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
-				left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
-				left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
-
-				WHERE dim_ac_audits.created_at &gt;='2021-09-01'
-				and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
-				and audite1.display_name &lt;&gt; 'Unknown'
-		) src
-
-		UNPIVOT (name FOR position IN ([Auditee Name 1], [Auditee Name 2], [Auditee Name 3]))pvt1
-		UNPIVOT (auditeekey FOR akey IN ([Auditee Key 1], [Auditee Key 2], [Auditee Key 3]))pvt2
-		UNPIVOT (auditee_emp_key FOR empkey IN ([Auditee_Emp_key_1], [Auditee_Emp_key_2], [Auditee_Emp_key_3]))pvt3
-
-
-		WHERE  RIGHT(akey,1)=RIGHT(position,1)
-		and  RIGHT(empkey,1)=RIGHT(position,1)
 		
 
 
@@ -2807,9 +2768,11 @@ SELECT DISTINCT
 	 dim_fed_hierarchy_history.hierarchylevel4hist Team
 from #Audits
 inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
-inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key 1] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
 INNER JOIN #Department
-	ON dim_fed_hierarchy_history.hierarchylevel3hist = #Department.ListValue COLLATE DATABASE_DEFAULT</CommandText>
+	ON dim_fed_hierarchy_history.hierarchylevel3hist = #Department.ListValue COLLATE DATABASE_DEFAULT
+ORDER BY	
+	Team</CommandText>
       </Query>
       <Fields>
         <Field Name="Team">
@@ -2832,7 +2795,8 @@ INNER JOIN #Department
             <Value>=Join(Parameters!Team.Value, "|")</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>DROP TABLE IF EXISTS #Template
+        <CommandText>
+DROP TABLE IF EXISTS #Template
 DROP TABLE IF EXISTS #Department
 DROP TABLE IF EXISTS #Team
 drop table if exists #Audits
@@ -2842,80 +2806,52 @@ SELECT ListValue  INTO #Template  FROM Reporting.dbo.[udt_TallySplit]('|', @Temp
 SELECT ListValue  INTO #Department  FROM Reporting.dbo.[udt_TallySplit]('|', @Department)
 SELECT ListValue  INTO #Team FROM Reporting.dbo.[udt_TallySplit]('|', @Team)
 
---declare @Department nvarchar(max) = 'All'
-	
-		SELECT dim_ac_audits_key, pvt3.employeeid
-			, name AS [Auditee Name]
-			, auditeekey AS [Auditee key]
-			, pvt3.auditee_emp_key
-			, CASE WHEN position LIKE '%1%' THEN 1
-			WHEN position LIKE '%2%' THEN 2
-			WHEN position LIKE '%3%' THEN 3 END AS [Auditee Poistion]
-			, [Client Code]
-			, [Matter Number]
-			, [Date]
-			, [Status]
-			, [Template]
-			, [Auditor]
-			, pvt3.fin_quarter
-			, pvt3.fin_quarter_no
-			, pvt3.fin_year
-		into #Audits
-		FROM (SELECT dim_ac_audits.dim_ac_audits_key,
-				auditor.employeeid
-				, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
-				, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
-				, audite1.employeeid Auditee_Emp_key_1
-				, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
-				, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
-				, audite2.employeeid Auditee_Emp_key_2
-				, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
-				, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
-				, audite3.employeeid Auditee_Emp_key_3
-				, dim_ac_audits.client_code AS [Client Code]
-				, dim_ac_audits.matter_number AS [Matter Number]
-				, dim_ac_audits.completed_at AS [Date]
-				, dim_ac_audits.status AS [Status]
-				, dim_ac_audit_type.name AS [Template]
-				, auditor.name AS [Auditor]
-				, dim_date.fin_quarter
-				, dim_date.fin_quarter_no
-				, dim_date.fin_year
+SELECT dim_ac_audits.dim_ac_audits_key,
+	auditor.employeeid
+	, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+	, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+	, audite1.employeeid Auditee_Emp_key_1
+	, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+	, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+	, audite2.employeeid Auditee_Emp_key_2
+	, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+	, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+	, audite3.employeeid Auditee_Emp_key_3
+	, dim_ac_audits.client_code AS [Client Code]
+	, dim_ac_audits.matter_number AS [Matter Number]
+	, dim_ac_audits.completed_at AS [Date]
+	, dim_ac_audits.status AS [Status]
+	, dim_ac_audit_type.name AS [Template]
+	, auditor.name AS [Auditor]
+	, dim_date.fin_quarter
+	, dim_date.fin_quarter_no
+	, dim_date.fin_year
+INTO #Audits
+--	SELECT * from red_dw..dim_date
+from red_dw.dbo.dim_ac_audits
+LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
 
-				--	SELECT * from red_dw..dim_date
-				from red_dw.dbo.dim_ac_audits
-				LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
-				ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
-				LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
-				ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
 
-				INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
-				inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
 
-				inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
-				left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
-				left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+and audite1.display_name &lt;&gt; 'Unknown'
 
-				WHERE dim_ac_audits.created_at &gt;='2021-09-01'
-				and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
-				and audite1.display_name &lt;&gt; 'Unknown'
-		) src
-
-		UNPIVOT (name FOR position IN ([Auditee Name 1], [Auditee Name 2], [Auditee Name 3]))pvt1
-		UNPIVOT (auditeekey FOR akey IN ([Auditee Key 1], [Auditee Key 2], [Auditee Key 3]))pvt2
-		UNPIVOT (auditee_emp_key FOR empkey IN ([Auditee_Emp_key_1], [Auditee_Emp_key_2], [Auditee_Emp_key_3]))pvt3
-
-
-		WHERE  RIGHT(akey,1)=RIGHT(position,1)
-		and  RIGHT(empkey,1)=RIGHT(position,1)
-		
 
 
 SELECT DISTINCT	
 	 UPPER(TRIM(#Audits.[Client Code]))	AS client_code_value
 from #Audits
 inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
-inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee key 1] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
 INNER JOIN #Department
 	ON dim_fed_hierarchy_history.hierarchylevel3hist = #Department.ListValue COLLATE DATABASE_DEFAULT
 INNER JOIN #Team
@@ -2926,6 +2862,159 @@ ORDER BY
       <Fields>
         <Field Name="client_code_value">
           <DataField>client_code_value</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="subscription_param_TM">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>
+drop table if exists #Audits
+
+SELECT dim_ac_audits.dim_ac_audits_key,
+	auditor.employeeid
+	, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+	, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+	, audite1.employeeid Auditee_Emp_key_1
+	, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+	, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+	, audite2.employeeid Auditee_Emp_key_2
+	, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+	, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+	, audite3.employeeid Auditee_Emp_key_3
+	, dim_ac_audits.client_code AS [Client Code]
+	, dim_ac_audits.matter_number AS [Matter Number]
+	, dim_ac_audits.completed_at AS [Date]
+	, dim_ac_audits.status AS [Status]
+	, dim_ac_audit_type.name AS [Template]
+	, auditor.name AS [Auditor]
+	, dim_date.fin_quarter
+	, dim_date.fin_quarter_no
+	, dim_date.fin_year
+into #Audits
+--	SELECT * from red_dw..dim_date
+from red_dw.dbo.dim_ac_audits
+	LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+	ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+	LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+	ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+
+	--INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+	inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+
+	inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+	left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+	left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+
+WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+	and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+	and audite1.display_name &lt;&gt; 'Unknown'
+		
+
+SELECT DISTINCT 
+	dim_employee.knownas + ' ' + dim_employee.surname	AS tm
+	, dim_employee.employeeid		AS tm_emp_id
+	, dim_employee.workemail	AS email
+	--, dim_fed_hierarchy_history.hierarchylevel4	AS team
+from #Audits
+inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee Key 1] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+INNER JOIN red_dw.dbo.dim_employee ON dim_fed_hierarchy_history.reportingbcmidud = dim_employee.employeeid
+where dim_fed_hierarchy_history.display_name &lt;&gt; 'Unknown'
+	--AND dim_fed_hierarchy_history.hierarchylevel4hist NOT IN ('Workflows')</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="tm">
+          <DataField>tm</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="tm_emp_id">
+          <DataField>tm_emp_id</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="email">
+          <DataField>email</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="subscription_param_FE">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@TM">
+            <Value>=Parameters!TM.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>--DECLARE @TM AS NVARCHAR(MAX) = (SELECT DISTINCT dim_fed_hierarchy_history.employeeid FROM red_dw.dbo.dim_fed_hierarchy_history WHERE dim_fed_hierarchy_history.name = 'Andrew Forrest')
+
+drop table if exists #Audits
+
+SELECT dim_ac_audits.dim_ac_audits_key,
+	auditor.employeeid
+	, dim_ac_audits.auditee_1_name AS [Auditee Name 1]
+	, dim_ac_audits.dim_auditee1_hierarchy_history_key AS [Auditee Key 1]
+	, audite1.employeeid Auditee_Emp_key_1
+	, dim_ac_audits.auditee_2_name AS [Auditee Name 2]
+	, dim_ac_audits.dim_auditee2_hierarchy_history_key AS [Auditee Key 2]
+	, audite2.employeeid Auditee_Emp_key_2
+	, dim_ac_audits.auditee_3_name AS [Auditee Name 3]
+	, dim_ac_audits.dim_auditee3_hierarchy_history_key AS [Auditee Key 3]
+	, audite3.employeeid Auditee_Emp_key_3
+	, dim_ac_audits.client_code AS [Client Code]
+	, dim_ac_audits.matter_number AS [Matter Number]
+	, dim_ac_audits.completed_at AS [Date]
+	, dim_ac_audits.status AS [Status]
+	, dim_ac_audit_type.name AS [Template]
+	, auditor.name AS [Auditor]
+	, dim_date.fin_quarter
+	, dim_date.fin_quarter_no
+	, dim_date.fin_year
+into #Audits
+--	SELECT * from red_dw..dim_date
+from red_dw.dbo.dim_ac_audits
+	LEFT OUTER JOIN red_dw.dbo.dim_ac_audit_type
+	ON dim_ac_audit_type.dim_ac_audit_type_key = dim_ac_audits.dim_ac_audit_type_key
+	LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history AS [auditor]
+	ON auditor.dim_fed_hierarchy_history_key=dim_ac_audits.dim_auditor_fed_hierarchy_history_key
+
+	--INNER JOIN #Template AS Template ON Template.ListValue COLLATE DATABASE_DEFAULT =  dim_ac_audit_type.name COLLATE DATABASE_DEFAULT
+	inner join red_dw..dim_date on dim_date.dim_date_key = dim_ac_audits.dim_completed_date_key
+
+	inner join red_dw..dim_fed_hierarchy_history audite1 on audite1.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee1_hierarchy_history_key
+	left outer join red_dw..dim_fed_hierarchy_history audite2 on audite2.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee2_hierarchy_history_key				
+	left outer join red_dw..dim_fed_hierarchy_history audite3 on audite3.dim_fed_hierarchy_history_key = dim_ac_audits.dim_auditee3_hierarchy_history_key
+
+WHERE dim_ac_audits.created_at &gt;='2021-09-01'
+	and dim_ac_audits.dim_auditee1_hierarchy_history_key &lt;&gt; 0 
+	and audite1.display_name &lt;&gt; 'Unknown'
+
+		
+
+SELECT DISTINCT 
+	dim_fed_hierarchy_history.name	AS fe
+	, dim_fed_hierarchy_history.employeeid
+	, dim_fed_hierarchy_history.hierarchylevel4	AS team
+from #Audits
+inner join red_dw..dim_ac_audit_questions on dim_ac_audit_questions.dim_ac_audits_key = #Audits.dim_ac_audits_key
+inner join red_dw..dim_fed_hierarchy_history on #Audits.[Auditee Key 1] = dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
+INNER JOIN red_dw.dbo.dim_employee ON dim_fed_hierarchy_history.reportingbcmidud = dim_employee.employeeid
+where dim_fed_hierarchy_history.display_name &lt;&gt; 'Unknown'
+	--AND dim_fed_hierarchy_history.hierarchylevel4hist NOT IN ('Workflows')
+	AND dim_employee.employeeid IN (@TM)</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="fe">
+          <DataField>fe</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="employeeid">
+          <DataField>employeeid</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="team">
+          <DataField>team</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -5139,6 +5228,44 @@ ORDER BY
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="TM">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>subscription_param_TM</DataSetName>
+          <ValueField>tm_emp_id</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>TM</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>subscription_param_TM</DataSetName>
+          <ValueField>tm_emp_id</ValueField>
+          <LabelField>tm</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="FE">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>subscription_param_FE</DataSetName>
+          <ValueField>employeeid</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>FE</Prompt>
+      <Hidden>true</Hidden>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>subscription_param_FE</DataSetName>
+          <ValueField>employeeid</ValueField>
+          <LabelField>fe</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -5179,6 +5306,16 @@ ORDER BY
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>3</RowIndex>
           <ParameterName>Client</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>4</RowIndex>
+          <ParameterName>TM</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>4</RowIndex>
+          <ParameterName>FE</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
