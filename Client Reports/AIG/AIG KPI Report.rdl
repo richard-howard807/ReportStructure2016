@@ -2594,7 +2594,47 @@ SELECT
 	, fact_detail_reserve_detail.current_indemnity_reserve		AS [Claimant Costs Reserve Current]
 	, fact_detail_reserve_detail.defence_costs_reserve			AS [Defence Costs Reserve Current]
 	, dim_detail_outcome.outcome_of_case		AS [Outcome of Case]
-	, IIF(ISNULL(fact_finance_summary.damages_paid, 0) = 0, 1, 0)		AS [Repudiated/Paid]
+	--, IIF(ISNULL(fact_finance_summary.damages_paid, 0) = 0, 1, 0)		AS [Repudiated/Paid]
+	, CASE WHEN (outcome_of_case LIKE 'Discontinued%') OR (outcome_of_case IN
+															(
+															'Rejected (MIB untraced only)                                ',
+															'struck out                                                  ',
+															'won at trial                                                ',
+															'Struck Out                                                  ',
+															'Struck out                                                  ',
+															'Won At Trial                                                ',
+															'Won at Trial                                                ',
+															'Won at trial                                                '
+															, 'Withdrawn'
+															)) THEN 
+		1
+
+
+	WHEN ((LOWER(outcome_of_case) LIKE 'settled%' ) OR (outcome_of_case IN
+														(
+														'Assessment of damages',
+														'Assessment of damages (damages exceed claimant''s P36 offer) ',
+														'Lost at Trial                                               ',
+														'Lost at trial                                               ',
+														'Lost at trial (damages exceed claimant''s P36 offer)         ',
+														'Settled',
+														'Settled  - claimant accepts P36 offer out of time',
+														'Settled - Infant Approval                                   ',
+														'Settled - Infant approval                                   ',
+														'Settled - JSM',
+														'Settled - Mediation                                         ',
+														'Settled - mediation                                         '
+														))) THEN 
+		0
+	WHEN outcome_of_case IN
+				(
+				'Appeal',
+				'Assessment of damages (claimant fails to beat P36 offer)    ',
+				'Exclude from reports                                        ',
+				'Returned to Client', 'Other', 'Exclude from Reports   ', 'Other'
+				) THEN 
+		0 
+	END								AS [Repudiated/Paid]
 	, IIF(ISNULL(RTRIM(dim_instruction_type.instruction_type), '') = 'Costs only', NULL, CAST(dim_detail_outcome.date_claim_concluded AS DATE))			AS [Date Claim Concluded]
 	, IIF(ISNULL(RTRIM(dim_instruction_type.instruction_type), '') = 'Costs only', NULL, fact_finance_summary.damages_paid) AS [Damages Paid by Client]
 	, CAST(dim_detail_outcome.date_claimants_costs_received AS DATE)	AS [Date Claimant's Costs Received]
@@ -2658,6 +2698,7 @@ WHERE 1 = 1
 	AND ISNULL(LOWER(RTRIM(dim_detail_outcome.outcome_of_case)), '') &lt;&gt; 'exclude from reports'
 ORDER BY	
 	[Date Case Opened]
+
 
 </CommandText>
       </Query>
@@ -4466,6 +4507,7 @@ ORDER BY
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
