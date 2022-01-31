@@ -2450,8 +2450,21 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
     <DataSet Name="catalina_post_sql">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>SELECT *
-FROM dbo.catalina_post_snapshot</CommandText>
+        <CommandText>SELECT 
+	catalina_post_snapshot.*
+	, oldest_post.oldest_item AS oldest_post_item
+FROM dbo.catalina_post_snapshot
+	LEFT OUTER JOIN (
+						SELECT 
+							catalina_post_snapshot.report_week
+							, MIN(catalina_post_snapshot.doc_received_date)		AS oldest_item
+						FROM dbo.catalina_post_snapshot
+						WHERE 1 = 1
+							AND catalina_post_snapshot.doc_completion_date IS NULL
+						GROUP BY
+							catalina_post_snapshot.report_week
+					) AS oldest_post
+		ON oldest_post.report_week = catalina_post_snapshot.report_week</CommandText>
       </Query>
       <Fields>
         <Field Name="ms_ref">
@@ -2525,6 +2538,14 @@ FROM dbo.catalina_post_snapshot</CommandText>
         <Field Name="outstanding_post">
           <DataField>outstanding_post</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="update_time">
+          <DataField>update_time</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="oldest_post_item">
+          <DataField>oldest_post_item</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -4228,7 +4249,8 @@ FROM dbo.catalina_post_snapshot</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Response time</Value>
+                                      <Value>Oldest Post Item
+(Working days)</Value>
                                       <Style>
                                         <FontFamily>Lucida Sans Unicode</FontFamily>
                                         <FontSize>8pt</FontSize>
@@ -4262,7 +4284,7 @@ FROM dbo.catalina_post_snapshot</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Response time  (Working days)</Value>
+                                      <Value>Oldest Post item (Working days)</Value>
                                       <Style>
                                         <FontFamily>Lucida Sans Unicode</FontFamily>
                                         <FontSize>8pt</FontSize>
@@ -4295,7 +4317,7 @@ FROM dbo.catalina_post_snapshot</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>This data related to the  average response time in Working days for each item dealt with (closed) in the 7 day period prior </Value>
+                                      <Value>Oldest Post item (Working days)</Value>
                                       <Style>
                                         <FontFamily>Lucida Sans Unicode</FontFamily>
                                         <FontSize>8pt</FontSize>
@@ -4328,11 +4350,11 @@ FROM dbo.catalina_post_snapshot</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Avg(Fields!prior_weeks_response_time.Value)</Value>
+                                      <Value>=Fields!oldest_post_item.Value</Value>
                                       <Style>
                                         <FontFamily>Lucida Sans Unicode</FontFamily>
                                         <FontSize>8pt</FontSize>
-                                        <Format>#,0;(#,0)</Format>
+                                        <Format>dd/MM/yyyy</Format>
                                       </Style>
                                     </TextRun>
                                   </TextRuns>
@@ -4351,6 +4373,7 @@ FROM dbo.catalina_post_snapshot</CommandText>
                                 <PaddingBottom>2pt</PaddingBottom>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -6623,7 +6646,6 @@ FROM dbo.catalina_post_snapshot</CommandText>
                   </Style>
                 </Paragraph>
               </Paragraphs>
-              <Top>0cm</Top>
               <Left>0.00001cm</Left>
               <Height>0.25in</Height>
               <Width>12.13441in</Width>
