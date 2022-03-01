@@ -2449,9 +2449,56 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
     </DataSet>
     <DataSet Name="SQLPortalBilling">
       <Query>
-        <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandType>StoredProcedure</CommandType>
-        <CommandText>te_3e_prod.portal_billing_report</CommandText>
+        <DataSourceName>ReportStylingOnDWH01</DataSourceName>
+        <CommandText>
+
+SELECT DISTINCT
+
+DATEDIFF(DAY, isnull(NxWfItemStep.StepDate, prof.TimeStamp), getdate()) [aged_days],
+profstatus.[description] [status],
+profdate [status_date],
+profindex [proforma],
+NxUser.BaseUserName [current_owner],
+client.displayname [client],
+matter.number [matter],
+matter.[description] [matter_description],
+--team_name.[description] [team],
+prof.feeamt [fees],
+prof.hcoamt + prof.scoamt [disbursements]
+,taxamt
+,totamt [Total]
+,othamt
+,intamt
+,boaamt
+,prof.BillTkpr
+, team_name.Description
+-- select *
+FROM  TE_3E_Prod..[ProfMaster] (nolock)   prof --ON WfHistory.joinid = prof.profmasterid
+LEFT JOIN TE_3E_Prod..[ProfStatus] (nolock)  profstatus ON profstatus.code = prof.profstatus 
+LEFT JOIN TE_3E_Prod..[Matter] (nolock)  matter ON matter.mattindex = prof.leadmatter
+LEFT JOIN TE_3E_Prod..[Client] (nolock)  client ON matter.client = client.clientindex
+INNER JOIN TE_3E_Prod..NxWfItemStep (nolock) as NxWfItemStep ON NxWfItemStep.JoinID = prof.ProfMasterID and NxWfItemStep.NxWFStepState = 1 
+LEFT OUTER JOIN TE_3E_Prod..NxBaseUser (nolock) AS NxUser ON NxWfItemStep.NextStepOwner = NxUser.NxBaseUserID
+LEFT OUTER JOIN TE_3E_Prod..Timekeeper (nolock)  tkpr ON tkpr.TRE_User = isnull(NxUser.NxBaseUserID, WM_Approver)
+
+LEFT JOIN TE_3E_Prod..[Timekeeper] (nolock) timekeeper ON timekeeper.tkprindex = prof.BillTkpr
+
+left outer join red_dw.dbo.ds_sh_3e_user_sync team on prof.BillTkpr = team.timekeeperindex
+LEFT JOIN [TE_3E_Prod].[dbo].[Section] team_name ON team_name.code = team.team COLLATE DATABASE_DEFAULT
+
+WHERE
+--WfHistory.CompletedDate IS NULL
+--AND WfHistory.IsHide = 0
+--AND
+----prof.InvMaster IS NULL
+-- prof.ProfIndex=2440229 
+-- and
+-- prof.WFRouteTo_ccc is not null
+
+ prof.ProfStatus not in ('Billed','RejectApproval','CL','CL_WM')
+
+
+</CommandText>
       </Query>
       <Fields>
         <Field Name="aged_days">
@@ -2486,10 +2533,6 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
           <DataField>matter_description</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="team">
-          <DataField>team</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
-        </Field>
         <Field Name="fees">
           <DataField>fees</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
@@ -2517,6 +2560,14 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
         <Field Name="boaamt">
           <DataField>boaamt</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="BillTkpr">
+          <DataField>BillTkpr</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Description">
+          <DataField>Description</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -4204,14 +4255,14 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="team">
+                        <Textbox Name="Description1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!team.Value</Value>
+                                  <Value>=Fields!Description.Value</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4230,7 +4281,7 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
                               </Style>
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>team</rd:DefaultName>
+                          <rd:DefaultName>Description1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -5896,32 +5947,32 @@ WHERE  name ='Weightmans_Report_Template.png'</CommandText>
                 <TablixMember>
                   <Group Name="team">
                     <GroupExpressions>
-                      <GroupExpression>=Fields!team.Value</GroupExpression>
+                      <GroupExpression>=Lookup(Fields!BillTkpr.Value, Fields!timekeeperindex.Value, Fields!Description.Value, "team_temp")</GroupExpression>
                     </GroupExpressions>
                   </Group>
                   <SortExpressions>
                     <SortExpression>
-                      <Value>=Fields!team.Value</Value>
+                      <Value>=Lookup(Fields!BillTkpr.Value, Fields!timekeeperindex.Value, Fields!Description.Value, "team_temp")</Value>
                     </SortExpression>
                   </SortExpressions>
                   <TablixHeader>
                     <Size>2.21826in</Size>
                     <CellContents>
-                      <Textbox Name="team1">
+                      <Textbox Name="Description">
                         <CanGrow>true</CanGrow>
                         <KeepTogether>true</KeepTogether>
                         <Paragraphs>
                           <Paragraph>
                             <TextRuns>
                               <TextRun>
-                                <Value>=Fields!team.Value</Value>
+                                <Value>=Fields!Description.Value</Value>
                                 <Style />
                               </TextRun>
                             </TextRuns>
                             <Style />
                           </Paragraph>
                         </Paragraphs>
-                        <rd:DefaultName>team1</rd:DefaultName>
+                        <rd:DefaultName>Description</rd:DefaultName>
                         <Style>
                           <Border>
                             <Color>LightGrey</Color>
