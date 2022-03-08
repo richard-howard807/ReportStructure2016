@@ -2483,6 +2483,7 @@ WHERE        (name = 'Fraud_Report.png')</CommandText>
             dim_client_involvement[insurerclient_reference],
             dim_client_involvement[insuredclient_reference],
             dim_detail_core_details[incident_date],
+            dim_detail_core_details[date_instructions_received],
             dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date],
             dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date],
             dim_detail_core_details[fixed_fee],
@@ -2519,7 +2520,8 @@ WHERE        (name = 'Fraud_Report.png')</CommandText>
 			"Exclusions", IF(dim_detail_outcome[date_claim_concluded] &lt;&gt; BLANK() &amp;&amp; dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date] &lt; DATE(2018,1,1),"Exclude","Ok"),
 			"Original Fee Handling Basis", IF(dim_detail_finance[output_wip_fee_arrangement]=BLANK(), dim_detail_claim[ageas_original_fee_handling_basis], dim_detail_finance[output_wip_fee_arrangement]),
 			"Branch", REPLACE(dim_detail_claim[ageas_office],1,6,blank()),
-			"Disbursements Paid", (fact_finance_summary[disbursements_billed] + fact_finance_summary[disbursement_balance])
+			"Disbursements Paid", (fact_finance_summary[disbursements_billed] + fact_finance_summary[disbursement_balance]),
+			"Date Instruction vs Date Opened", IF(dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]=dim_detail_core_details[date_instructions_received], "True", "False")
 			
         ),
         UPPER(dim_detail_core_details[suspicion_of_fraud]) = "YES",
@@ -2544,415 +2546,527 @@ ORDER BY
     dim_matter_header_current[matter_number]</CommandText>
         <rd:DesignerState>
           <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
-            <CommandType>DMX</CommandType>
+            <CommandType>DAX</CommandType>
             <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification">
+            <QuerySpecification xsi:type="MDXQuerySpecification">
               <Select>
                 <Items>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_client[client_code]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_client</DimensionName>
+                      <HierarchyName>client_code</HierarchyName>
+                      <HierarchyUniqueName>[dim_client].[client_code]</HierarchyUniqueName>
+                      <LevelName>client_code</LevelName>
+                      <UniqueName>[dim_client].[client_code].[client_code]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_client[client_code]</ItemCaption>
+                    <ItemCaption>client_code</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[matter_number]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_matter_header_current</DimensionName>
+                      <HierarchyName>matter_number</HierarchyName>
+                      <HierarchyUniqueName>[dim_matter_header_current].[matter_number]</HierarchyUniqueName>
+                      <LevelName>matter_number</LevelName>
+                      <UniqueName>[dim_matter_header_current].[matter_number].[matter_number]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_matter_header_current[matter_number]</ItemCaption>
+                    <ItemCaption>matter_number</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[master_client_matter_combined]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_matter_header_current</DimensionName>
+                      <HierarchyName>master_client_matter_combined</HierarchyName>
+                      <HierarchyUniqueName>[dim_matter_header_current].[master_client_matter_combined]</HierarchyUniqueName>
+                      <LevelName>master_client_matter_combined</LevelName>
+                      <UniqueName>[dim_matter_header_current].[master_client_matter_combined].[master_client_matter_combined]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_matter_header_current[master_client_matter_combined]</ItemCaption>
+                    <ItemCaption>master_client_matter_combined</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_displayname]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_fed_hierarchy_history_matter_owner</DimensionName>
+                      <HierarchyName>matter_owner_displayname</HierarchyName>
+                      <HierarchyUniqueName>[dim_fed_hierarchy_history_matter_owner].[matter_owner_displayname]</HierarchyUniqueName>
+                      <LevelName>matter_owner_displayname</LevelName>
+                      <UniqueName>[dim_fed_hierarchy_history_matter_owner].[matter_owner_displayname].[matter_owner_displayname]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_displayname]</ItemCaption>
+                    <ItemCaption>matter_owner_displayname</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[matter_description]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_matter_header_current</DimensionName>
+                      <HierarchyName>matter_description</HierarchyName>
+                      <HierarchyUniqueName>[dim_matter_header_current].[matter_description]</HierarchyUniqueName>
+                      <LevelName>matter_description</LevelName>
+                      <UniqueName>[dim_matter_header_current].[matter_description].[matter_description]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_matter_header_current[matter_description]</ItemCaption>
+                    <ItemCaption>matter_description</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[referral_reason]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>referral_reason</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[referral_reason]</HierarchyUniqueName>
+                      <LevelName>referral_reason</LevelName>
+                      <UniqueName>[dim_detail_core_details].[referral_reason].[referral_reason]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[referral_reason]</ItemCaption>
+                    <ItemCaption>referral_reason</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_detail_reserve_detail[claimant_costs_reserve_current]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_detail_reserve_detail</DimensionName>
+                      <HierarchyName>claimant_costs_reserve_current</HierarchyName>
+                      <HierarchyUniqueName>[fact_detail_reserve_detail].[claimant_costs_reserve_current]</HierarchyUniqueName>
+                      <LevelName>claimant_costs_reserve_current</LevelName>
+                      <UniqueName>[fact_detail_reserve_detail].[claimant_costs_reserve_current].[claimant_costs_reserve_current]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_detail_reserve_detail[claimant_costs_reserve_current]</ItemCaption>
+                    <ItemCaption>claimant_costs_reserve_current</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_claim[ageas_office]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_claim</DimensionName>
+                      <HierarchyName>ageas_office</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_claim].[ageas_office]</HierarchyUniqueName>
+                      <LevelName>ageas_office</LevelName>
+                      <UniqueName>[dim_detail_claim].[ageas_office].[ageas_office]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_claim[ageas_office]</ItemCaption>
+                    <ItemCaption>ageas_office</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_finance[output_wip_fee_arrangement]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_finance</DimensionName>
+                      <HierarchyName>output_wip_fee_arrangement</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_finance].[output_wip_fee_arrangement]</HierarchyUniqueName>
+                      <LevelName>output_wip_fee_arrangement</LevelName>
+                      <UniqueName>[dim_detail_finance].[output_wip_fee_arrangement].[output_wip_fee_arrangement]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_finance[output_wip_fee_arrangement]</ItemCaption>
+                    <ItemCaption>output_wip_fee_arrangement</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_claim[ageas_original_fee_handling_basis]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_claim</DimensionName>
+                      <HierarchyName>ageas_original_fee_handling_basis</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_claim].[ageas_original_fee_handling_basis]</HierarchyUniqueName>
+                      <LevelName>ageas_original_fee_handling_basis</LevelName>
+                      <UniqueName>[dim_detail_claim].[ageas_original_fee_handling_basis].[ageas_original_fee_handling_basis]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_claim[ageas_original_fee_handling_basis]</ItemCaption>
+                    <ItemCaption>ageas_original_fee_handling_basis</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_claim[original_fee_handling_basis]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_claim</DimensionName>
+                      <HierarchyName>original_fee_handling_basis</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_claim].[original_fee_handling_basis]</HierarchyUniqueName>
+                      <LevelName>original_fee_handling_basis</LevelName>
+                      <UniqueName>[dim_detail_claim].[original_fee_handling_basis].[original_fee_handling_basis]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_claim[original_fee_handling_basis]</ItemCaption>
+                    <ItemCaption>original_fee_handling_basis</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_claim[manner_of_dispute_resolution]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_claim</DimensionName>
+                      <HierarchyName>manner_of_dispute_resolution</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_claim].[manner_of_dispute_resolution]</HierarchyUniqueName>
+                      <LevelName>manner_of_dispute_resolution</LevelName>
+                      <UniqueName>[dim_detail_claim].[manner_of_dispute_resolution].[manner_of_dispute_resolution]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_claim[manner_of_dispute_resolution]</ItemCaption>
+                    <ItemCaption>manner_of_dispute_resolution</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_claim[name_of_instructing_insurer]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_claim</DimensionName>
+                      <HierarchyName>name_of_instructing_insurer</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_claim].[name_of_instructing_insurer]</HierarchyUniqueName>
+                      <LevelName>name_of_instructing_insurer</LevelName>
+                      <UniqueName>[dim_detail_claim].[name_of_instructing_insurer].[name_of_instructing_insurer]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_claim[name_of_instructing_insurer]</ItemCaption>
+                    <ItemCaption>name_of_instructing_insurer</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_client_involvement[client_reference]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_client_involvement</DimensionName>
+                      <HierarchyName>client_reference</HierarchyName>
+                      <HierarchyUniqueName>[dim_client_involvement].[client_reference]</HierarchyUniqueName>
+                      <LevelName>client_reference</LevelName>
+                      <UniqueName>[dim_client_involvement].[client_reference].[client_reference]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_client_involvement[client_reference]</ItemCaption>
+                    <ItemCaption>client_reference</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_client_involvement[insurerclient_reference]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_client_involvement</DimensionName>
+                      <HierarchyName>insurerclient_reference</HierarchyName>
+                      <HierarchyUniqueName>[dim_client_involvement].[insurerclient_reference]</HierarchyUniqueName>
+                      <LevelName>insurerclient_reference</LevelName>
+                      <UniqueName>[dim_client_involvement].[insurerclient_reference].[insurerclient_reference]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_client_involvement[insurerclient_reference]</ItemCaption>
+                    <ItemCaption>insurerclient_reference</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_client_involvement[insuredclient_reference]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_client_involvement</DimensionName>
+                      <HierarchyName>insuredclient_reference</HierarchyName>
+                      <HierarchyUniqueName>[dim_client_involvement].[insuredclient_reference]</HierarchyUniqueName>
+                      <LevelName>insuredclient_reference</LevelName>
+                      <UniqueName>[dim_client_involvement].[insuredclient_reference].[insuredclient_reference]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_client_involvement[insuredclient_reference]</ItemCaption>
+                    <ItemCaption>insuredclient_reference</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[incident_date]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>incident_date</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[incident_date]</HierarchyUniqueName>
+                      <LevelName>incident_date</LevelName>
+                      <UniqueName>[dim_detail_core_details].[incident_date].[incident_date]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[incident_date]</ItemCaption>
+                    <ItemCaption>incident_date</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>date_instructions_received</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[date_instructions_received]</HierarchyUniqueName>
+                      <LevelName>date_instructions_received</LevelName>
+                      <UniqueName>[dim_detail_core_details].[date_instructions_received].[date_instructions_received]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]</ItemCaption>
+                    <ItemCaption>date_instructions_received</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_date_matter_opened_practice_management</DimensionName>
+                      <HierarchyName>matter_opened_practice_management_calendar_date</HierarchyName>
+                      <HierarchyUniqueName>[dim_date_matter_opened_practice_management].[matter_opened_practice_management_calendar_date]</HierarchyUniqueName>
+                      <LevelName>matter_opened_practice_management_calendar_date</LevelName>
+                      <UniqueName>[dim_date_matter_opened_practice_management].[matter_opened_practice_management_calendar_date].[matter_opened_practice_management_calendar_date]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date]</ItemCaption>
+                    <ItemCaption>matter_opened_practice_management_calendar_date</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[fixed_fee]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_date_matter_closed_practice_management</DimensionName>
+                      <HierarchyName>matter_closed_practice_management_calendar_date</HierarchyName>
+                      <HierarchyUniqueName>[dim_date_matter_closed_practice_management].[matter_closed_practice_management_calendar_date]</HierarchyUniqueName>
+                      <LevelName>matter_closed_practice_management_calendar_date</LevelName>
+                      <UniqueName>[dim_date_matter_closed_practice_management].[matter_closed_practice_management_calendar_date].[matter_closed_practice_management_calendar_date]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[fixed_fee]</ItemCaption>
+                    <ItemCaption>matter_closed_practice_management_calendar_date</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[is_this_the_lead_file]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>fixed_fee</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[fixed_fee]</HierarchyUniqueName>
+                      <LevelName>fixed_fee</LevelName>
+                      <UniqueName>[dim_detail_core_details].[fixed_fee].[fixed_fee]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[is_this_the_lead_file]</ItemCaption>
+                    <ItemCaption>fixed_fee</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[suspicion_of_fraud]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>is_this_the_lead_file</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[is_this_the_lead_file]</HierarchyUniqueName>
+                      <LevelName>is_this_the_lead_file</LevelName>
+                      <UniqueName>[dim_detail_core_details].[is_this_the_lead_file].[is_this_the_lead_file]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[suspicion_of_fraud]</ItemCaption>
+                    <ItemCaption>is_this_the_lead_file</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_court[court_check]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>suspicion_of_fraud</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[suspicion_of_fraud]</HierarchyUniqueName>
+                      <LevelName>suspicion_of_fraud</LevelName>
+                      <UniqueName>[dim_detail_core_details].[suspicion_of_fraud].[suspicion_of_fraud]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_court[court_check]</ItemCaption>
+                    <ItemCaption>suspicion_of_fraud</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_critical_mi[xl_reference]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_court</DimensionName>
+                      <HierarchyName>court_check</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_court].[court_check]</HierarchyUniqueName>
+                      <LevelName>court_check</LevelName>
+                      <UniqueName>[dim_detail_court].[court_check].[court_check]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_critical_mi[xl_reference]</ItemCaption>
+                    <ItemCaption>court_check</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_fraud[fraud_type_ageas]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_critical_mi</DimensionName>
+                      <HierarchyName>xl_reference</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_critical_mi].[xl_reference]</HierarchyUniqueName>
+                      <LevelName>xl_reference</LevelName>
+                      <UniqueName>[dim_detail_critical_mi].[xl_reference].[xl_reference]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_fraud[fraud_type_ageas]</ItemCaption>
+                    <ItemCaption>xl_reference</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[fixed_fee_amount]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_fraud</DimensionName>
+                      <HierarchyName>fraud_type_ageas</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_fraud].[fraud_type_ageas]</HierarchyUniqueName>
+                      <LevelName>fraud_type_ageas</LevelName>
+                      <UniqueName>[dim_detail_fraud].[fraud_type_ageas].[fraud_type_ageas]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[fixed_fee_amount]</ItemCaption>
+                    <ItemCaption>fraud_type_ageas</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[total_savings_percent]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>fixed_fee_amount</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[fixed_fee_amount]</HierarchyUniqueName>
+                      <LevelName>fixed_fee_amount</LevelName>
+                      <UniqueName>[fact_finance_summary].[fixed_fee_amount].[fixed_fee_amount]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[total_savings_percent]</ItemCaption>
+                    <ItemCaption>fixed_fee_amount</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[defence_costs_reserve]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>total_savings_percent</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[total_savings_percent]</HierarchyUniqueName>
+                      <LevelName>total_savings_percent</LevelName>
+                      <UniqueName>[fact_finance_summary].[total_savings_percent].[total_savings_percent]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[defence_costs_reserve]</ItemCaption>
+                    <ItemCaption>total_savings_percent</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_outcome[date_claim_concluded]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>defence_costs_reserve</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[defence_costs_reserve]</HierarchyUniqueName>
+                      <LevelName>defence_costs_reserve</LevelName>
+                      <UniqueName>[fact_finance_summary].[defence_costs_reserve].[defence_costs_reserve]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_outcome[date_claim_concluded]</ItemCaption>
+                    <ItemCaption>defence_costs_reserve</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[indemnity_spend]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_outcome</DimensionName>
+                      <HierarchyName>date_claim_concluded</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_outcome].[date_claim_concluded]</HierarchyUniqueName>
+                      <LevelName>date_claim_concluded</LevelName>
+                      <UniqueName>[dim_detail_outcome].[date_claim_concluded].[date_claim_concluded]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[indemnity_spend]</ItemCaption>
+                    <ItemCaption>date_claim_concluded</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[defence_costs_billed]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>indemnity_spend</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[indemnity_spend]</HierarchyUniqueName>
+                      <LevelName>indemnity_spend</LevelName>
+                      <UniqueName>[fact_finance_summary].[indemnity_spend].[indemnity_spend]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[defence_costs_billed]</ItemCaption>
+                    <ItemCaption>indemnity_spend</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[wip]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>defence_costs_billed</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[defence_costs_billed]</HierarchyUniqueName>
+                      <LevelName>defence_costs_billed</LevelName>
+                      <UniqueName>[fact_finance_summary].[defence_costs_billed].[defence_costs_billed]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[wip]</ItemCaption>
+                    <ItemCaption>defence_costs_billed</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[total_recovery]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>wip</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[wip]</HierarchyUniqueName>
+                      <LevelName>wip</LevelName>
+                      <UniqueName>[fact_finance_summary].[wip].[wip]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[total_recovery]</ItemCaption>
+                    <ItemCaption>wip</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[proceedings_issued]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>total_recovery</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[total_recovery]</HierarchyUniqueName>
+                      <LevelName>total_recovery</LevelName>
+                      <UniqueName>[fact_finance_summary].[total_recovery].[total_recovery]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[proceedings_issued]</ItemCaption>
+                    <ItemCaption>total_recovery</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_detail_paid_detail[tp_estimate]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>proceedings_issued</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[proceedings_issued]</HierarchyUniqueName>
+                      <LevelName>proceedings_issued</LevelName>
+                      <UniqueName>[dim_detail_core_details].[proceedings_issued].[proceedings_issued]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_detail_paid_detail[tp_estimate]</ItemCaption>
+                    <ItemCaption>proceedings_issued</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[damages_reserve]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_detail_paid_detail</DimensionName>
+                      <HierarchyName>tp_estimate</HierarchyName>
+                      <HierarchyUniqueName>[fact_detail_paid_detail].[tp_estimate]</HierarchyUniqueName>
+                      <LevelName>tp_estimate</LevelName>
+                      <UniqueName>[fact_detail_paid_detail].[tp_estimate].[tp_estimate]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[damages_reserve]</ItemCaption>
+                    <ItemCaption>tp_estimate</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[is_this_a_linked_file]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>damages_reserve</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[damages_reserve]</HierarchyUniqueName>
+                      <LevelName>damages_reserve</LevelName>
+                      <UniqueName>[fact_finance_summary].[damages_reserve].[damages_reserve]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[is_this_a_linked_file]</ItemCaption>
+                    <ItemCaption>damages_reserve</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[total_billed_disbursements_vat]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>is_this_a_linked_file</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[is_this_a_linked_file]</HierarchyUniqueName>
+                      <LevelName>is_this_a_linked_file</LevelName>
+                      <UniqueName>[dim_detail_core_details].[is_this_a_linked_file].[is_this_a_linked_file]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[total_billed_disbursements_vat]</ItemCaption>
+                    <ItemCaption>is_this_a_linked_file</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_detail_elapsed_days[turnaround_time]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>total_billed_disbursements_vat</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[total_billed_disbursements_vat]</HierarchyUniqueName>
+                      <LevelName>total_billed_disbursements_vat</LevelName>
+                      <UniqueName>[fact_finance_summary].[total_billed_disbursements_vat].[total_billed_disbursements_vat]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_detail_elapsed_days[turnaround_time]</ItemCaption>
+                    <ItemCaption>total_billed_disbursements_vat</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[paid_disbursements]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_detail_elapsed_days</DimensionName>
+                      <HierarchyName>turnaround_time</HierarchyName>
+                      <HierarchyUniqueName>[fact_detail_elapsed_days].[turnaround_time]</HierarchyUniqueName>
+                      <LevelName>turnaround_time</LevelName>
+                      <UniqueName>[fact_detail_elapsed_days].[turnaround_time].[turnaround_time]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[paid_disbursements]</ItemCaption>
+                    <ItemCaption>turnaround_time</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[disbursements_billed]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>paid_disbursements</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[paid_disbursements]</HierarchyUniqueName>
+                      <LevelName>paid_disbursements</LevelName>
+                      <UniqueName>[fact_finance_summary].[paid_disbursements].[paid_disbursements]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[disbursements_billed]</ItemCaption>
+                    <ItemCaption>paid_disbursements</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[disbursement_balance]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>disbursements_billed</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[disbursements_billed]</HierarchyUniqueName>
+                      <LevelName>disbursements_billed</LevelName>
+                      <UniqueName>[fact_finance_summary].[disbursements_billed].[disbursements_billed]</UniqueName>
                     </ID>
-                    <ItemCaption>fact_finance_summary[disbursement_balance]</ItemCaption>
+                    <ItemCaption>disbursements_billed</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_client[grp_ageas_claimant_number]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>fact_finance_summary</DimensionName>
+                      <HierarchyName>disbursement_balance</HierarchyName>
+                      <HierarchyUniqueName>[fact_finance_summary].[disbursement_balance]</HierarchyUniqueName>
+                      <LevelName>disbursement_balance</LevelName>
+                      <UniqueName>[fact_finance_summary].[disbursement_balance].[disbursement_balance]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_client[grp_ageas_claimant_number]</ItemCaption>
+                    <ItemCaption>disbursement_balance</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[grpageas_case_handler]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_client</DimensionName>
+                      <HierarchyName>grp_ageas_claimant_number</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_client].[grp_ageas_claimant_number]</HierarchyUniqueName>
+                      <LevelName>grp_ageas_claimant_number</LevelName>
+                      <UniqueName>[dim_detail_client].[grp_ageas_claimant_number].[grp_ageas_claimant_number]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[grpageas_case_handler]</ItemCaption>
+                    <ItemCaption>grp_ageas_claimant_number</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_outcome[outcome_of_case]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>grpageas_case_handler</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[grpageas_case_handler]</HierarchyUniqueName>
+                      <LevelName>grpageas_case_handler</LevelName>
+                      <UniqueName>[dim_detail_core_details].[grpageas_case_handler].[grpageas_case_handler]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_outcome[outcome_of_case]</ItemCaption>
+                    <ItemCaption>grpageas_case_handler</ItemCaption>
                   </Item>
                   <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_core_details[present_position]</ColumnName>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_outcome</DimensionName>
+                      <HierarchyName>outcome_of_case</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_outcome].[outcome_of_case]</HierarchyUniqueName>
+                      <LevelName>outcome_of_case</LevelName>
+                      <UniqueName>[dim_detail_outcome].[outcome_of_case].[outcome_of_case]</UniqueName>
                     </ID>
-                    <ItemCaption>dim_detail_core_details[present_position]</ItemCaption>
+                    <ItemCaption>outcome_of_case</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Level">
+                      <DimensionName>dim_detail_core_details</DimensionName>
+                      <HierarchyName>present_position</HierarchyName>
+                      <HierarchyUniqueName>[dim_detail_core_details].[present_position]</HierarchyUniqueName>
+                      <LevelName>present_position</LevelName>
+                      <UniqueName>[dim_detail_core_details].[present_position].[present_position]</UniqueName>
+                    </ID>
+                    <ItemCaption>present_position</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
                       <ColumnName>[Insurer]</ColumnName>
                     </ID>
-                    <ItemCaption>[Insurer]</ItemCaption>
+                    <ItemCaption>Insurer</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
                       <ColumnName>[Exclusions]</ColumnName>
                     </ID>
-                    <ItemCaption>[Exclusions]</ItemCaption>
+                    <ItemCaption>Exclusions</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
                       <ColumnName>[Original Fee Handling Basis]</ColumnName>
                     </ID>
-                    <ItemCaption>[Original Fee Handling Basis]</ItemCaption>
+                    <ItemCaption>Original Fee Handling Basis</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
                       <ColumnName>[Branch]</ColumnName>
                     </ID>
-                    <ItemCaption>[Branch]</ItemCaption>
+                    <ItemCaption>Branch</ItemCaption>
                   </Item>
                   <Item>
                     <ID xsi:type="Column">
                       <ColumnName>[Disbursements Paid]</ColumnName>
                     </ID>
-                    <ItemCaption>[Disbursements Paid]</ItemCaption>
+                    <ItemCaption>Disbursements Paid</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[Date Instruction vs Date Opened]</ColumnName>
+                    </ID>
+                    <ItemCaption>Date Instruction vs Date Opened</ItemCaption>
                   </Item>
                 </Items>
               </Select>
               <AutoExecute>false</AutoExecute>
-              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
-&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;SelectTablesControlState&gt;
-    &lt;Tables /&gt;
-  &lt;/SelectTablesControlState&gt;
-  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
-  &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;EVALUATE
- (
- FILTER(
-    CALCULATETABLE (
-        SUMMARIZE (
-            fact_dimension_main,
-            dim_client[client_code],
-            dim_matter_header_current[matter_number],
-            dim_matter_header_current[master_client_matter_combined],
-            dim_fed_hierarchy_history_matter_owner[matter_owner_displayname],
-			dim_matter_header_current[matter_description],
-			dim_detail_core_details[referral_reason],
-			fact_detail_reserve_detail[claimant_costs_reserve_current],
-            dim_detail_claim[ageas_office],
-            dim_detail_finance[output_wip_fee_arrangement],
-            dim_detail_claim[ageas_original_fee_handling_basis],
-            dim_detail_claim[original_fee_handling_basis],
-            dim_detail_claim[manner_of_dispute_resolution],
-            dim_detail_claim[name_of_instructing_insurer],
-            dim_client_involvement[client_reference],
-            dim_client_involvement[insurerclient_reference],
-            dim_client_involvement[insuredclient_reference],
-            dim_detail_core_details[incident_date],
-            dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date],
-            dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date],
-            dim_detail_core_details[fixed_fee],
-            dim_detail_core_details[is_this_the_lead_file],
-            dim_detail_core_details[suspicion_of_fraud],
-            dim_detail_court[court_check],
-            --dim_detail_critical_mi[daystoresolution],
-            dim_detail_critical_mi[xl_reference],
-            dim_detail_fraud[fraud_type_ageas],
-            fact_finance_summary[fixed_fee_amount],
-            fact_finance_summary[total_savings_percent],
-            fact_finance_summary[defence_costs_reserve],
-            dim_detail_outcome[date_claim_concluded],
-            fact_finance_summary[indemnity_spend],
-            fact_finance_summary[defence_costs_billed],
-            fact_finance_summary[wip],
-            fact_finance_summary[total_recovery],
-            dim_detail_core_details[proceedings_issued],
-            fact_detail_paid_detail[tp_estimate],
-			fact_finance_summary[damages_reserve],
-			dim_detail_core_details[is_this_a_linked_file],
-			fact_finance_summary[total_billed_disbursements_vat],
-            fact_detail_elapsed_days[turnaround_time],
-            fact_finance_summary[paid_disbursements],
-            fact_finance_summary[disbursements_billed],
-            fact_finance_summary[disbursement_balance],
-			dim_detail_client[grp_ageas_claimant_number],
-			dim_detail_core_details[grpageas_case_handler],
-			dim_detail_outcome[outcome_of_case],
-			dim_detail_core_details[present_position],
-
-         	"Insurer", IF(dim_detail_claim[name_of_instructing_insurer]="Tesco Underwriting (TU)" || dim_client[client_code]="T3003", "Tesco Underwriting (TU)"
-						,"Ageas Insurance Ltd (AIL)"),
-			"Exclusions", IF(dim_detail_outcome[date_claim_concluded] &amp;lt;&amp;gt; BLANK() &amp;amp;&amp;amp; dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date] &amp;lt; DATE(2018,1,1),"Exclude","Ok"),
-			"Original Fee Handling Basis", IF(dim_detail_finance[output_wip_fee_arrangement]=BLANK(), dim_detail_claim[ageas_original_fee_handling_basis], dim_detail_finance[output_wip_fee_arrangement]),
-			"Branch", REPLACE(dim_detail_claim[ageas_office],1,6,blank()),
-			"Disbursements Paid", (fact_finance_summary[disbursements_billed] + fact_finance_summary[disbursement_balance])
-			
-        ),
-        UPPER(dim_detail_core_details[suspicion_of_fraud]) = "YES",
-        dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "ML",
-        NOT(PATHCONTAINS("A3003-12267|A3003-12305|A3003-12265|A3003-8241|A3003-8627|FW33900-50|A3003-10020|A3003-4993|A3003-5051|A3003-13081|A3003-13142",dim_matter_header_current[master_client_matter_combined])),
-        dim_detail_outcome[exclude_from_reports] = 0,
-        dim_client[client_group_name]="Ageas",
-        NOT(PATHCONTAINS("00030645|95000c|00453737",dim_client[client_code]))
-        ,dim_detail_core_details[referral_reason] &amp;lt;&amp;gt; "Advice only"
-        , NOT(PATHCONTAINS("Returned to Client", dim_detail_outcome[outcome_of_case]))
-    ),
-    PATHCONTAINS("Ageas Insurance Ltd (AIL)",[Insurer])
-//    ,PATHCONTAINS("Ageas Insurance Ltd (AIL)|Tesco Underwriting (TU)",[Insurer])
-    	&amp;amp;&amp;amp; 
-    	PATHCONTAINS("Ok", [Exclusions])
-//	  ,dim_client[client_code]="A3003"
-//    &amp;amp;&amp;amp; dim_matter_header_current[matter_number]="00009014"
-    )
-)
-ORDER BY
-    dim_client[client_code],
-    dim_matter_header_current[matter_number]&lt;/QueryText&gt;
-  &lt;DatabaseId /&gt;
-  &lt;MiningStructureId /&gt;
-  &lt;MiningModelId /&gt;
-  &lt;ColumnMappings /&gt;
-  &lt;GridRows /&gt;
-&lt;/DataminingQueryBuilderState&gt;</Data>
+              <From>Model</From>
+              <Filter>
+                <FilterItems />
+              </Filter>
+              <Calculations />
+              <Aggregates />
+              <QueryProperties />
             </QuerySpecification>
             <Query>
               <Statement>EVALUATE
@@ -2978,6 +3092,7 @@ ORDER BY
             dim_client_involvement[insurerclient_reference],
             dim_client_involvement[insuredclient_reference],
             dim_detail_core_details[incident_date],
+            dim_detail_core_details[date_instructions_received],
             dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date],
             dim_date_matter_closed_practice_management[matter_closed_practice_management_calendar_date],
             dim_detail_core_details[fixed_fee],
@@ -3014,7 +3129,8 @@ ORDER BY
 			"Exclusions", IF(dim_detail_outcome[date_claim_concluded] &lt;&gt; BLANK() &amp;&amp; dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date] &lt; DATE(2018,1,1),"Exclude","Ok"),
 			"Original Fee Handling Basis", IF(dim_detail_finance[output_wip_fee_arrangement]=BLANK(), dim_detail_claim[ageas_original_fee_handling_basis], dim_detail_finance[output_wip_fee_arrangement]),
 			"Branch", REPLACE(dim_detail_claim[ageas_office],1,6,blank()),
-			"Disbursements Paid", (fact_finance_summary[disbursements_billed] + fact_finance_summary[disbursement_balance])
+			"Disbursements Paid", (fact_finance_summary[disbursements_billed] + fact_finance_summary[disbursement_balance]),
+			"Date Instruction vs Date Opened", IF(dim_date_matter_opened_practice_management[matter_opened_practice_management_calendar_date]=dim_detail_core_details[date_instructions_received], "True", "False")
 			
         ),
         UPPER(dim_detail_core_details[suspicion_of_fraud]) = "YES",
@@ -3113,6 +3229,10 @@ ORDER BY
         </Field>
         <Field Name="dim_detail_core_details_incident_date_">
           <DataField>dim_detail_core_details[incident_date]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="date_instructions_received">
+          <DataField>dim_detail_core_details[date_instructions_received]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="dim_date_matter_opened_practice_management_matter_opened_practice_management_calendar_date_">
@@ -3245,6 +3365,10 @@ ORDER BY
         </Field>
         <Field Name="ID_Disbursements_Paid_">
           <DataField>[Disbursements Paid]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Date_Instruction_vs_Date_Opened">
+          <DataField>[Date Instruction vs Date Opened]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -3385,6 +3509,12 @@ WHERE FraudType IS NOT NULL
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>0.88194in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>2in</Width>
@@ -4591,6 +4721,140 @@ WHERE FraudType IS NOT NULL
                                   <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
                                 </RightBorder>
                                 <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox12">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Date Instructions Received</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox12</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>Orange</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox16">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>Date Instruction vs Date Opened</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox16</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>Orange</BackgroundColor>
                                 <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
                                 <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
                                 <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
@@ -6976,6 +7240,141 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</Value>
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
+                            <Textbox Name="date_instructions_received">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!date_instructions_received.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>dd/MM/yyyy</Format>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>date_instructions_received</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Date_Instruction_vs_Date_Opened">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Date_Instruction_vs_Date_Opened.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Date_Instruction_vs_Date_Opened</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
                             <Textbox Name="Textbox50">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -8277,6 +8676,16 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</Value>
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
+                    <TablixMember>
+                      <Visibility>
+                        <Hidden>=IIF(Parameters!ReportType.Value="Internal",False,True)</Hidden>
+                      </Visibility>
+                    </TablixMember>
+                    <TablixMember>
+                      <Visibility>
+                        <Hidden>=IIF(Parameters!ReportType.Value="Internal",False,True)</Hidden>
+                      </Visibility>
+                    </TablixMember>
                     <TablixMember />
                     <TablixMember>
                       <Visibility>
@@ -8329,7 +8738,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</Value>
                 </Filters>
                 <Top>0.0441cm</Top>
                 <Height>0.78124in</Height>
-                <Width>41.04931in</Width>
+                <Width>42.93125in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -12627,7 +13036,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>2.09201in</Height>
-            <Width>43.08056in</Width>
+            <Width>42.93125in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -12671,7 +13080,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>43.08056in</Width>
+      <Width>42.93125in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -12714,7 +13123,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
                     </Paragraph>
                   </Paragraphs>
                   <Height>0.24208in</Height>
-                  <Width>43.08056in</Width>
+                  <Width>42.93125in</Width>
                   <Visibility>
                     <Hidden>=CBool(First(Fields!txtTotalPages_Hidden.Value, "DefaultProperties"))</Hidden>
                   </Visibility>
@@ -12755,9 +13164,9 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
                 </Textbox>
               </ReportItems>
               <KeepTogether>true</KeepTogether>
-              <Top>0.76735in</Top>
+              <Top>0.75346in</Top>
               <Height>0.25597in</Height>
-              <Width>43.08056in</Width>
+              <Width>42.93125in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -12858,7 +13267,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
               <Top>0.125in</Top>
               <Left>1.6in</Left>
               <Height>0.64235in</Height>
-              <Width>41.48056in</Width>
+              <Width>41.33125in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -12945,7 +13354,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
               </Paragraphs>
               <Top>0.17639cm</Top>
               <Height>0.25in</Height>
-              <Width>43.08056in</Width>
+              <Width>42.93125in</Width>
               <Visibility>
                 <Hidden>=CBool(First(Fields!txtPageNumber_Visibility_Hidden.Value, "DefaultProperties"))</Hidden>
               </Visibility>
@@ -13097,7 +13506,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
               </Paragraphs>
               <Top>0.625in</Top>
               <Height>0.36938in</Height>
-              <Width>43.08056in</Width>
+              <Width>42.93125in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
@@ -13151,7 +13560,7 @@ Fields!dim_client_involvement_insurerclient_reference_.Value)</GroupExpression>
               </ActionInfo>
               <Top>0.29918in</Top>
               <Height>0.25638in</Height>
-              <Width>43.08056in</Width>
+              <Width>42.93125in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
