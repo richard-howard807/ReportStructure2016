@@ -3270,10 +3270,14 @@ END AS [Total Budget in MS]
 				GROUP BY aig_litigation_number
 				HAVING SUM(portal_bill_total_excl_vat) &gt; 0 --and aig_litigation_number IS NOT null
 			  ) lit_number ON lit_number.lit_number = aig_litigation_number
+
+	-- RH 22/03/2022 -- changed logic below to match portal billing report following 3e upgrade
 	LEFT JOIN  (SELECT profstatus profstatus,altnumber,loadnumber, sum(ds_sh_3e_profmaster.totamt - ds_sh_3e_profmaster.taxamt) portal_bill_total_excl_vat_vew 
 				from dbo.ds_sh_3e_profmaster
 				LEFT JOIN dbo.ds_sh_3e_matter ON leadmatter = mattindex
+				INNER JOIN TE_3E_Prod..NxWfItemStep (nolock) as NxWfItemStep ON NxWfItemStep.JoinID = ds_sh_3e_profmaster.profmasterid and NxWfItemStep.NxWFStepState = 1 
 				where ds_sh_3e_profmaster.invmaster is null
+				and ds_sh_3e_profmaster.profstatus not in ('Billed','RejectApproval','CL','CL_WM')
 				group by ds_sh_3e_profmaster.profstatus
 					   , ds_sh_3e_matter.altnumber
 					   , ds_sh_3e_matter.loadnumber) prof 
@@ -3290,7 +3294,6 @@ and profstatus  in ('Approved')
 and altnumber LIKE 'A2002%'
 --and dim_matter_header_current.ms_fileid = 5052812
 ORDER BY  altnumber
-
 
 
 
