@@ -2454,6 +2454,11 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
     <DataSet Name="SQL">
       <Query>
         <DataSourceName>Reporting</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Period">
+            <Value>=Parameters!Period.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>BAI_BAIMonthlyReport</CommandText>
       </Query>
@@ -2530,9 +2535,17 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
           <DataField>Status</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="present_position">
+          <DataField>present_position</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Open_closed">
           <DataField>Open_closed</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="date_closed_case_management">
+          <DataField>date_closed_case_management</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="final_bill_date">
           <DataField>final_bill_date</DataField>
@@ -2541,6 +2554,41 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
         <Field Name="capita_category_position_code">
           <DataField>capita_category_position_code</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="FileClosedPeriod">
+          <DataField>FileClosedPeriod</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="FileOpenedPeriod">
+          <DataField>FileOpenedPeriod</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Periods">
+      <Query>
+        <DataSourceName>Reporting</DataSourceName>
+        <CommandText>SELECT cal_month_name +' ' +CAST(cal_year AS NVARCHAR(5)) AS [Period]
+,MIN(calendar_date) AS StartDate
+,MAX(calendar_date) AS EndDate
+FROM red_dw.dbo.dim_date
+WHERE CONVERT(DATE,calendar_date,103) BETWEEN '2022-01-01' AND CONVERT(DATE,GETDATE(),103)
+GROUP BY cal_month_name + ' ' + CAST(cal_year AS NVARCHAR(5))
+
+ORDER BY StartDate</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Period">
+          <DataField>Period</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="StartDate">
+          <DataField>StartDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="EndDate">
+          <DataField>EndDate</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -3949,11 +3997,7 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=IIF(TRIM(Fields!FSCS_Protected.Value)="0%","No"
-,IIF(ISNOTHING(Fields!FSCS_Protected.Value),"No"
-,IIF(TRIM(Fields!FSCS_Protected.Value)="","No"
-,IIF(TRIM(Fields!FSCS_Protected.Value)="N/A","No"
-,IIF(TRIM(Fields!FSCS_Protected.Value)="0","No",Fields!FSCS_Protected.Value)))))</Value>
+                                      <Value>=Fields!FSCS_Protected.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -4114,10 +4158,10 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
                 <PageName>New Instructions</PageName>
                 <Filters>
                   <Filter>
-                    <FilterExpression>=Fields!Open_closed.Value</FilterExpression>
+                    <FilterExpression>=Fields!FileOpenedPeriod.Value</FilterExpression>
                     <Operator>Equal</Operator>
                     <FilterValues>
-                      <FilterValue>Open</FilterValue>
+                      <FilterValue>=1</FilterValue>
                     </FilterValues>
                   </Filter>
                 </Filters>
@@ -5600,7 +5644,7 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=IIF(TRIM(Fields!FSCS_Protected.Value) = "0%", "No", IIF(ISNOTHING(Fields!FSCS_Protected.Value), "No", IIF(TRIM(Fields!FSCS_Protected.Value) = "", "No", IIF(TRIM(Fields!FSCS_Protected.Value) = "N/A", "No", IIF(TRIM(Fields!FSCS_Protected.Value) = "0", "No", Fields!FSCS_Protected.Value)))))</Value>
+                                      <Value>=Fields!FSCS_Protected.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5697,10 +5741,10 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
                 <PageName>Closed</PageName>
                 <Filters>
                   <Filter>
-                    <FilterExpression>=Fields!Open_closed.Value</FilterExpression>
+                    <FilterExpression>=Fields!FileClosedPeriod.Value</FilterExpression>
                     <Operator>Equal</Operator>
                     <FilterValues>
-                      <FilterValue>Closed</FilterValue>
+                      <FilterValue>=1</FilterValue>
                     </FilterValues>
                   </Filter>
                 </Filters>
@@ -8911,16 +8955,32 @@ WHERE  name ='BAIMonthlyReport.png'</CommandText>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Period">
+      <DataType>String</DataType>
+      <Prompt>Period</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Periods</DataSetName>
+          <ValueField>Period</ValueField>
+          <LabelField>Period</LabelField>
+        </DataSetReference>
+      </ValidValues>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>1</NumberOfColumns>
-      <NumberOfRows>1</NumberOfRows>
+      <NumberOfRows>2</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Period</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
