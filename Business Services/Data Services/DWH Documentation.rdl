@@ -2844,10 +2844,24 @@ AND dt_obj_key IN (@Table)</CommandText>
 Declare @Search nvarchar(100) = IIF(LEN(@Searchstring) &gt; 1, '%' + LOWER(@Searchstring) + '%', '%') 
 
 
+
 SELECT DISTINCT ws_wrk_task_log.wtl_obj_key
 		INTO #tasklog
 FROM red_dw.dbo.ws_wrk_task_log
 WHERE ws_wrk_task_log.wtl_completed &gt;= DATEADD(m,-2, GETDATE())
+
+union all
+
+SELECT DISTINCT ft_obj_key
+from red_dw.dbo.ws_fact_tab
+WHERE lower(cast(ft_doc_9 as varchar(100))) LIKE '%*documented*%'
+
+union all
+
+select DISTINCT dt_obj_key
+from  red_dw.dbo.ws_dim_tab 
+where lower(cast(dt_doc_9 as varchar(100))) LIKE '%*documented*%'
+
 
 
 
@@ -2869,9 +2883,7 @@ INNER JOIN red_dw.dbo.ws_dim_tab ON a.dc_obj_key = ws_dim_tab.dt_obj_key
 WHERE (LOWER(a.dc_col_name) LIKE LOWER(@Search)
 	OR LOWER(CAST(a.dc_doc_1 AS NVARCHAR(MAX))) LIKE LOWER(@Search)
 	OR LOWER(a.dc_display_name) LIKE LOWER(@Search))
-AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)
-
-</CommandText>
+AND ws_dim_tab.dt_obj_key IN (SELECT wtl_obj_key FROM #tasklog)</CommandText>
       </Query>
       <Fields>
         <Field Name="ft_obj_key">
