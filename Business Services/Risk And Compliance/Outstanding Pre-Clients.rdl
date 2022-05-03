@@ -2560,17 +2560,23 @@ WHERE  name ='Outstanding Pre-Clients.png'</CommandText>
     <DataSet Name="Department">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <QueryParameters>
-          <QueryParameter Name="@Division">
-            <Value>=JOIN(Parameters!Division.Value,",")</Value>
-          </QueryParameter>
-        </QueryParameters>
-        <CommandText>
-SELECT Department
+        <CommandText>DECLARE @Division AS NVARCHAR(MAX)
+SET @Division='Legal Ops - Claims'
 
-FROM   Reporting.dbo.list_departments (@Division)
 
-order by 1</CommandText>
+IF OBJECT_ID('tempdb..#Division') IS NOT NULL   DROP TABLE #Division
+SELECT ListValue  INTO #Division FROM Reporting.dbo.[udt_TallySplit]('|', @Division)
+
+
+
+SELECT DISTINCT hierarchylevel3hist AS [Department]
+FROM red_dw.dbo.dim_fed_hierarchy_history
+INNER JOIN #Division AS Division  ON Division.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel2hist COLLATE DATABASE_DEFAULT
+WHERE hierarchylevel2hist='Legal Ops - Claims'
+AND dss_current_flag='Y'
+AND hierarchylevel3hist IS NOT NULL
+
+ORDER BY 1</CommandText>
       </Query>
       <Fields>
         <Field Name="Department">
@@ -2584,11 +2590,22 @@ order by 1</CommandText>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
           <QueryParameter Name="@Department">
-            <Value>=JOIN(Parameters!Department.Value,",")</Value>
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT Team
-FROM   Reporting.dbo.list_teams (@Department)</CommandText>
+        <CommandText>IF OBJECT_ID('tempdb..#Department') IS NOT NULL   DROP TABLE #Department
+SELECT ListValue  INTO #Department FROM Reporting.dbo.[udt_TallySplit]('|', @Department)
+
+
+
+SELECT DISTINCT hierarchylevel4hist AS [Team]
+FROM red_dw.dbo.dim_fed_hierarchy_history
+INNER JOIN #Department AS Department  ON Department.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel3hist COLLATE DATABASE_DEFAULT
+WHERE hierarchylevel2hist='Legal Ops - Claims'
+AND dss_current_flag='Y'
+AND hierarchylevel4hist IS NOT NULL
+
+ORDER BY 1</CommandText>
       </Query>
       <Fields>
         <Field Name="Team">
@@ -2608,8 +2625,7 @@ WHERE  dss_current_flag = 'Y'
 	   AND fed_code &lt;&gt; 'Unknown'
 	   AND activeud=1
 	   AND leaver = 0
-	   AND hierarchylevel2 NOT IN ('Solving Disputes','Insurance','Business Services','Client Relationships')
-</CommandText>
+	   AND hierarchylevel2 NOT IN ('Solving Disputes','Insurance','Business Services','Client Relationships')</CommandText>
       </Query>
       <Fields>
         <Field Name="Division">
