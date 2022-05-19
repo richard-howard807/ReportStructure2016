@@ -2461,7 +2461,7 @@ WHERE  name ='Contact Search.png'</CommandText>
             <Value>=Parameters!postcode.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>select DISTINCT
+        <CommandText>SELECT DISTINCT
 ds_sh_ms_udclientcontactbridgingtable.fedclientnumber,
 ds_sh_ms_dbcontact.contid,
 ds_sh_ms_dbcontact.contname,
@@ -2486,18 +2486,26 @@ ds_sh_ms_dbcontact.contextid ,
 
 case when contlinkid is null then null else
 RANK ( ) OVER ( PARTITION BY ds_sh_ms_dbcontactlinks.contlinkid  ORDER BY ds_sh_ms_dbcontactlinks.contlinkid  DESC) end AS Rank 
-
+,Email.DefaultEmail
 from MS_Prod.dbo.dbaddress ds_sh_ms_dbaddress
 left join  MS_Prod.config.dbcontact ds_sh_ms_dbcontact on ds_sh_ms_dbcontact.contdefaultaddress  = ds_sh_ms_dbaddress.addid
 left join MS_Prod.dbo.dbcontactlinks ds_sh_ms_dbcontactlinks on ds_sh_ms_dbcontactlinks.contid = ds_sh_ms_dbcontact.contid
 left join MS_Prod.dbo.dbcontactnumbers ds_sh_ms_dbcontactnumbers on ds_sh_ms_dbcontactnumbers.contid  = ds_sh_ms_dbcontact.contid
 left join MS_Prod.dbo.udextcontact ds_sh_ms_udextcontact on ds_sh_ms_udextcontact.contid = ds_sh_ms_dbcontact.contid
 left join MS_Prod.dbo.udclientcontactbridgingtable ds_sh_ms_udclientcontactbridgingtable ON ds_sh_ms_udclientcontactbridgingtable.contid = ds_sh_ms_dbcontact.contid
-where ds_sh_ms_dbcontact.contname like '%'+@name+'%'
-OR ds_sh_ms_dbaddress.addline1 LIKE '%'+@address+'%'
-OR ds_sh_ms_dbaddress.addpostcode LIKE '%'+@postcode+'%'
+LEFT OUTER JOIN (SELECT 
+    Email.contID,
+    Email.Email AS DefaultEmail
+FROM 
+(
+SELECT contID,contEmail AS Email ,ROW_NUMBER() OVER (PARTITION BY contID ORDER BY contDefaultOrder ASC)  AS xorder
+FROM MS_Prod.dbo.dbContactEmails WHERE   contActive=1
+) AS Email
+WHERE Email.xorder=1) AS Email ON Email.contID = ds_sh_ms_dbcontact.contID 
 
-</CommandText>
+WHERE ds_sh_ms_dbcontact.contname like '%'+@name+'%'
+OR ds_sh_ms_dbaddress.addline1 LIKE '%'+@address+'%'
+OR ds_sh_ms_dbaddress.addpostcode LIKE '%'+@postcode+'%'</CommandText>
       </Query>
       <Fields>
         <Field Name="fedclientnumber">
@@ -2587,6 +2595,10 @@ OR ds_sh_ms_dbaddress.addpostcode LIKE '%'+@postcode+'%'
         <Field Name="Rank">
           <DataField>Rank</DataField>
           <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="DefaultEmail">
+          <DataField>DefaultEmail</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
