@@ -2450,6 +2450,17 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
     <DataSet Name="MatterTypeReportLTAClaims">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Division">
+            <Value>=JOIN(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Team">
+            <Value>=JOIN(Parameters!Team.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>dbo.SurveyContactInformationExceptionsPost</CommandText>
       </Query>
@@ -2545,6 +2556,83 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
         <Field Name="fixed_fee_amount">
           <DataField>fixed_fee_amount</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Division">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT DISTINCT hierarchylevel2 AS [Division]
+FROM   red_dw.dbo.dim_fed_hierarchy_current
+WHERE  dss_current_flag = 'Y'
+      -- AND hierarchylevel2 IN ( 'Legal Ops - Claims', 'Legal Ops - LTA' )
+       AND hierarchylevel2 IS NOT NULL
+	   AND fed_code &lt;&gt; 'Unknown'
+	   AND activeud=1
+	   AND leaver = 0
+	   AND hierarchylevel2 NOT IN ('Solving Disputes','Insurance','Business Services','Client Relationships')</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Division">
+          <DataField>Division</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Department">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Division">
+            <Value>=JOIN(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT ListValue  INTO #Division FROM Reporting.dbo.[udt_TallySplit]('|', @Division)
+
+SELECT DISTINCT hierarchylevel3 AS [Department]
+FROM   red_dw.dbo.dim_fed_hierarchy_current
+INNER JOIN #Division AS Division  ON Division.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel2 COLLATE DATABASE_DEFAULT
+WHERE  dss_current_flag = 'Y'
+      -- AND hierarchylevel2 IN ( 'Legal Ops - Claims', 'Legal Ops - LTA' )
+       AND hierarchylevel2 IS NOT NULL
+	   AND fed_code &lt;&gt; 'Unknown'
+	   AND activeud=1</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Department">
+          <DataField>Department</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Team">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@Division">
+            <Value>=JOIN(Parameters!Division.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@Department">
+            <Value>=JOIN(Parameters!Department.Value,"|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT ListValue  INTO #Division FROM Reporting.dbo.[udt_TallySplit]('|', @Division)
+SELECT ListValue  INTO #Department FROM Reporting.dbo.[udt_TallySplit]('|', @Department)
+SELECT DISTINCT hierarchylevel4 AS [Team]
+FROM   red_dw.dbo.dim_fed_hierarchy_current
+INNER JOIN #Division AS Division  ON Division.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel2 COLLATE DATABASE_DEFAULT
+INNER JOIN #Department AS Department  ON Department.ListValue COLLATE DATABASE_DEFAULT = hierarchylevel3 COLLATE DATABASE_DEFAULT
+WHERE  dss_current_flag = 'Y'
+      -- AND hierarchylevel2 IN ( 'Legal Ops - Claims', 'Legal Ops - LTA' )
+       AND hierarchylevel2 IS NOT NULL
+	   AND fed_code &lt;&gt; 'Unknown'
+	   AND activeud=1
+	  </CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Team">
+          <DataField>Team</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -3279,7 +3367,6 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -3694,7 +3781,6 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
-                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                   </TablixCells>
@@ -3737,7 +3823,7 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
             <PageName>Matter Types on Live Case</PageName>
             <Top>0.17639cm</Top>
             <Height>1.70271cm</Height>
-            <Width>58.89623cm</Width>
+            <Width>58.89624cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -3782,7 +3868,7 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>23.18749in</Width>
+      <Width>23.1875in</Width>
       <Page>
         <PageHeader>
           <Height>0.89832in</Height>
@@ -4347,11 +4433,65 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
       <Prompt>Level</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="Division">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Division</DataSetName>
+          <ValueField>Division</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Division</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Division</DataSetName>
+          <ValueField>Division</ValueField>
+          <LabelField>Division</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Department">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Department</DataSetName>
+          <ValueField>Department</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Department</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Department</DataSetName>
+          <ValueField>Department</ValueField>
+          <LabelField>Department</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Team">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>Team</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Team</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>Team</DataSetName>
+          <ValueField>Team</ValueField>
+          <LabelField>Team</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>2</NumberOfRows>
+      <NumberOfRows>3</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -4362,6 +4502,21 @@ WHERE  name ='Exception Report - Survey Contact Information.png'</CommandText>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>0</RowIndex>
           <ParameterName>Level</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Division</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>Department</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>Team</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
