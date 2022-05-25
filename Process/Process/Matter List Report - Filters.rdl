@@ -2880,24 +2880,24 @@ AND dim_employee.employeeid IN (@FedCode)</CommandText>
             <Value>=Parameters!Team.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>IF 'Compliance' IN (@Team)
-
-SELECT DISTINCT employeeid AS dim_employee_employeeid_ , 
-name AS dim_fed_hierarchy_history_matter_owner_matter_owner_name_ 
-FROM red_dw.dbo.dim_fed_hierarchy_history 
-WHERE
-	dim_fed_hierarchy_history.dim_employee_key = 1637 --Roland Hutchins
-
-ELSE
-
-SELECT DISTINCT employeeid AS dim_employee_employeeid_ , 
+        <CommandText>SELECT DISTINCT employeeid AS dim_employee_employeeid_ , 
 name AS dim_fed_hierarchy_history_matter_owner_matter_owner_name_ 
 FROM red_dw.dbo.dim_fed_hierarchy_history 
 
 WHERE 
 dim_fed_hierarchy_history.hierarchylevel2hist IN (@Division)
 AND dim_fed_hierarchy_history.hierarchylevel3hist IN (@Department)
-AND dim_fed_hierarchy_history.hierarchylevel4hist IN (@Team)</CommandText>
+AND dim_fed_hierarchy_history.hierarchylevel4hist IN (@Team)
+AND (CASE WHEN dim_fed_hierarchy_history.hierarchylevel4hist = 'Compliance' AND dim_fed_hierarchy_history.dim_employee_key &lt;&gt; 1637 THEN --Roland Hutchins
+		0
+	ELSE
+		1
+	END
+    ) = 1
+AND dim_fed_hierarchy_history.windowsusername IS NOT NULL
+ORDER BY
+	dim_fed_hierarchy_history.name
+</CommandText>
       </Query>
       <Fields>
         <Field Name="dim_employee_employeeid_">
