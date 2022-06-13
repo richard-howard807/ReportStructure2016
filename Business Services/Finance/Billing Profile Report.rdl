@@ -76,9 +76,9 @@ LEFT OUTER JOIN ( SELECT fact_all_time_activity.dim_bill_key,MAX(transaction_cal
 ,MAX(gl_calendar_date) AS LastGLDate
 
 	   FROM red_dw.dbo.fact_all_time_activity WITH(NOLOCK)
-	   INNER JOIN red_dw.dbo.fact_bill
+	   INNER JOIN red_dw.dbo.fact_bill  WITH(NOLOCK)
 	    ON fact_bill.dim_bill_key = fact_all_time_activity.dim_bill_key
-	   INNER JOIN red_dw.dbo.dim_bill_date
+	   INNER JOIN red_dw.dbo.dim_bill_date  WITH(NOLOCK)
 	    ON dim_bill_date.dim_bill_date_key = fact_bill.dim_bill_date_key
 	   INNER JOIN red_dw.dbo.dim_transaction_date WITH(NOLOCK)
 	    ON dim_transaction_date.dim_transaction_date_key = fact_all_time_activity.dim_transaction_date_key
@@ -87,13 +87,21 @@ LEFT OUTER JOIN ( SELECT fact_all_time_activity.dim_bill_key,MAX(transaction_cal
 		GROUP BY fact_all_time_activity.dim_bill_key) AS Lasttime
 		 ON Lasttime.dim_bill_key = fact_bill.dim_bill_key
  LEFT OUTER JOIN (	  SELECT bill_cal_week_in_year,MIN(bill_date) AS WeekStarting,MAX(bill_cal_week_in_year) AS LastWeekNo
-	  FROM red_dw.dbo.dim_bill_date
+	  FROM red_dw.dbo.dim_bill_date  WITH(NOLOCK)
 	  WHERE  red_dw.dbo.dim_bill_date.bill_date BETWEEN @StartDate AND @EndDate
  GROUP BY bill_cal_week_in_year) AS WeekStart
   ON WeekStart.bill_cal_week_in_year = dim_bill_date.bill_cal_week_in_year
  WHERE  red_dw.dbo.dim_bill_date.bill_date         BETWEEN @StartDate AND @EndDate
                   AND bill_reversed = 0
-       AND fact_bill.bill_number&lt;&gt;'PURGE'
+       --AND fact_bill.bill_number&lt;&gt;'PURGE'
+	   AND fact_bill.dim_bill_key NOT IN (SELECT dim_bill_key FROM red_dw.dbo.fact_bill WITH(NOLOCK)
+INNER JOIN red_dw.dbo.dim_bill_date WITH(NOLOCK)
+ ON dim_bill_date.dim_bill_date_key = fact_bill.dim_bill_date_key
+WHERE CONVERT(DATE,bill_date,103) BETWEEN @StartDate AND @EndDate
+AND bill_number IN (SELECT bill_number  FROM red_dw.dbo.fact_bill WITH(NOLOCK)
+INNER JOIN red_dw.dbo.dim_bill_date WITH(NOLOCK)
+ ON dim_bill_date.dim_bill_date_key = fact_bill.dim_bill_date_key
+WHERE CONVERT(DATE,bill_date,103) &lt;@StartDate))
 
 	  ORDER BY bill_date</CommandText>
       </Query>
@@ -2043,7 +2051,6 @@ LEFT OUTER JOIN ( SELECT fact_all_time_activity.dim_bill_key,MAX(transaction_cal
             </ChartNoDataMessage>
             <DataSetName>DataSet1</DataSetName>
             <PageName>Summary</PageName>
-            <Top>0cm</Top>
             <Height>10.56849cm</Height>
             <Width>17.09306cm</Width>
             <ZIndex>4</ZIndex>
@@ -2430,7 +2437,6 @@ LEFT OUTER JOIN ( SELECT fact_all_time_activity.dim_bill_key,MAX(transaction_cal
                 </FilterValues>
               </Filter>
             </Filters>
-            <Top>0cm</Top>
             <Left>17.26944cm</Left>
             <Height>10.56849cm</Height>
             <Width>22.35827cm</Width>
