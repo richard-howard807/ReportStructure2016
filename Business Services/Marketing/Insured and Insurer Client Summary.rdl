@@ -2470,18 +2470,183 @@ WHERE  name ='Insured and Insurer Client Summary.png'</CommandText>
             <Value>=Parameters!client_name.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT        *
-FROM            dbo.InsuredandInsurerClientSummaryTable
-WHERE        
+        <CommandText>/* Testing */
+----DECLARE @insured_sector AS NVARCHAR(4000) =  'AMBULANCE' 
+----,@segment AS NVARCHAR(4000) = 'Blank'
+----,@sector AS NVARCHAR(4000) = 'Blank'
+----,@insurerclient1 AS NVARCHAR(4000) = NULL
+----,@insuredclient AS NVARCHAR(4000) = NULL
+----,@client_name AS NVARCHAR(4000) = NULL
+
+
+DROP TABLE if EXISTS #Revenue
+DROP TABLE IF EXISTS #groups_count
+
+DECLARE @CurrentFinYear  AS INT = (SELECT DISTINCT fin_year FROM red_dw.dbo.dim_date WHERE current_fin_year = 'Current')
+DECLARE @CurrentFinYear_minus1 AS INT  = @CurrentFinYear -1
+DECLARE @CurrentFinYear_minus2 AS INT = @CurrentFinYear -2
+DECLARE @CurrentFinYear_minus3 AS INT = @CurrentFinYear -3
+DECLARE @CurrentFinYear_minus4 AS INT = @CurrentFinYear -4
+DECLARE @CurrentFinYear_minus5 AS INT = @CurrentFinYear -5
+DECLARE @CurrentFinYear_minus6 AS INT = @CurrentFinYear -6
+ 
+
+
+
+
+SELECT 
+			  dim_matter_header_curr_key
+			, dim_bill_date.bill_fin_year
+			, SUM(fact_bill_activity.bill_amount) Revenue
+		INTO #Revenue
+		FROM red_dw.dbo.fact_bill_activity
+			INNER JOIN red_dw.dbo.dim_bill_date 
+				ON fact_bill_activity.dim_bill_date_key=dim_bill_date.dim_bill_date_key
+		WHERE 
+			dim_bill_date.bill_fin_year BETWEEN @CurrentFinYear_minus5 AND @CurrentFinYear
+		GROUP BY 
+			dim_matter_header_curr_key
+			, dim_bill_date.bill_fin_year
+
+
+	SELECT 
+      dim_matter_header_current.dim_matter_header_curr_key
+    , 1						AS [TotalMatterCount]
+	, CASE WHEN dim_date.fin_year = @CurrentFinYear_minus5 THEN 1 ELSE 0 END AS [matters_CurrentFY_minus5]
+	, CASE WHEN dim_date.fin_year = @CurrentFinYear_minus4 THEN 1 ELSE 0 END AS [matters_CurrentFY_minus4]
+	, CASE WHEN dim_date.fin_year = @CurrentFinYear_minus3 THEN 1 ELSE 0 END AS [matters_CurrentFY_minus3]
+	, CASE WHEN dim_date.fin_year = @CurrentFinYear_minus2 THEN 1 ELSE 0 END AS [matters_CurrentFY_minus2]
+	, CASE WHEN dim_date.fin_year = @CurrentFinYear_minus1 THEN 1 ELSE 0 END AS [matters_CurrentFY_minus1]
+	, CASE WHEN dim_date.fin_year = @CurrentFinYear        THEN 1 ELSE 0 END AS [Matters_CurrentFY]
+
+INTO #groups_count
+FROM red_dw.dbo.fact_dimension_main 
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+	INNER JOIN red_dw.dbo.dim_date
+		ON dim_date.calendar_date = dim_matter_header_current.date_opened_practice_management
+	INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+	LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype
+		ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
+WHERE
+	dim_date.fin_year &gt;= @CurrentFinYear_minus5 AND 
+	(dim_fed_hierarchy_history.hierarchylevel2hist = 'Legal Ops - Claims' OR dim_matter_worktype.work_type_name LIKE '%Prof Risk%')
+	AND reporting_exclusions = 0
+
+
+
+
+SELECT 
+	dim_client_involvement.insurerclient_name
+	, ISNULL(dim_client_involvement.insuredclient_name, dim_detail_claim.dst_insured_client_name)	AS insuredclient_name
+	, dim_client.sector
+	, dim_detail_core_details.insured_sector
+	, dim_client.client_name
+	, dim_client.client_group_name
+	, dim_client.segment
+	, dim_matter_worktype.work_type_name
+	, dim_department.department_name
+	, dim_matter_header_current.matter_partner_full_name
+
+	/*Matters Count*/
+	, SUM(COALESCE(#groups_count.TotalMatterCount,0))         AS TotalMattersCounttodate
+	, SUM(COALESCE(#groups_count.matters_CurrentFY_minus5,0)) AS matters_CurrentFY_minus5
+	, SUM(COALESCE(#groups_count.matters_CurrentFY_minus4,0)) AS matters_CurrentFY_minus4
+	, SUM(COALESCE(#groups_count.matters_CurrentFY_minus3,0)) AS  matters_CurrentFY_minus3
+	, SUM(COALESCE(#groups_count.matters_CurrentFY_minus2,0)) AS  matters_CurrentFY_minus2
+	, SUM(COALESCE(#groups_count.matters_CurrentFY_minus1,0)) AS  matters_CurrentFY_minus1
+    , SUM(COALESCE(#groups_count.matters_CurrentFY,0))        AS  matters_CurrentFY
+
+	/*Revnue Amount*/
+
+	, SUM(Revenue) AS  Revenue_Total
+	, SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus5 THEN Revenue END) AS Revenue_CurrentFY_minus5
+	, SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus4 THEN Revenue END) AS Revenue_CurrentFY_minus4
+	, SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus3 THEN Revenue END) AS Revenue_CurrentFY_minus3
+	, SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus2 THEN Revenue END) AS Revenue_CurrentFY_minus2
+	, SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus1 THEN Revenue END) AS Revenue_CurrentFY_minus1
+	, SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear        THEN Revenue END) AS Revenue_CurrentFY
+
+	, Label_toDate = '1 May ' + CAST(@CurrentFinYear_minus6 AS varchar(4)) + ' to date'
+	, Label_minus5 = '1 May ' + CAST(@CurrentFinYear_minus6 AS varchar(4)) + ' - ' + '30th April ' + CAST(@CurrentFinYear_minus5 AS varchar(4)) 
+	, Label_minus4 = '1 May ' + CAST(@CurrentFinYear_minus5 AS varchar(4)) + ' - ' + '30th April ' + CAST(@CurrentFinYear_minus4 AS varchar(4)) 
+	, Label_minus3 = '1 May ' + CAST(@CurrentFinYear_minus4 AS varchar(4)) + ' - ' + '30th April ' + CAST(@CurrentFinYear_minus3 AS varchar(4)) 
+	, Label_minus2 = '1 May ' + CAST(@CurrentFinYear_minus3 AS varchar(4)) + ' - ' + '30th April ' + CAST(@CurrentFinYear_minus2 AS varchar(4)) 
+	, Label_minus1 = '1 May ' + CAST(@CurrentFinYear_minus2 AS varchar(4)) + ' - ' + '30th April ' + CAST(@CurrentFinYear_minus1 AS varchar(4)) 
+	, Label_current = '1 May ' + CAST(@CurrentFinYear_minus1 AS varchar(4)) + ' - ' + '30th April ' + CAST(@CurrentFinYear AS varchar(4)) 
+
+FROM red_dw.dbo.fact_dimension_main
+	INNER JOIN red_dw.dbo.dim_matter_header_current
+		ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+	LEFT OUTER JOIN red_dw.dbo.dim_client_involvement
+		ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
+	LEFT OUTER JOIN red_dw.dbo.dim_client
+		ON dim_client.dim_client_key = fact_dimension_main.dim_client_key
+	LEFT OUTER JOIN red_dw.dbo.dim_matter_worktype
+		ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
+	LEFT OUTER JOIN red_dw.dbo.dim_fed_hierarchy_history
+		ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+	LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+		ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+	LEFT OUTER JOIN red_dw.dbo.dim_detail_claim
+		ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
+	LEFT OUTER JOIN red_dw.dbo.dim_department
+		ON dim_department.dim_department_key = dim_matter_header_current.dim_department_key
+	LEFT JOIN #Revenue
+	ON #Revenue.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
+	LEFT JOIN #groups_count
+	ON #groups_count.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
+	
+
+WHERE 
+      
 UPPER(ISNULL(insured_sector,'Blank')) IN (@insured_sector) 
 AND UPPER(ISNULL(segment,'Blank')) IN (@segment) 
 AND UPPER(ISNULL(sector,'Blank')) IN (@sector)
---AND UPPER(client_group_name) in (@client_group_name)
 AND (CASE WHEN @insurerclient1 IS NULL THEN ISNULL(insurerclient_name,'Blank') ELSE  @insurerclient1 END)=ISNULL(insurerclient_name,'Blank')
 AND  (CASE WHEN @insuredclient IS NULL THEN ISNULL(insuredclient_name,'Blank')  ELSE  @insuredclient END)=ISNULL(insuredclient_name,'Blank') 
-AND (CASE WHEN @client_name IS NULL THEN client_name  ELSE  @client_name END)=client_name
-ORDER BY
-	InsuredandInsurerClientSummaryTable.May_2015_now DESC</CommandText>
+AND (CASE WHEN @client_name IS NULL THEN dim_matter_header_current.client_name  ELSE  @client_name END)=dim_matter_header_current.client_name
+
+AND ISNULL(segment, '') &lt;&gt; ''  	
+AND	(dim_fed_hierarchy_history.hierarchylevel2hist = 'Legal Ops - Claims' OR dim_matter_worktype.work_type_name LIKE '%Prof Risk%')
+AND dim_matter_header_current.reporting_exclusions = 0
+AND dim_matter_header_current.master_client_code &lt;&gt; '30645'
+
+	GROUP BY 
+
+	  dim_client_involvement.insurerclient_name
+	, ISNULL(dim_client_involvement.insuredclient_name, dim_detail_claim.dst_insured_client_name)
+	, dim_client.sector
+	, dim_detail_core_details.insured_sector
+	, dim_client.client_name
+	, dim_client.client_group_name
+	, dim_client.segment
+	, dim_matter_worktype.work_type_name
+	, dim_department.department_name
+	, dim_matter_header_current.matter_partner_full_name
+
+	HAVING
+
+
+	  SUM(#groups_count.TotalMatterCount)         &lt;&gt; 0 OR
+	  SUM(#groups_count.matters_CurrentFY_minus5) &lt;&gt; 0 OR
+	  SUM(#groups_count.matters_CurrentFY_minus4) &lt;&gt; 0 OR
+	  SUM(#groups_count.matters_CurrentFY_minus3) &lt;&gt; 0 OR
+	  SUM(#groups_count.matters_CurrentFY_minus2) &lt;&gt; 0 OR
+	  SUM(#groups_count.matters_CurrentFY_minus1) &lt;&gt; 0 OR
+      SUM(#groups_count.matters_CurrentFY)        &lt;&gt; 0 OR
+
+	/*Revnue Amount*/
+
+	  SUM(Revenue)  &lt;&gt; 0 OR
+	  SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus5 THEN Revenue END) &lt;&gt; 0 OR
+	  SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus4 THEN Revenue END) &lt;&gt; 0 OR
+	  SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus3 THEN Revenue END) &lt;&gt; 0 OR
+	  SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus2 THEN Revenue END) &lt;&gt; 0 OR
+	  SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear_minus1 THEN Revenue END) &lt;&gt; 0 OR
+	  SUM(CASE WHEN #Revenue.bill_fin_year = @CurrentFinYear        THEN Revenue END) &lt;&gt; 0 
+	 </CommandText>
         <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
       </Query>
       <Fields>
@@ -2525,61 +2690,89 @@ ORDER BY
           <DataField>matter_partner_full_name</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="May_2015_now">
-          <DataField>May_2015_now</DataField>
+        <Field Name="TotalMattersCounttodate">
+          <DataField>TotalMattersCounttodate</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="May_2015_April_2016">
-          <DataField>May_2015_April_2016</DataField>
+        <Field Name="matters_CurrentFY_minus5">
+          <DataField>matters_CurrentFY_minus5</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="May_2016_April_2017">
-          <DataField>May_2016_April_2017</DataField>
+        <Field Name="matters_CurrentFY_minus4">
+          <DataField>matters_CurrentFY_minus4</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="May_2017_now">
-          <DataField>May_2017_now</DataField>
+        <Field Name="matters_CurrentFY_minus3">
+          <DataField>matters_CurrentFY_minus3</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="May_2015_now_bills">
-          <DataField>May_2015_now_bills</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="matters_FY2020">
-          <DataField>matters_FY2020</DataField>
+        <Field Name="matters_CurrentFY_minus2">
+          <DataField>matters_CurrentFY_minus2</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="May_2015_April_2016_bills">
-          <DataField>May_2015_April_2016_bills</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="matters_FY2021">
-          <DataField>matters_FY2021</DataField>
+        <Field Name="matters_CurrentFY_minus1">
+          <DataField>matters_CurrentFY_minus1</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="May_2016_April_2017_bills">
-          <DataField>May_2016_April_2017_bills</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="May_2017_now_bills">
-          <DataField>May_2017_now_bills</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="bills_FY2019">
-          <DataField>bills_FY2019</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
-        </Field>
-        <Field Name="matters_FY2019">
-          <DataField>matters_FY2019</DataField>
+        <Field Name="matters_CurrentFY">
+          <DataField>matters_CurrentFY</DataField>
           <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
-        <Field Name="bills_FY2020">
-          <DataField>bills_FY2020</DataField>
+        <Field Name="Revenue_Total">
+          <DataField>Revenue_Total</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
-        <Field Name="bills_FY2021">
-          <DataField>bills_FY2021</DataField>
+        <Field Name="Revenue_CurrentFY_minus5">
+          <DataField>Revenue_CurrentFY_minus5</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Revenue_CurrentFY_minus4">
+          <DataField>Revenue_CurrentFY_minus4</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Revenue_CurrentFY_minus3">
+          <DataField>Revenue_CurrentFY_minus3</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Revenue_CurrentFY_minus2">
+          <DataField>Revenue_CurrentFY_minus2</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Revenue_CurrentFY_minus1">
+          <DataField>Revenue_CurrentFY_minus1</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Revenue_CurrentFY">
+          <DataField>Revenue_CurrentFY</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="Label_toDate">
+          <DataField>Label_toDate</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Label_minus5">
+          <DataField>Label_minus5</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Label_minus4">
+          <DataField>Label_minus4</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Label_minus3">
+          <DataField>Label_minus3</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Label_minus2">
+          <DataField>Label_minus2</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Label_minus1">
+          <DataField>Label_minus1</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Label_current">
+          <DataField>Label_current</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -3326,7 +3519,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value EvaluationMode="Constant">1 May 2015 to date</Value>
+                                  <Value>=First(Fields!Label_toDate.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3395,7 +3588,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value EvaluationMode="Constant">1 May 2015 - 30 April 2016</Value>
+                                  <Value>=First(Fields!Label_minus5.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3464,7 +3657,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value EvaluationMode="Constant">1 May 2016 - 30 April 2017</Value>
+                                  <Value>=First(Fields!Label_minus4.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3533,7 +3726,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value EvaluationMode="Constant">1 May 2017 - 30 April 2018</Value>
+                                  <Value>=First(Fields!Label_minus3.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3602,7 +3795,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>1 May 2018 - 30 April 2019</Value>
+                                  <Value>=First(Fields!Label_minus2.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3671,7 +3864,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>1 May 2019 - 30 April 2019</Value>
+                                  <Value>=First(Fields!Label_minus1.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3740,7 +3933,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>1 May 2020 - 30 April 2021</Value>
+                                  <Value>=First(Fields!Label_current.Value, "SQlDatasetMatters")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5963,7 +6156,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2015_now.Value</Value>
+                                  <Value>=Fields!TotalMattersCounttodate.Value</Value>
                                   <Style>
                                     <Format>#,0;(#,0)</Format>
                                   </Style>
@@ -5996,7 +6189,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2015_now_bills.Value</Value>
+                                  <Value>=Fields!Revenue_Total.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6030,7 +6223,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2015_April_2016.Value</Value>
+                                  <Value>=Fields!matters_CurrentFY_minus5.Value</Value>
                                   <Style>
                                     <Format>#,0;(#,0)</Format>
                                   </Style>
@@ -6063,7 +6256,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2015_April_2016_bills.Value</Value>
+                                  <Value>=Fields!Revenue_CurrentFY_minus5.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6096,7 +6289,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2016_April_2017.Value</Value>
+                                  <Value>=Fields!matters_CurrentFY_minus4.Value</Value>
                                   <Style>
                                     <Format>#,0;(#,0)</Format>
                                   </Style>
@@ -6129,7 +6322,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2016_April_2017_bills.Value</Value>
+                                  <Value>=Fields!Revenue_CurrentFY_minus4.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6162,7 +6355,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2017_now.Value</Value>
+                                  <Value>=Fields!matters_CurrentFY_minus3.Value</Value>
                                   <Style>
                                     <Format>#,0;(#,0)</Format>
                                   </Style>
@@ -6195,7 +6388,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!May_2017_now_bills.Value</Value>
+                                  <Value>=Fields!Revenue_CurrentFY_minus3.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6228,7 +6421,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!matters_FY2019.Value</Value>
+                                  <Value>=Fields!matters_CurrentFY_minus2.Value</Value>
                                   <Style>
                                     <Format>#,0;(#,0)</Format>
                                   </Style>
@@ -6261,7 +6454,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!bills_FY2019.Value</Value>
+                                  <Value>=Fields!Revenue_CurrentFY_minus2.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6287,21 +6480,21 @@ FROM red_Dw.dbo.dim_client</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="matters_FY2021">
+                        <Textbox Name="matters_CurrentFY_minus1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!matters_FY2020.Value</Value>
+                                  <Value>=Fields!matters_CurrentFY_minus1.Value</Value>
                                   <Style />
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>matters_FY2021</rd:DefaultName>
+                          <rd:DefaultName>matters_CurrentFY_minus1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -6318,14 +6511,14 @@ FROM red_Dw.dbo.dim_client</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="bills_FY2020">
+                        <Textbox Name="Revenue_CurrentFY_minus1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!bills_FY2020.Value</Value>
+                                  <Value>=Fields!Revenue_CurrentFY_minus1.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6334,7 +6527,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>bills_FY2020</rd:DefaultName>
+                          <rd:DefaultName>Revenue_CurrentFY_minus1</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -6352,21 +6545,21 @@ FROM red_Dw.dbo.dim_client</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox17">
+                        <Textbox Name="matters_CurrentFY">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!matters_FY2021.Value</Value>
+                                  <Value>=Fields!matters_CurrentFY.Value</Value>
                                   <Style />
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox17</rd:DefaultName>
+                          <rd:DefaultName>matters_CurrentFY</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -6383,14 +6576,14 @@ FROM red_Dw.dbo.dim_client</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox13">
+                        <Textbox Name="Revenue_CurrentFY">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!bills_FY2021.Value</Value>
+                                  <Value>=Fields!Revenue_CurrentFY.Value</Value>
                                   <Style>
                                     <Format>'£'#,0.00;('£'#,0.00)</Format>
                                   </Style>
@@ -6399,7 +6592,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox13</rd:DefaultName>
+                          <rd:DefaultName>Revenue_CurrentFY</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -7038,6 +7231,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7172,6 +7366,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7239,6 +7434,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7306,6 +7502,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7373,6 +7570,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7440,6 +7638,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7507,6 +7706,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7574,6 +7774,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>#,0;(#,0)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7641,6 +7842,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7775,6 +7977,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7823,6 +8026,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <PaddingBottom>=First(Fields!tblDataFooter_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataFooter_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataFooter_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -7909,6 +8113,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                                     <FontFamily>=First(Fields!tblDataFooter_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                     <FontSize>=First(Fields!tblDataFooter_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                     <FontWeight>=First(Fields!tblDataFooter_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
                                     <TextDecoration>=First(Fields!tblDataFooter_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                     <Color>=First(Fields!tblDataFooter_Color.Value, "DefaultProperties")</Color>
                                     <Language>=First(Fields!tblDataFooter_Language.Value, "DefaultProperties")</Language>
@@ -7957,6 +8162,7 @@ FROM red_Dw.dbo.dim_client</CommandText>
                             <PaddingBottom>=First(Fields!tblDataFooter_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
                             <Direction>=First(Fields!tblDataFooter_Direction.Value, "DefaultProperties")</Direction>
                             <WritingMode>=First(Fields!tblDataFooter_WritingMode.Value, "DefaultProperties")</WritingMode>
+                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
