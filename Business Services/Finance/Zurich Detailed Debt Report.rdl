@@ -2549,6 +2549,10 @@ SELECT
 	, #zurich_address.FormattedString AS 'PayorFormattedString'
 	, dim_bill_debt_narrative.udf_modified_by			AS [ARCS Modified By]
 	, dim_bill_debt_narrative.udf_narrative				AS [ARCS Narrative]
+	,dim_detail_client.[is_there_a_catalina_claim_number_on_this_claim]
+	,dim_detail_client.[multiple_claim_numbers_zurich_or_catalina]
+	,CASE WHEN dim_detail_client.[is_there_a_catalina_claim_number_on_this_claim]='Yes'
+	AND dim_detail_client.[multiple_claim_numbers_zurich_or_catalina]='No' THEN 1 ELSE 0 END AS Exclusions
 FROM  TE_3E_Prod.dbo.InvPayor  
 	INNER JOIN TE_3E_Prod.dbo.InvMaster 
 		ON InvMaster.InvIndex = InvPayor.InvMaster
@@ -2584,8 +2588,7 @@ WHERE
 	InvPayor.BalAmt &lt;&gt; 0
 	AND dim_matter_header_current.master_client_code = 'Z1001'
 ORDER BY 
-	ISNULL(LEFT(Matter.loadnumber,(CHARINDEX('-',Matter.loadnumber)-1)),Client.altnumber)
-</CommandText>
+	ISNULL(LEFT(Matter.loadnumber,(CHARINDEX('-',Matter.loadnumber)-1)),Client.altnumber)</CommandText>
       </Query>
       <Fields>
         <Field Name="Supplier_Name">
@@ -2695,6 +2698,18 @@ ORDER BY
         <Field Name="ARCS_Narrative">
           <DataField>ARCS Narrative</DataField>
           <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="is_there_a_catalina_claim_number_on_this_claim">
+          <DataField>is_there_a_catalina_claim_number_on_this_claim</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="multiple_claim_numbers_zurich_or_catalina">
+          <DataField>multiple_claim_numbers_zurich_or_catalina</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Exclusions">
+          <DataField>Exclusions</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -8303,6 +8318,15 @@ ORDER BY
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
                 <DataSetName>Zurich_debt_sql</DataSetName>
+                <Filters>
+                  <Filter>
+                    <FilterExpression>=Fields!Exclusions.Value</FilterExpression>
+                    <Operator>Equal</Operator>
+                    <FilterValues>
+                      <FilterValue>=0</FilterValue>
+                    </FilterValues>
+                  </Filter>
+                </Filters>
                 <Top>0.0441cm</Top>
                 <Height>1.01041in</Height>
                 <Width>35.33611in</Width>
