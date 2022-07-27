@@ -2460,88 +2460,86 @@ WHERE  name ='ratesreport.png'</CommandText>
     <DataSet Name="AgeasRates">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>
-
-DECLARE @startOfCurrentMonth DATETIME
-SET @startOfCurrentMonth = DATEADD(month, DATEDIFF(month, 0, CURRENT_TIMESTAMP), 0)
-
-
-SELECT 'Weightmans' AS [Solicitors Office], 
-  dim_detail_claim.[ageas_office] [Ageas Handling Office], 
-  --[does_claimant_have_personal_injury_claim],
-
-
-
- --MSbillingAddress.[Insurer Reference] [Ageas Ref ], 
- dim_client_involvement.[insurerclient_reference] [Ageas Ref], 
-	dim_detail_core_details.grpageas_case_handler		AS [Ageas Case Handler],
-     RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Solcitor Ref],
-	 name [Name of Fee Earner], 
-	 matter_description [Name of Parties], 
-	 dim_detail_core_details.[date_instructions_received] [Date Instructions Received], 
-	dim_detail_claim.[ageas_instruction_type] [Ageas Instruction Type  ], 
-	fact_finance_summary.[fixed_fee_amount] [Fixed Fee Amount],
-	does_claimant_have_personal_injury_claim [Claim for PI?] ,
-	dim_detail_core_details.referral_reason AS [Reason for instruction],
-	worktype AS [Work Type],
-dim_detail_claim.ageas_section
-
-
-
-
-
+        <QueryParameters>
+          <QueryParameter Name="@startdate">
+            <Value>=Parameters!startdate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@endData">
+            <Value>=Parameters!endData.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT 'Weightmans' AS [Solicitors Office],
+       dim_detail_claim.[ageas_office] [Ageas Handling Office],
+       --[does_claimant_have_personal_injury_claim],
+       --MSbillingAddress.[Insurer Reference] [Ageas Ref ], 
+       dim_client_involvement.[insurerclient_reference] [Ageas Ref],
+       dim_detail_core_details.grpageas_case_handler AS [Ageas Case Handler],
+       RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Solcitor Ref],
+       name [Name of Fee Earner],
+       matter_description [Name of Parties],
+       dim_detail_core_details.[date_instructions_received] [Date Instructions Received],
+       dim_detail_claim.[ageas_instruction_type] [Ageas Instruction Type  ],
+       fact_finance_summary.[fixed_fee_amount] [Fixed Fee Amount],
+       does_claimant_have_personal_injury_claim [Claim for PI?],
+       dim_detail_core_details.referral_reason AS [Reason for instruction],
+       worktype AS [Work Type],
+       dim_detail_claim.ageas_section,
+       date_opened_case_management
 FROM red_dw.dbo.fact_dimension_main
-LEFT JOIN red_dw.dbo.dim_matter_header_current ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
-LEFT JOIN  red_dw.dbo.dim_fed_hierarchy_history ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
-LEFT JOIN red_dw.dbo.dim_detail_core_details ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
-LEFT JOIN red_dw.dbo.dim_detail_claim ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
-LEFT JOIN red_dw.dbo.dim_client_involvement ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
-LEFT JOIN red_dw.dbo.fact_finance_summary ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
---LEFT JOIN dbo.dim_date ON dim_date.cal_month = 
-        LEFT JOIN
-        (
-            SELECT fileID,
-                   assocType,
-                   contName AS [Insurer Name],
-                   assocAddressee AS [Addressee],
-                   CASE
-                       WHEN assocdefaultaddID IS NOT NULL THEN
-                           ISNULL(dbAddress1.addLine1, '') + ' ' + ISNULL(dbAddress1.addLine2, '') + ' '
-                           + ISNULL(dbAddress1.addLine3, '') + ' ' + ISNULL(dbAddress1.addLine4, '') + ' '
-                           + ISNULL(dbAddress1.addLine5, '') + ' ' + ISNULL(dbAddress1.addPostcode, '')
-                       ELSE
-                           ISNULL(dbAddress2.addLine1, '') + ' ' + ISNULL(dbAddress2.addLine2, '') + ' '
-                           + ISNULL(dbAddress2.addLine3, '') + ' ' + ISNULL(dbAddress2.addLine4, '') + ' '
-                           + ISNULL(dbAddress2.addLine5, '') + ' ' + ISNULL(dbAddress2.addPostcode, '')
-                   END AS [Insurer Address],
-                   dbAssociates.assocRef AS [Insurer Reference],
-                   ROW_NUMBER() OVER (PARTITION BY dbAssociates.fileID ORDER BY assocOrder) AS XOrder
-            FROM MS_Prod.config.dbAssociates WITH (NOLOCK)
-                INNER JOIN MS_Prod.config.dbContact WITH (NOLOCK)
-                    ON dbAssociates.contID = dbContact.contID
-                LEFT OUTER JOIN MS_Prod.dbo.dbAddress AS dbAddress1 WITH (NOLOCK)
-                    ON assocdefaultaddID = dbAddress1.addID
-                LEFT OUTER JOIN MS_Prod.dbo.dbAddress AS dbAddress2 WITH (NOLOCK)
-                    ON contDefaultAddress = dbAddress2.addID
-            WHERE assocType = 'INSCLIENT'
-        )
-        --WHERE assocType='INSURERCLIENT' ) 
+    LEFT JOIN red_dw.dbo.dim_matter_header_current
+        ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
+    LEFT JOIN red_dw.dbo.dim_fed_hierarchy_history
+        ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
+    LEFT JOIN red_dw.dbo.dim_detail_core_details
+        ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
+    LEFT JOIN red_dw.dbo.dim_detail_claim
+        ON dim_detail_claim.dim_detail_claim_key = fact_dimension_main.dim_detail_claim_key
+    LEFT JOIN red_dw.dbo.dim_client_involvement
+        ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
+    LEFT JOIN red_dw.dbo.fact_finance_summary
+        ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+    --LEFT JOIN dbo.dim_date ON dim_date.cal_month = 
+    LEFT JOIN
+    (
+        SELECT fileID,
+               assocType,
+               contName AS [Insurer Name],
+               assocAddressee AS [Addressee],
+               CASE
+                   WHEN assocdefaultaddID IS NOT NULL THEN
+                       ISNULL(dbAddress1.addLine1, '') + ' ' + ISNULL(dbAddress1.addLine2, '') + ' '
+                       + ISNULL(dbAddress1.addLine3, '') + ' ' + ISNULL(dbAddress1.addLine4, '') + ' '
+                       + ISNULL(dbAddress1.addLine5, '') + ' ' + ISNULL(dbAddress1.addPostcode, '')
+                   ELSE
+                       ISNULL(dbAddress2.addLine1, '') + ' ' + ISNULL(dbAddress2.addLine2, '') + ' '
+                       + ISNULL(dbAddress2.addLine3, '') + ' ' + ISNULL(dbAddress2.addLine4, '') + ' '
+                       + ISNULL(dbAddress2.addLine5, '') + ' ' + ISNULL(dbAddress2.addPostcode, '')
+               END AS [Insurer Address],
+               dbAssociates.assocRef AS [Insurer Reference],
+               ROW_NUMBER() OVER (PARTITION BY dbAssociates.fileID ORDER BY assocOrder) AS XOrder
+        FROM MS_Prod.config.dbAssociates WITH (NOLOCK)
+            INNER JOIN MS_Prod.config.dbContact WITH (NOLOCK)
+                ON dbAssociates.contID = dbContact.contID
+            LEFT OUTER JOIN MS_Prod.dbo.dbAddress AS dbAddress1 WITH (NOLOCK)
+                ON assocdefaultaddID = dbAddress1.addID
+            LEFT OUTER JOIN MS_Prod.dbo.dbAddress AS dbAddress2 WITH (NOLOCK)
+                ON contDefaultAddress = dbAddress2.addID
+        WHERE assocType = 'INSCLIENT'
+    )
+    --WHERE assocType='INSURERCLIENT' ) 
 
 
 
-        AS MSbillingAddress
-            ON dim_matter_header_current.ms_fileid = MSbillingAddress.fileID
-
-
-			WHERE fact_dimension_main. client_code = 'A3003'
-
-
-			AND 
-			dim_detail_core_details.[date_instructions_received] &gt;= DATEADD(month, -1, @startOfCurrentMonth)
-  --    AND dim_detail_core_details.[date_instructions_received] &lt; @startOfCurrentMonth
-	  AND LOWER(ISNULL(suspicion_of_fraud,'')) = 'no'
-	  AND LOWER(ISNULL(dim_detail_core_details.[does_claimant_have_personal_injury_claim],'')) = 'yes'
-AND reporting_exclusions=0</CommandText>
+    AS MSbillingAddress
+        ON dim_matter_header_current.ms_fileid = MSbillingAddress.fileID
+WHERE fact_dimension_main.client_code = 'A3003'
+      AND CONVERT(DATE, date_opened_case_management, 103)
+      BETWEEN @startdate AND @endData
+      --dim_detail_core_details.[date_instructions_received] &gt;= DATEADD(month, -1, @startOfCurrentMonth) --removed as per ticket #156366
+      --    AND dim_detail_core_details.[date_instructions_received] &lt; @startOfCurrentMonth			--removed as per ticket #156366
+      AND LOWER(ISNULL(suspicion_of_fraud, '')) = 'no'
+      AND LOWER(ISNULL(dim_detail_core_details.[does_claimant_have_personal_injury_claim], '')) = 'yes'
+      AND reporting_exclusions = 0;</CommandText>
       </Query>
       <Fields>
         <Field Name="Solicitors_Office">
@@ -2600,6 +2598,10 @@ AND reporting_exclusions=0</CommandText>
           <DataField>ageas_section</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="date_opened_case_management">
+          <DataField>date_opened_case_management</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
       </Fields>
     </DataSet>
   </DataSets>
@@ -2632,7 +2634,7 @@ AND reporting_exclusions=0</CommandText>
                   <Width>2.15625in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1.30208in</Width>
+                  <Width>2.30208in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1in</Width>
@@ -4580,7 +4582,7 @@ Ageas Instruction Type </Value>
             <DataSetName>AgeasRates</DataSetName>
             <Top>0.08819cm</Top>
             <Height>0.78124in</Height>
-            <Width>18.73591in</Width>
+            <Width>19.73591in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -5167,6 +5169,14 @@ Ageas Instruction Type </Value>
       <Prompt>GroupID</Prompt>
       <Hidden>true</Hidden>
     </ReportParameter>
+    <ReportParameter Name="startdate">
+      <DataType>DateTime</DataType>
+      <Prompt>Start Date</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="endData">
+      <DataType>DateTime</DataType>
+      <Prompt>End Date</Prompt>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -5175,8 +5185,18 @@ Ageas Instruction Type </Value>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>1</RowIndex>
+          <RowIndex>0</RowIndex>
           <ParameterName>GroupId</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>1</RowIndex>
+          <ParameterName>startdate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>2</RowIndex>
+          <ParameterName>endData</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
