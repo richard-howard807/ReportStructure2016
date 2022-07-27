@@ -2519,17 +2519,19 @@ SELECT
 		WHEN CAST(sla_unpivot.slas AS INT) = 260 THEN
 			'SLA.A19: Accurate reserves held on file at all times?'
 		WHEN CAST(sla_unpivot.slas AS INT) = 270 THEN
-			'SLA.A21: Any Justified Complaints made?'	
+			'SLA.A20: Where settlement has been achieved, the Supplier will notify Hastings within one (1) Business Day, with supporting documentation, the verified bank details and details of any payment deadline to enable prompt payment to be arranged'
 		WHEN CAST(sla_unpivot.slas AS INT) = 280 THEN
-			'SLA.A22: Any Non-Justified Complaints made?'
+			'SLA.A21: Any Justified Complaints made?'	
 		WHEN CAST(sla_unpivot.slas AS INT) = 290 THEN
+			'SLA.A22: Any Non-Justified Complaints made?'
+		WHEN CAST(sla_unpivot.slas AS INT) = 300 THEN
 			'SLA.A23: Any leakage identified?'
 	  END							AS sla_name
 	, CAST(sla_unpivot.slas AS INT)		AS row_order
 	, CASE
-		WHEN sla_unpivot.slas IN ('270', '290') THEN
+		WHEN sla_unpivot.slas IN ('280', '300') THEN
 			0.02
-		WHEN sla_unpivot.slas = '280' THEN
+		WHEN sla_unpivot.slas = '290' THEN
 			0.01
 		WHEN sla_unpivot.slas IN ('10', '20', '30', '40', '50', '60', '120', '130', '180', '190', '240', '250') THEN
 			0.9
@@ -2537,21 +2539,21 @@ SELECT
 			1
 	  END						AS sla_target
 	, CASE
-		WHEN sla_unpivot.slas IN ('270', '280', '290')THEN
+		WHEN sla_unpivot.slas IN ('280', '290', '300')THEN
 			'lower'
 		ELSE
 			'greater'
 	  END				AS target_direction
 	, CASE	
-		WHEN sla_unpivot.slas IN ('90', '100', '110', '160', '170','200', '210', '220', '230', '270', '280', '290') THEN
+		WHEN sla_unpivot.slas IN ('90', '100', '110', '160', '170','200', '210', '220', '230', '280', '290', '300') THEN
 			'critical'
 		ELSE
 			'both'
 	  END						AS report_filter
 	, CASE
-		WHEN sla_unpivot.slas IN ('270', '280') THEN
+		WHEN sla_unpivot.slas IN ('280', '290') THEN
 			'customer'
-		WHEN sla_unpivot.slas IN ('90', '100', '110', '160', '170', '200', '210', '220', '230', '290') THEN
+		WHEN sla_unpivot.slas IN ('90', '100', '110', '160', '170', '200', '210', '220', '230', '300') THEN
 			'service'
 		ELSE
 			NULL
@@ -2559,7 +2561,7 @@ SELECT
 	, 1				AS total_count
 	, IIF(sla_unpivot.sla_results = 'N/A', 1, 0)		AS [SLA N/A - Number of Matters]
 	, CASE
-		WHEN sla_unpivot.slas IN ('230', '270', '280', '290') AND sla_unpivot.sla_results = 'No' THEN
+		WHEN sla_unpivot.slas IN ('230', '280', '290', '300') AND sla_unpivot.sla_results = 'No' THEN
 			1
 		WHEN sla_unpivot.sla_results = 'Yes' THEN
 			1
@@ -2567,7 +2569,7 @@ SELECT
 			0
 	  END				AS [SLA Compliant - Number of Matters]
 	, CASE
-		WHEN sla_unpivot.slas IN ('230', '270', '280', '290') AND sla_unpivot.sla_results = 'Yes' THEN
+		WHEN sla_unpivot.slas IN ('230', '280', '290', '300') AND sla_unpivot.sla_results = 'Yes' THEN
 			1
 		WHEN sla_unpivot.sla_results = 'No' THEN
 			1
@@ -2605,15 +2607,16 @@ FROM (
             hastings_listing_table.[SLA.A17 Experts Reports Provided to Hastings]		AS [240],
             hastings_listing_table.[SLA.A17 Experts Reports Agreed with Hastings]		AS [250],
             hastings_listing_table.[SLA.A19 Accurate Reserves Held]		AS [260],
-            hastings_listing_table.[SLA.A20 Justified Complaints Made]		AS [270],
-            hastings_listing_table.[SLA.A20 Non-Justified Complaints Made]		AS [280],
-            hastings_listing_table.[SLA.A21 Any Leakage Identified]		AS [290]
+			hastings_listing_table.[SLA.A20 Settlement Achieved, Supplier Will Notify Hastings]		AS [270],
+            hastings_listing_table.[SLA.A20 Justified Complaints Made]		AS [280],
+            hastings_listing_table.[SLA.A20 Non-Justified Complaints Made]		AS [290],
+            hastings_listing_table.[SLA.A21 Any Leakage Identified]		AS [300]
 		FROM dbo.hastings_listing_table 
 	) AS slas
 UNPIVOT (
 		sla_results
 		FOR slas IN ([10], [20], [30], [40], [50], [60], [70], [80], [90], [100], [110], [120], [130], [140], [150], [160], [170],
-					[180], [190], [200], [210], [220], [230], [240], [250], [260], [270], [280], [290])
+					[180], [190], [200], [210], [220], [230], [240], [250], [260], [270], [280], [290], [300])
 	) AS sla_unpivot
 WHERE
 	sla_unpivot.[Date of Last Review] BETWEEN @start_date AND @end_date</CommandText>
@@ -2776,15 +2779,14 @@ SELECT
 	, hastings_listing_table.[SLA.A17 Experts Reports Provided to Hastings]
 	, hastings_listing_table.[SLA.A17 Experts Reports Agreed with Hastings]
 	, hastings_listing_table.[SLA.A19 Accurate Reserves Held]
+	, hastings_listing_table.[SLA.A20 Settlement Achieved, Supplier Will Notify Hastings]
 	, hastings_listing_table.[SLA.A20 Justified Complaints Made]
 	, hastings_listing_table.[SLA.A20 Non-Justified Complaints Made]
 	, hastings_listing_table.[SLA.A21 Any Leakage Identified]
 	, hastings_listing_table.[Date of Last Review]
 FROM dbo.hastings_listing_table
 WHERE
-	hastings_listing_table.[Date of Last Review] BETWEEN @start_date AND @end_date
-
-</CommandText>
+	hastings_listing_table.[Date of Last Review] BETWEEN @start_date AND @end_date</CommandText>
       </Query>
       <Fields>
         <Field Name="Claim_Reference">
@@ -3137,6 +3139,10 @@ WHERE
         </Field>
         <Field Name="SLA_A19_Accurate_Reserves_Held">
           <DataField>SLA.A19 Accurate Reserves Held</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="SLA_A20_Settlement_Achieved__Supplier_Will_Notify_Hastings">
+          <DataField>SLA.A20 Settlement Achieved, Supplier Will Notify Hastings</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="SLA_A20_Justified_Complaints_Made">
@@ -4495,6 +4501,9 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1.54167in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.15972in</Width>
@@ -10371,6 +10380,73 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                                 </Paragraph>
                               </Paragraphs>
                               <rd:DefaultName>Textbox173</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataHeader_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataHeader_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataHeader_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=First(Fields!tblDataHeader_BackgroundColor.Value, "DefaultProperties")</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataHeader_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataHeader_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataHeader_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataHeader_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataHeader_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataHeader_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataHeader_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox2">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>SLA.A20: Where settlement has been achieved, the Supplier will notify Hastings within one (1) Business Day, with supporting documentation, the verified bank details and details of any payment deadline to enable prompt payment to be arranged</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataHeader_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataHeader_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataHeader_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataHeader_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataHeader_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataHeader_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataHeader_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataHeader_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox2</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>=First(Fields!tblDataHeader_BorderColor_Default.Value, "DefaultProperties")</Color>
@@ -16612,6 +16688,73 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
+                            <Textbox Name="SLA_A20_Settlement_Achieved__Supplier_Will_Notify_Hastings">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!SLA_A20_Settlement_Achieved__Supplier_Will_Notify_Hastings.Value</Value>
+                                      <Style>
+                                        <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
+                                        <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
+                                        <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
+                                        <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
+                                        <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
+                                        <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
+                                        <NumeralLanguage>=First(Fields!tblDataRows_NumeralLanguage.Value, "DefaultProperties")</NumeralLanguage>
+                                        <NumeralVariant>=First(Fields!tblDataRows_NumeralVariant.Value, "DefaultProperties")</NumeralVariant>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style>
+                                    <TextAlign>=First(Fields!tblDataRows_TextAlign.Value, "DefaultProperties")</TextAlign>
+                                  </Style>
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>SLA_A20_Settlement_Achieved__Supplier_Will_Notify_Hastings</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Default.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Default.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Default.Value, "DefaultProperties")</Width>
+                                </Border>
+                                <TopBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Top.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Top.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Top.Value, "DefaultProperties")</Width>
+                                </TopBorder>
+                                <BottomBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Bottom.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Bottom.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Bottom.Value, "DefaultProperties")</Width>
+                                </BottomBorder>
+                                <LeftBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Left.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Left.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Left.Value, "DefaultProperties")</Width>
+                                </LeftBorder>
+                                <RightBorder>
+                                  <Color>=First(Fields!tblDataRows_BorderColor_Right.Value, "DefaultProperties")</Color>
+                                  <Style>=First(Fields!tblDataRows_BorderStyle_Right.Value, "DefaultProperties")</Style>
+                                  <Width>=First(Fields!tblDataRows_BorderWidth_Right.Value, "DefaultProperties")</Width>
+                                </RightBorder>
+                                <BackgroundColor>=iif(RowNumber(Nothing) Mod 2, "None",First(Fields!tblDataRows_BackgroundColor.Value, "DefaultProperties"))</BackgroundColor>
+                                <VerticalAlign>=First(Fields!tblDataRows_VerticalAlign.Value, "DefaultProperties")</VerticalAlign>
+                                <PaddingLeft>=First(Fields!tblDataRows_Padding_Left.Value, "DefaultProperties")</PaddingLeft>
+                                <PaddingRight>=First(Fields!tblDataRows_Padding_Right.Value, "DefaultProperties")</PaddingRight>
+                                <PaddingTop>=First(Fields!tblDataRows_Padding_Top.Value, "DefaultProperties")</PaddingTop>
+                                <PaddingBottom>=First(Fields!tblDataRows_Padding_Bottom.Value, "DefaultProperties")</PaddingBottom>
+                                <Direction>=First(Fields!tblDataRows_Direction.Value, "DefaultProperties")</Direction>
+                                <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
                             <Textbox Name="SLA_A20_Justified_Complaints_Made">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
@@ -16977,6 +17120,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                     <TablixMember />
                     <TablixMember />
                     <TablixMember />
+                    <TablixMember />
                   </TablixMembers>
                 </TablixColumnHierarchy>
                 <TablixRowHierarchy>
@@ -16998,7 +17142,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                 </SortExpressions>
                 <Top>1.9485in</Top>
                 <Height>1.58333in</Height>
-                <Width>106.92917in</Width>
+                <Width>108.47084in</Width>
                 <ZIndex>1</ZIndex>
                 <Style>
                   <Border>
@@ -17009,7 +17153,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
             </ReportItems>
             <Top>0.14111cm</Top>
             <Height>3.79166in</Height>
-            <Width>106.92917in</Width>
+            <Width>108.47084in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -17053,7 +17197,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>107.2in</Width>
+      <Width>108.51945in</Width>
       <Page>
         <PageHeader>
           <Height>1.08151in</Height>
@@ -17096,7 +17240,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                     </Paragraph>
                   </Paragraphs>
                   <Height>0.24208in</Height>
-                  <Width>106.92917in</Width>
+                  <Width>108.47084in</Width>
                   <Visibility>
                     <Hidden>=CBool(First(Fields!txtTotalPages_Hidden.Value, "DefaultProperties"))</Hidden>
                   </Visibility>
@@ -17137,9 +17281,9 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
                 </Textbox>
               </ReportItems>
               <KeepTogether>true</KeepTogether>
-              <Top>0.78124in</Top>
-              <Height>0.24208in</Height>
-              <Width>106.92917in</Width>
+              <Top>0.76999in</Top>
+              <Height>0.25333in</Height>
+              <Width>108.47084in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -17240,7 +17384,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
               <Top>0.125in</Top>
               <Left>1.7in</Left>
               <Height>0.64235in</Height>
-              <Width>105.22917in</Width>
+              <Width>106.77084in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -17327,7 +17471,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
               </Paragraphs>
               <Top>0.35569cm</Top>
               <Height>0.25in</Height>
-              <Width>106.92917in</Width>
+              <Width>108.47084in</Width>
               <Visibility>
                 <Hidden>=CBool(First(Fields!txtPageNumber_Visibility_Hidden.Value, "DefaultProperties"))</Hidden>
               </Visibility>
@@ -17479,7 +17623,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
               </Paragraphs>
               <Top>0.7853in</Top>
               <Height>0.36938in</Height>
-              <Width>106.92917in</Width>
+              <Width>108.47084in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
@@ -17533,7 +17677,7 @@ IIf(Sum(Fields!SLA_Compliant___Number_of_Matters.Value)+Sum(Fields!SLA_N_A___Num
               </ActionInfo>
               <Top>0.45948in</Top>
               <Height>0.25638in</Height>
-              <Width>106.92917in</Width>
+              <Width>108.47084in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
