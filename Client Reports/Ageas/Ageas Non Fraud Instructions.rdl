@@ -2464,11 +2464,14 @@ WHERE  name ='ratesreport.png'</CommandText>
           <QueryParameter Name="@startdate">
             <Value>=Parameters!startdate.Value</Value>
           </QueryParameter>
-          <QueryParameter Name="@endData">
-            <Value>=Parameters!endData.Value</Value>
+          <QueryParameter Name="@endDate">
+            <Value>=Parameters!endDate.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>SELECT 'Weightmans' AS [Solicitors Office],
+        <CommandText>  --DECLARE @StartDate AS DATE =  '20220625'
+--DECLARE @endDate AS DATE  = '20220726'
+
+SELECT 'Weightmans' AS [Solicitors Office],
        dim_detail_claim.[ageas_office] [Ageas Handling Office],
        --[does_claimant_have_personal_injury_claim],
        --MSbillingAddress.[Insurer Reference] [Ageas Ref ], 
@@ -2482,9 +2485,11 @@ WHERE  name ='ratesreport.png'</CommandText>
        fact_finance_summary.[fixed_fee_amount] [Fixed Fee Amount],
        does_claimant_have_personal_injury_claim [Claim for PI?],
        dim_detail_core_details.referral_reason AS [Reason for instruction],
-       worktype AS [Work Type],
        dim_detail_claim.ageas_section,
-       date_opened_case_management
+       date_opened_case_management,
+	  dim_matter_worktype.work_type_name AS [Work Type]
+
+
 FROM red_dw.dbo.fact_dimension_main
     LEFT JOIN red_dw.dbo.dim_matter_header_current
         ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
@@ -2498,6 +2503,8 @@ FROM red_dw.dbo.fact_dimension_main
         ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
     LEFT JOIN red_dw.dbo.fact_finance_summary
         ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
+	LEFT JOIN red_dw.dbo.dim_matter_worktype
+	ON dim_matter_worktype.dim_matter_worktype_key = dim_matter_header_current.dim_matter_worktype_key
     --LEFT JOIN dbo.dim_date ON dim_date.cal_month = 
     LEFT JOIN
     (
@@ -2534,7 +2541,7 @@ FROM red_dw.dbo.fact_dimension_main
         ON dim_matter_header_current.ms_fileid = MSbillingAddress.fileID
 WHERE fact_dimension_main.client_code = 'A3003'
       AND CONVERT(DATE, date_opened_case_management, 103)
-      BETWEEN @startdate AND @endData
+      BETWEEN @startdate AND @endDate
       --dim_detail_core_details.[date_instructions_received] &gt;= DATEADD(month, -1, @startOfCurrentMonth) --removed as per ticket #156366
       --    AND dim_detail_core_details.[date_instructions_received] &lt; @startOfCurrentMonth			--removed as per ticket #156366
       AND LOWER(ISNULL(suspicion_of_fraud, '')) = 'no'
@@ -5173,7 +5180,7 @@ Ageas Instruction Type </Value>
       <DataType>DateTime</DataType>
       <Prompt>Start Date</Prompt>
     </ReportParameter>
-    <ReportParameter Name="endData">
+    <ReportParameter Name="endDate">
       <DataType>DateTime</DataType>
       <Prompt>End Date</Prompt>
     </ReportParameter>
@@ -5196,7 +5203,7 @@ Ageas Instruction Type </Value>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>2</RowIndex>
-          <ParameterName>endData</ParameterName>
+          <ParameterName>endDate</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
