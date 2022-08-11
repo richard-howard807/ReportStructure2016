@@ -3831,6 +3831,75 @@ GROUP BY CASE WHEN [track] IN ( 'Small Claims', 'Multi Track', 'Fast Track' )
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="Fees">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT  [Categories] = CASE WHEN [track] IN ( 'Small Claims', 'Multi Track',
+                                              'Fast Track' )
+                            THEN RTRIM([track])
+                            WHEN [grpageas_motor_moj_stage] IS NULL THEN 'MOJ'
+                            WHEN [referral_reason] IN ( 'Infant Approval',
+                                                        'Inquest Criminal Hearing' )
+                                 OR [track] = 'Pre-Action Disclosure'
+                            THEN 'Other'
+                            ELSE 'Other'
+                       END ,
+        CASE WHEN bill_date &lt; CAST(YEAR(bill_date) AS VARCHAR)
+                  + '0630' THEN YEAR(bill_date) - 1
+             ELSE YEAR(bill_date)
+        END [client_fin_year] ,
+        SUM([bill].fees_total) defence_costs_billed ,
+        SUM([bill].hard_costs) + SUM([bill].soft_costs) disbursements_billed
+FROM    [red_dw].[dbo].[fact_bill_matter_detail] bill
+        INNER JOIN red_dw.dbo.dim_client dim_client ON dim_client.dim_client_key = bill.dim_client_key
+        INNER JOIN red_dw.dbo.dim_date billed_date ON bill.dim_bill_date_key = billed_date.dim_date_key
+        INNER JOIN red_dw.dbo.dim_matter_header_current header ON header.dim_matter_header_curr_key = bill.dim_matter_header_curr_key
+        INNER JOIN red_dw.dbo.dim_detail_core_details core_details ON core_details.client_code = bill.client_code
+                                                              AND core_details.matter_number = bill.matter_number
+	LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome  ON dim_detail_outcome.client_code = header.client_code AND dim_detail_outcome.matter_number = header.matter_number 
+	LEFT OUTER JOIN red_dw.dbo.dim_client_involvement  ON dim_client_involvement.client_code = header.client_code AND dim_client_involvement.matter_number = header.matter_number 
+
+WHERE   billed_date.dim_date_key &gt;= '20120630'
+AND dim_client.[client_group_code] = '00000126'
+	--AND ISNULL(dim_detail_outcome.[outcome_of_case],'')&lt;&gt; 'Exclude from reports'
+	--AND core_details.[incident_date]&gt;='2012-06-30'
+	--AND ISNULL(dim_client_involvement.[insuredclient_name],'')&lt;&gt; 'Avis Budget UK'
+	--AND header.[matter_number] &lt;&gt; 'ML'
+	--AND NOT (header.client_code='00856937' and header.matter_number='00000002')
+
+        
+GROUP BY CASE WHEN [track] IN ( 'Small Claims', 'Multi Track', 'Fast Track' )
+              THEN RTRIM([track])
+              WHEN [grpageas_motor_moj_stage] IS NULL THEN 'MOJ'
+              WHEN [referral_reason] IN ( 'Infant Approval',
+                                          'Inquest Criminal Hearing' )
+                   OR [track] = 'Pre-Action Disclosure' THEN 'Other'
+              ELSE 'Other'
+         END ,
+        CASE WHEN bill_date &lt; CAST(YEAR(bill_date) AS VARCHAR)
+                  + '0630' THEN YEAR(bill_date) - 1
+             ELSE YEAR(bill_date)
+        END;</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="Categories">
+          <DataField>Categories</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="client_fin_year">
+          <DataField>client_fin_year</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="defence_costs_billed">
+          <DataField>defence_costs_billed</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="disbursements_billed">
+          <DataField>disbursements_billed</DataField>
+          <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -11196,7 +11265,7 @@ Of Accident </Value>
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
-            <DataSetName>SQLFinancialSummaries</DataSetName>
+            <DataSetName>Fees</DataSetName>
             <PageName>Existing Summary</PageName>
             <Top>0.50347in</Top>
             <Left>0.00001in</Left>
