@@ -2460,23 +2460,27 @@ WHERE  name ='Education_-_Bills_Report.png'</CommandText>
           <QueryParameter Name="@bill_date_to">
             <Value>=Parameters!bill_date_to.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@purchase_order_number">
+            <Value>=Parameters!purchase_order_number.Value</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>--DECLARE @client_code AS VARCHAR(10) = '696495'
---		, @bill_date_from AS DATE = '20170101'
+--		, @bill_date_from AS DATE = '20220101'
 --		, @bill_date_to AS DATE = CAST(GETDATE() AS DATE)
-		----, @purchase_order_number AS INT/VARCHAR(10) = 'test_number_here'		
+--		, @purchase_order_number AS NVARCHAR(50) = NULL		
 
 SELECT 
 	dim_matter_header_current.master_client_code + '-' + dim_matter_header_current.master_matter_number		AS [Client/Matter Number]
 	, dim_matter_header_current.matter_owner_full_name			AS [Weightmans Fee Earner]
-	, ''			AS [Purchase Order No.]
-	, ''			AS [Instructing Officer]
+	, dim_detail_claim.purchase_order_no			AS [Purchase Order No.]
+	, dim_detail_claim.instructing_office			AS [Instructing Office]
 	, fact_bill.bill_number		AS [Invoice Number]
 	, CAST(dim_date.calendar_date AS DATE)			AS [Bill Date]
 	, fact_bill.bill_total		AS [Bill Total]
 	, fact_bill.fees_total			AS [Revenue]
 	, ISNULL(fact_bill.paid_disbursements, 0) + ISNULL(fact_bill.unpaid_disbursements, 0)			AS [Disbursements]
 	, fact_bill.vat_amount				AS [VAT]
+	, dim_matter_header_current.date_opened_case_management
 FROM red_dw.dbo.dim_matter_header_current
 	LEFT OUTER JOIN red_dw.dbo.fact_bill
 		ON fact_bill.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
@@ -2486,6 +2490,8 @@ FROM red_dw.dbo.dim_matter_header_current
 		ON dim_date.dim_date_key = fact_bill.dim_bill_date_key
 	LEFT OUTER JOIN red_dw.dbo.dim_client
 		ON dim_client.client_code = dim_matter_header_current.client_code
+	LEFT OUTER JOIN red_dw.dbo.dim_detail_claim	
+		ON dim_detail_claim.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
 WHERE 1 = 1
 	AND RTRIM(dim_client.sector) = 'Education'
 	AND dim_matter_header_current.reporting_exclusions &lt;&gt; 1
@@ -2495,7 +2501,7 @@ WHERE 1 = 1
 	AND dim_matter_header_current.master_client_code IN (@client_code)
 	AND CAST(dim_date.calendar_date AS DATE) &gt;= @bill_date_from
 	AND CAST(dim_date.calendar_date AS DATE) &lt;= @bill_date_to
-	--AND [Purchase Order No.] = @purchase_order_number
+	AND ISNULL(dim_detail_claim.purchase_order_no, '') = IIF(@purchase_order_number is NULL, ISNULL(dim_detail_claim.purchase_order_no, ''), @purchase_order_number)
 	--AND dim_matter_header_current.master_client_code + '-' + dim_matter_header_current.master_matter_number	 = '696495-33'
 ORDER BY
 	[Client/Matter Number]
@@ -2514,8 +2520,8 @@ ORDER BY
           <DataField>Purchase Order No.</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Instructing_Officer">
-          <DataField>Instructing Officer</DataField>
+        <Field Name="Instructing_Office">
+          <DataField>Instructing Office</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Invoice_Number">
@@ -2541,6 +2547,10 @@ ORDER BY
         <Field Name="VAT">
           <DataField>VAT</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="date_opened_case_management">
+          <DataField>date_opened_case_management</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -2827,7 +2837,7 @@ ORDER BY
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>Instructing Officer</Value>
+                                      <Value>Instructing Office</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -3502,7 +3512,7 @@ ORDER BY
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!Instructing_Officer.Value</Value>
+                                      <Value>=Fields!Instructing_Office.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
