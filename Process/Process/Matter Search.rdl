@@ -68,6 +68,12 @@
           <QueryParameter Name="Department">
             <Value>=join(Parameters!Department.Value,"|")</Value>
           </QueryParameter>
+          <QueryParameter Name="Segment">
+            <Value>=Join(Parameters!Segment.Value, "|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="Sector">
+            <Value>=Join(Parameters!Sector.Value, "|")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandText>evaluate (
 	calculatetable (
@@ -101,13 +107,15 @@
 						dim_matter_header_current[billing_arrangement],
 						dim_matter_header_current[billing_arrangement_description],
 						dim_matter_header_current[billing_rate],
-dim_fed_hierarchy_history_matter_owner[matter_owner_business_line],
+						dim_fed_hierarchy_history_matter_owner[matter_owner_business_line],
 						dim_matter_header_current[billing_rate_description],
-						dim_client_involvement[insuredclient_name]
+						dim_client_involvement[insuredclient_name],
+						dim_client[segment],
+						dim_client[sector]
 						),
 					dim_matter_header_current[reporting_exclusions]&lt;&gt;1,
-dim_matter_header_current[matter_number] &lt;&gt; "Unknown",
-dim_client[client_code] &lt;&gt; "00030645",
+					dim_matter_header_current[matter_number] &lt;&gt; "Unknown",
+					dim_client[client_code] &lt;&gt; "00030645",
 					dim_client[client_group_name] = if(@ClientGroup = blank(), dim_client[client_group_name], @ClientGroup),
 					dim_client[client_code] = if(@ClientCode = blank(), dim_client[client_code], @ClientCode),
 					dim_date_matter_opened_practice_management[dim_date_key] &gt;= if(value(@OpenDateFrom) = blank(), 19900101, value(@OpenDateFrom)),
@@ -117,11 +125,13 @@ dim_client[client_code] &lt;&gt; "00030645",
 					dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code] = if(@FEDCode = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code], @FEDCode),
 					dim_matter_header_current[matter_partner_code] = if(@Partner = blank(), dim_matter_header_current[matter_partner_code], @Partner),
 					pathcontains(@WorkType, dim_matter_worktype[work_type_name]),
-PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
-pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
-PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team]),
---dim_fed_hierarchy_history_matter_owner[matter_owner_team] = if(@Team = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_team], @Team)
-dim_matter_header_current[matter_number] = if(@Matter = blank(), dim_matter_header_current[matter_number], @Matter)
+					PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+					pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
+					PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team]),
+					--dim_fed_hierarchy_history_matter_owner[matter_owner_team] = if(@Team = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_team], @Team)
+					dim_matter_header_current[matter_number] = if(@Matter = blank(), dim_matter_header_current[matter_number], @Matter),
+					PATHCONTAINS(@Segment, IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment])),
+					PATHCONTAINS(@Sector, IF(ISBLANK(dim_client[sector]), "No Assigned Sector", dim_client[sector]))
 					)
 			)
 
@@ -315,6 +325,18 @@ dim_matter_header_current[matter_number]</CommandText>
                     </ID>
                     <ItemCaption>dim_client_involvement[insuredclient_name]</ItemCaption>
                   </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_client[segment]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_client[segment]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_client[sector]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_client[sector]</ItemCaption>
+                  </Item>
                 </Items>
               </Select>
               <AutoExecute>false</AutoExecute>
@@ -357,13 +379,15 @@ dim_matter_header_current[matter_number]</CommandText>
 						dim_matter_header_current[billing_arrangement],
 						dim_matter_header_current[billing_arrangement_description],
 						dim_matter_header_current[billing_rate],
-dim_fed_hierarchy_history_matter_owner[matter_owner_business_line],
+						dim_fed_hierarchy_history_matter_owner[matter_owner_business_line],
 						dim_matter_header_current[billing_rate_description],
-						dim_client_involvement[insuredclient_name]
+						dim_client_involvement[insuredclient_name],
+						dim_client[segment],
+						dim_client[sector]
 						),
 					dim_matter_header_current[reporting_exclusions]&amp;lt;&amp;gt;1,
-dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "Unknown",
-dim_client[client_code] &amp;lt;&amp;gt; "00030645",
+					dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "Unknown",
+					dim_client[client_code] &amp;lt;&amp;gt; "00030645",
 					dim_client[client_group_name] = if(@ClientGroup = blank(), dim_client[client_group_name], @ClientGroup),
 					dim_client[client_code] = if(@ClientCode = blank(), dim_client[client_code], @ClientCode),
 					dim_date_matter_opened_practice_management[dim_date_key] &amp;gt;= if(value(@OpenDateFrom) = blank(), 19900101, value(@OpenDateFrom)),
@@ -373,11 +397,13 @@ dim_client[client_code] &amp;lt;&amp;gt; "00030645",
 					dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code] = if(@FEDCode = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code], @FEDCode),
 					dim_matter_header_current[matter_partner_code] = if(@Partner = blank(), dim_matter_header_current[matter_partner_code], @Partner),
 					pathcontains(@WorkType, dim_matter_worktype[work_type_name]),
-PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
-pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
-PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team]),
---dim_fed_hierarchy_history_matter_owner[matter_owner_team] = if(@Team = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_team], @Team)
-dim_matter_header_current[matter_number] = if(@Matter = blank(), dim_matter_header_current[matter_number], @Matter)
+					PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+					pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
+					PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team]),
+					--dim_fed_hierarchy_history_matter_owner[matter_owner_team] = if(@Team = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_team], @Team)
+					dim_matter_header_current[matter_number] = if(@Matter = blank(), dim_matter_header_current[matter_number], @Matter),
+					PATHCONTAINS(@Segment, IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment])),
+					PATHCONTAINS(@Sector, IF(ISBLANK(dim_client[sector]), "No Assigned Sector", dim_client[sector]))
 					)
 			)
 
@@ -424,13 +450,15 @@ dim_matter_header_current[matter_number]&lt;/QueryText&gt;
 						dim_matter_header_current[billing_arrangement],
 						dim_matter_header_current[billing_arrangement_description],
 						dim_matter_header_current[billing_rate],
-dim_fed_hierarchy_history_matter_owner[matter_owner_business_line],
+						dim_fed_hierarchy_history_matter_owner[matter_owner_business_line],
 						dim_matter_header_current[billing_rate_description],
-						dim_client_involvement[insuredclient_name]
+						dim_client_involvement[insuredclient_name],
+						dim_client[segment],
+						dim_client[sector]
 						),
 					dim_matter_header_current[reporting_exclusions]&lt;&gt;1,
-dim_matter_header_current[matter_number] &lt;&gt; "Unknown",
-dim_client[client_code] &lt;&gt; "00030645",
+					dim_matter_header_current[matter_number] &lt;&gt; "Unknown",
+					dim_client[client_code] &lt;&gt; "00030645",
 					dim_client[client_group_name] = if(@ClientGroup = blank(), dim_client[client_group_name], @ClientGroup),
 					dim_client[client_code] = if(@ClientCode = blank(), dim_client[client_code], @ClientCode),
 					dim_date_matter_opened_practice_management[dim_date_key] &gt;= if(value(@OpenDateFrom) = blank(), 19900101, value(@OpenDateFrom)),
@@ -440,11 +468,13 @@ dim_client[client_code] &lt;&gt; "00030645",
 					dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code] = if(@FEDCode = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_fed_code], @FEDCode),
 					dim_matter_header_current[matter_partner_code] = if(@Partner = blank(), dim_matter_header_current[matter_partner_code], @Partner),
 					pathcontains(@WorkType, dim_matter_worktype[work_type_name]),
-PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
-pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
-PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team]),
---dim_fed_hierarchy_history_matter_owner[matter_owner_team] = if(@Team = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_team], @Team)
-dim_matter_header_current[matter_number] = if(@Matter = blank(), dim_matter_header_current[matter_number], @Matter)
+					PATHCONTAINS(@Division,dim_fed_hierarchy_history_matter_owner[matter_owner_business_line]),
+					pathcontains(@Department,dim_fed_hierarchy_history_matter_owner[matter_owner_practice_area]),
+					PATHCONTAINS(@Team,dim_fed_hierarchy_history_matter_owner[matter_owner_team]),
+					--dim_fed_hierarchy_history_matter_owner[matter_owner_team] = if(@Team = blank(), dim_fed_hierarchy_history_matter_owner[matter_owner_team], @Team)
+					dim_matter_header_current[matter_number] = if(@Matter = blank(), dim_matter_header_current[matter_number], @Matter),
+					PATHCONTAINS(@Segment, IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment])),
+					PATHCONTAINS(@Sector, IF(ISBLANK(dim_client[sector]), "No Assigned Sector", dim_client[sector]))
 					)
 			)
 
@@ -608,6 +638,30 @@ dim_matter_header_current[matter_number]</Statement>
                     </ParameterizedStatement>
                   </ParameterValuesQuery>
                 </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Segment</Name>
+                  <DefaultValues>
+                    <DefaultValue>Corporates</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Segment</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+                <ParameterDefinition>
+                  <Name>Sector</Name>
+                  <DefaultValues>
+                    <DefaultValue>Transport &amp; Logistics</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Sector</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
               </ParameterDefinitions>
             </Query>
           </QueryDefinition>
@@ -735,6 +789,14 @@ dim_matter_header_current[matter_number]</Statement>
         </Field>
         <Field Name="dim_client_involvement_insuredclient_name_">
           <DataField>dim_client_involvement[insuredclient_name]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dim_client_segment_">
+          <DataField>dim_client[segment]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="dim_client_sector_">
+          <DataField>dim_client[sector]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -1548,6 +1610,199 @@ WHERE matter_description IS NOT NULL </CommandText>
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="param_segment">
+      <Query>
+        <DataSourceName>SSAS_CD</DataSourceName>
+        <CommandText>EVALUATE(
+	SUMMARIZE(
+		fact_dimension_main,
+		dim_client[segment],
+		"trasformed_segment", IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment])
+	)
+)
+ORDER BY
+	dim_client[segment]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_client[segment]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_client[segment]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[trasformed_segment]</ColumnName>
+                    </ID>
+                    <ItemCaption>[trasformed_segment]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+	SUMMARIZE(
+		fact_dimension_main,
+		dim_client[segment],
+		"trasformed_segment", IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment])
+	)
+)
+ORDER BY
+	dim_client[segment]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+	SUMMARIZE(
+		fact_dimension_main,
+		dim_client[segment],
+		"trasformed_segment", IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment])
+	)
+)
+ORDER BY
+	dim_client[segment]</Statement>
+              <ParameterDefinitions />
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_client_segment_">
+          <DataField>dim_client[segment]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_trasformed_segment_">
+          <DataField>[trasformed_segment]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="param_sector">
+      <Query>
+        <DataSourceName>SSAS_CD</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="Segment">
+            <Value>=Join(Parameters!Segment.Value, "|")</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			fact_dimension_main,
+			dim_client[sector],
+			"transformed_sector", IF(ISBLANK(dim_client[sector]), "No Assigned Sector", dim_client[sector])
+		),
+		PATHCONTAINS(@Segment, IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment]))
+	)
+)
+ORDER BY
+	dim_client[sector]</CommandText>
+        <rd:DesignerState>
+          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
+            <CommandType>DMX</CommandType>
+            <Type>Query</Type>
+            <QuerySpecification xsi:type="DMXQuerySpecification">
+              <Select>
+                <Items>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>dim_client[sector]</ColumnName>
+                    </ID>
+                    <ItemCaption>dim_client[sector]</ItemCaption>
+                  </Item>
+                  <Item>
+                    <ID xsi:type="Column">
+                      <ColumnName>[transformed_sector]</ColumnName>
+                    </ID>
+                    <ItemCaption>[transformed_sector]</ItemCaption>
+                  </Item>
+                </Items>
+              </Select>
+              <AutoExecute>false</AutoExecute>
+              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;SelectTablesControlState&gt;
+    &lt;Tables /&gt;
+  &lt;/SelectTablesControlState&gt;
+  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
+  &lt;View&gt;Text&lt;/View&gt;
+  &lt;QueryText&gt;EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			fact_dimension_main,
+			dim_client[sector],
+			"transformed_sector", IF(ISBLANK(dim_client[sector]), "No Assigned Sector", dim_client[sector])
+		),
+		PATHCONTAINS(@Segment, IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment]))
+	)
+)
+ORDER BY
+	dim_client[sector]&lt;/QueryText&gt;
+  &lt;DatabaseId /&gt;
+  &lt;MiningStructureId /&gt;
+  &lt;MiningModelId /&gt;
+  &lt;ColumnMappings /&gt;
+  &lt;GridRows /&gt;
+&lt;/DataminingQueryBuilderState&gt;</Data>
+            </QuerySpecification>
+            <Query>
+              <Statement>EVALUATE(
+	CALCULATETABLE(
+		SUMMARIZE(
+			fact_dimension_main,
+			dim_client[sector],
+			"transformed_sector", IF(ISBLANK(dim_client[sector]), "No Assigned Sector", dim_client[sector])
+		),
+		PATHCONTAINS(@Segment, IF(ISBLANK(dim_client[segment]), "No Assigned Segment", dim_client[segment]))
+	)
+)
+ORDER BY
+	dim_client[sector]</Statement>
+              <ParameterDefinitions>
+                <ParameterDefinition>
+                  <Name>Segment</Name>
+                  <DefaultValues>
+                    <DefaultValue>Corporates</DefaultValue>
+                  </DefaultValues>
+                  <Caption>Segment</Caption>
+                  <ParameterValuesQuery>
+                    <ParameterizedStatement>
+                      <ReferencedParameters />
+                    </ParameterizedStatement>
+                  </ParameterValuesQuery>
+                </ParameterDefinition>
+              </ParameterDefinitions>
+            </Query>
+          </QueryDefinition>
+        </rd:DesignerState>
+      </Query>
+      <Fields>
+        <Field Name="dim_client_sector_">
+          <DataField>dim_client[sector]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="ID_transformed_sector_">
+          <DataField>[transformed_sector]</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -1600,6 +1855,12 @@ WHERE matter_description IS NOT NULL </CommandText>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>3.58479cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.05563cm</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>3.02917cm</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>2.57938cm</Width>
@@ -1697,9 +1958,11 @@ WHERE matter_description IS NOT NULL </CommandText>
                             </Border>
                           </Style>
                         </Image>
-                        <ColSpan>26</ColSpan>
+                        <ColSpan>28</ColSpan>
                       </CellContents>
                     </TablixCell>
+                    <TablixCell />
+                    <TablixCell />
                     <TablixCell />
                     <TablixCell />
                     <TablixCell />
@@ -2400,6 +2663,76 @@ WHERE matter_description IS NOT NULL </CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="Textbox37">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Weightmans Segment</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox37</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox74">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>Weightmans Sector</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox74</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Textbox36">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -2431,6 +2764,7 @@ WHERE matter_description IS NOT NULL </CommandText>
                             <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -3570,6 +3904,74 @@ WHERE matter_description IS NOT NULL </CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox69</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox39">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox39</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox76">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value />
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                    <FontWeight>Bold</FontWeight>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox76</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -4824,6 +5226,72 @@ WHERE matter_description IS NOT NULL </CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="dim_client_segment_">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!dim_client_segment_.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>dim_client_segment_</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="dim_client_sector_">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!dim_client_sector_.Value</Value>
+                                  <Style>
+                                    <FontFamily>Lucida Sans Unicode</FontFamily>
+                                    <FontSize>8pt</FontSize>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>dim_client_sector_</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="dim_date_matter_opened_practice_management_matter_opened_practice_management_calendar_date_">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -5589,6 +6057,8 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
+                <TablixMember />
+                <TablixMember />
                 <TablixMember>
                   <Visibility>
                     <Hidden>=iif(Parameters!hide_show.Value = 1,true,false)</Hidden>
@@ -5631,7 +6101,7 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
             </TablixRowHierarchy>
             <DataSetName>DAXDataset</DataSetName>
             <Height>4.38438cm</Height>
-            <Width>97.47481cm</Width>
+            <Width>103.5596cm</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -5706,7 +6176,7 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
         <Height>2.34788in</Height>
         <Style />
       </Body>
-      <Width>38.37591in</Width>
+      <Width>40.7715in</Width>
       <Page>
         <PageHeight>21cm</PageHeight>
         <PageWidth>29.7cm</PageWidth>
@@ -5779,11 +6249,6 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="Partner">
-      <DataType>String</DataType>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>Partner</Prompt>
-    </ReportParameter>
     <ReportParameter Name="Department">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5802,11 +6267,6 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
-    <ReportParameter Name="FEDCode">
-      <DataType>String</DataType>
-      <AllowBlank>true</AllowBlank>
-      <Prompt>FED Code</Prompt>
-    </ReportParameter>
     <ReportParameter Name="Team">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5824,6 +6284,16 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
         </DataSetReference>
       </ValidValues>
       <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Partner">
+      <DataType>String</DataType>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Partner</Prompt>
+    </ReportParameter>
+    <ReportParameter Name="FEDCode">
+      <DataType>String</DataType>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>FED Code</Prompt>
     </ReportParameter>
     <ReportParameter Name="WorkType">
       <DataType>String</DataType>
@@ -5866,6 +6336,44 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
       </ValidValues>
       <MultiValue>true</MultiValue>
     </ReportParameter>
+    <ReportParameter Name="Segment">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_segment</DataSetName>
+          <ValueField>ID_trasformed_segment_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Segment</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_segment</DataSetName>
+          <ValueField>ID_trasformed_segment_</ValueField>
+          <LabelField>ID_trasformed_segment_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="Sector">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>param_sector</DataSetName>
+          <ValueField>ID_transformed_sector_</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <AllowBlank>true</AllowBlank>
+      <Prompt>Sector</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>param_sector</DataSetName>
+          <ValueField>ID_transformed_sector_</ValueField>
+          <LabelField>ID_transformed_sector_</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
     <ReportParameter Name="hide_show">
       <DataType>String</DataType>
       <DefaultValue>
@@ -5892,7 +6400,7 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
   <ReportParametersLayout>
     <GridLayoutDefinition>
       <NumberOfColumns>2</NumberOfColumns>
-      <NumberOfRows>8</NumberOfRows>
+      <NumberOfRows>9</NumberOfRows>
       <CellDefinitions>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5937,22 +6445,22 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
         <CellDefinition>
           <ColumnIndex>1</ColumnIndex>
           <RowIndex>4</RowIndex>
-          <ParameterName>Department</ParameterName>
-        </CellDefinition>
-        <CellDefinition>
-          <ColumnIndex>1</ColumnIndex>
-          <RowIndex>5</RowIndex>
           <ParameterName>Team</ParameterName>
         </CellDefinition>
         <CellDefinition>
-          <ColumnIndex>0</ColumnIndex>
+          <ColumnIndex>1</ColumnIndex>
           <RowIndex>5</RowIndex>
           <ParameterName>FEDCode</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>4</RowIndex>
+          <RowIndex>5</RowIndex>
           <ParameterName>Partner</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>4</RowIndex>
+          <ParameterName>Department</ParameterName>
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
@@ -5966,8 +6474,18 @@ Fields!ID_WIPMins_.Value, "ChargeableHours")
         </CellDefinition>
         <CellDefinition>
           <ColumnIndex>0</ColumnIndex>
-          <RowIndex>7</RowIndex>
+          <RowIndex>8</RowIndex>
           <ParameterName>hide_show</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>7</RowIndex>
+          <ParameterName>Segment</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>1</ColumnIndex>
+          <RowIndex>7</RowIndex>
+          <ParameterName>Sector</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
