@@ -2450,7 +2450,37 @@ WHERE  name ='Zurich_Detailed_Debt_Report.png'</CommandText>
     <DataSet Name="Zurich_debt_sql">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>
+        <CommandText>--=========================================================================================================================
+-- temp table for Zurich Arcs comments
+--=========================================================================================================================
+DROP TABLE IF EXISTS #zurich_arcs
+SELECT
+	ds_sh_arcs_tblactivityinstance.invoice_num,
+	CAST(ISNULL(ds_sh_arcs_tblactivity.modifydate, ds_sh_arcs_tblactivity.createdate) AS DATE) AS modifydate,
+	ds_sh_arcs_tblactivity.active,
+	ds_sh_arcs_tbludf.value,
+	ds_sh_arcs_udf_code_group.uct_name,
+	ds_sh_arcs_tblactivity.narrative,
+	ROW_NUMBER() OVER (PARTITION BY ds_sh_arcs_udf_code_group.uct_name, ds_sh_arcs_tblactivityinstance.invoice_num ORDER BY ds_sh_arcs_tblactivity.createdate DESC) AS row_num
+INTO #zurich_arcs
+--select *
+FROM red_dw.dbo.ds_sh_arcs_tblactivity
+	INNER JOIN red_dw.dbo.ds_sh_arcs_tblactivityinstance 
+		ON ds_sh_arcs_tblactivity.activityid = ds_sh_arcs_tblactivityinstance.activityid
+			AND invoice_num is not null
+	LEFT OUTER JOIN red_dw.dbo.ds_sh_arcs_tbludf
+		ON ds_sh_arcs_tbludf.activityid = ds_sh_arcs_tblactivity.activityid
+	LEFT OUTER JOIN red_dw.dbo.ds_sh_arcs_udf_code_group
+		ON ds_sh_arcs_tbludf.value = ds_sh_arcs_udf_code_group.uct_code
+WHERE 
+	ds_sh_arcs_tblactivity.createuserid NOT IN (2,14) 
+	AND ds_sh_arcs_tblactivity.active = 1 AND ds_sh_arcs_tblactivity.deleteuserid IS null
+	--AND ds_sh_arcs_tblactivityinstance.invoice_num = '02070569'
+	AND ds_sh_arcs_tblactivity.actionid IS NULL
+	AND ds_sh_arcs_udf_code_group.uct_desc IS NOT NULL
+	AND ds_sh_arcs_tblactivity.narrative IS NOT NULL
+	AND ds_sh_arcs_udf_code_group.uct_name = 'Zurich'
+
 --=========================================================================================================================
 -- temp table to filter out Zurich addresses
 --=========================================================================================================================
@@ -2547,8 +2577,8 @@ SELECT
 	, ''		AS [IPU Comments]
 	, ''		AS [Supplier Additional Comments]
 	, #zurich_address.FormattedString AS 'PayorFormattedString'
-	, dim_bill_debt_narrative.udf_modified_by			AS [ARCS Modified By]
-	, dim_bill_debt_narrative.udf_narrative				AS [ARCS Narrative]
+	, #zurich_arcs.modifydate		AS [ARCS Modified By]
+	, #zurich_arcs.narrative				AS [ARCS Narrative]
 	,dim_detail_client.[is_there_a_catalina_claim_number_on_this_claim]
 	,dim_detail_client.[multiple_claim_numbers_zurich_or_catalina]
 	,CASE WHEN dim_detail_client.[is_there_a_catalina_claim_number_on_this_claim]='Yes'
@@ -2584,6 +2614,9 @@ FROM  TE_3E_Prod.dbo.InvPayor
 		ON dim_client_involvement.dim_client_involvement_key = fact_dimension_main.dim_client_involvement_key
 	LEFT OUTER JOIN red_dw.dbo.dim_bill_debt_narrative	
 		ON InvPayor.InvNumber COLLATE DATABASE_DEFAULT = dim_bill_debt_narrative.bill_number
+	LEFT OUTER JOIN #zurich_arcs
+		ON InvPayor.InvNumber COLLATE DATABASE_DEFAULT = #zurich_arcs.invoice_num
+			AND #zurich_arcs.row_num = 1
 WHERE 
 	InvPayor.BalAmt &lt;&gt; 0
 	AND dim_matter_header_current.master_client_code = 'Z1001'
@@ -2693,7 +2726,7 @@ ORDER BY
         </Field>
         <Field Name="ARCS_Modified_By">
           <DataField>ARCS Modified By</DataField>
-          <rd:TypeName>System.String</rd:TypeName>
+          <rd:TypeName>System.DateTime</rd:TypeName>
         </Field>
         <Field Name="ARCS_Narrative">
           <DataField>ARCS Narrative</DataField>
@@ -6322,6 +6355,7 @@ ORDER BY
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
                                         <FontSize>=First(Fields!tblDataRows_Font_FontSize.Value, "DefaultProperties")</FontSize>
                                         <FontWeight>=First(Fields!tblDataRows_Font_FontWeight.Value, "DefaultProperties")</FontWeight>
+                                        <Format>dd/MM/yyyy</Format>
                                         <TextDecoration>=First(Fields!tblDataRows_Font_TextDecoration.Value, "DefaultProperties")</TextDecoration>
                                         <Color>=First(Fields!tblDataRows_Color.Value, "DefaultProperties")</Color>
                                         <Language>=First(Fields!tblDataRows_Language.Value, "DefaultProperties")</Language>
@@ -6372,6 +6406,7 @@ ORDER BY
                                 <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                               </Style>
                             </Textbox>
+                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                         <TablixCell>
