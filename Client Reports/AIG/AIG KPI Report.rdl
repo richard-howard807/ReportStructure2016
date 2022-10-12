@@ -2447,7 +2447,7 @@ WHERE  name ='AIG_KPI_Report.png'</CommandText>
         </Field>
       </Fields>
     </DataSet>
-    <DataSet Name="aig_kpi">
+    <DataSet Name="SQL">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
         <QueryParameters>
@@ -2464,9 +2464,10 @@ WHERE  name ='AIG_KPI_Report.png'</CommandText>
             <Value>=Parameters!referral_reason.Value</Value>
           </QueryParameter>
         </QueryParameters>
-        <CommandText>--DECLARE @year_type AS NVARCHAR(10) = 'Financial'
---DECLARE @year AS INT = 2021
---DECLARE @date_period AS INT = '1, 2, 3, 4'
+        <CommandText>
+--DECLARE @year_type AS NVARCHAR(10) = 'Financial'
+--DECLARE @year AS INT = 2023
+--DECLARE @date_period AS INT = '1'
 --DECLARE @referral_reason AS NVARCHAR(MAX) = 'dispute on liability and quantum'
 
 DROP TABLE IF EXISTS #DimDateData
@@ -2525,7 +2526,6 @@ FROM (
 		WHERE
 			dim_matter_header_current.master_client_code = 'A2002'
 			AND dim_bill.bill_reversed = 0
-AND fact_bill.bill_number &lt;&gt;'PURGE'
 		GROUP BY
 			dim_matter_header_current.dim_matter_header_curr_key
 	) AS last_bill
@@ -2580,11 +2580,17 @@ SELECT
 	, dim_detail_core_details.delegated		AS [Delegated]
 	, dim_detail_core_details.aig_current_fee_scale		AS [AIG Current Fee Scale]
 	, dim_detail_finance.output_wip_fee_arrangement		AS [Fee Arrangement]
+	,ms_fileid
+	,udClaimsA.cboWhatFeeArr
+	,udMICoreGeneral.cboFeeArrang
+
+	
 	, CASE	
 		WHEN dim_detail_finance.output_wip_fee_arrangement = 'Fixed Fee/Fee Quote/Capped Fee' THEN
 			'Fixed Fee'
 		WHEN dim_detail_finance.output_wip_fee_arrangement = 'Hourly rate' THEN	
 			'Hourly Rate'
+			WHEN udMICoreGeneral.cboFeeArrang = 'HOURLY' THEN 'Hourly Rate'
 		ELSE	
 			'Other'
 	  END				AS [Mapped Fee Arrangement]
@@ -2694,10 +2700,17 @@ FROM red_dw.dbo.dim_matter_header_current
 		ON #aig_billed_hours.dim_matter_header_curr_key = dim_matter_header_current.dim_matter_header_curr_key
 	INNER JOIN red_dw.dbo.dim_date
 		ON dim_date.dim_date_key = #aig_last_bill_date.dim_bill_date_key
+
+		LEFT JOIN ms_prod.dbo.udClaimsA
+		ON udClaimsA.fileID = ms_fileid
+
+	LEFT JOIN ms_prod.dbo.udMICoreGeneral
+	ON udMICoreGeneral.fileID = ms_fileid
 WHERE 1 = 1
 	AND RTRIM(dim_detail_core_details.present_position) IN ('Final bill sent - unpaid', 'To be closed/minor balances to be clear') 
 	AND IIF(ISNULL(LOWER(RTRIM(dim_detail_core_details.referral_reason)), '') = '', 'missing', LOWER(RTRIM(dim_detail_core_details.referral_reason))) IN (@referral_reason)
 	AND ISNULL(LOWER(RTRIM(dim_detail_outcome.outcome_of_case)), '') &lt;&gt; 'exclude from reports'
+	--AND dim_matter_header_current.master_client_code +'-' + master_matter_number = 'A2002-10048'
 ORDER BY	
 	[Date Case Opened]
 </CommandText>
@@ -2799,13 +2812,25 @@ ORDER BY
           <DataField>Fee Arrangement</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="ms_fileid">
+          <DataField>ms_fileid</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
         <Field Name="Damages_Reserve_Initial">
           <DataField>Damages Reserve Initial</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
+        <Field Name="cboWhatFeeArr">
+          <DataField>cboWhatFeeArr</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
         <Field Name="Claimant_Costs_Reserve_Initial">
           <DataField>Claimant Costs Reserve Initial</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
+        </Field>
+        <Field Name="cboFeeArrang">
+          <DataField>cboFeeArrang</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Mapped_Fee_Arrangement">
           <DataField>Mapped Fee Arrangement</DataField>
@@ -3077,7 +3102,7 @@ ORDER BY
                       <Width>0.84028in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>1in</Width>
+                      <Width>1.18054in</Width>
                     </TablixColumn>
                   </TablixColumns>
                   <TablixRows>
@@ -5335,7 +5360,6 @@ Avg(Fields!Recovery_Rate.Value))</Value>
                                 <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                               </Style>
                             </Textbox>
-                            <rd:Selected>true</rd:Selected>
                           </CellContents>
                         </TablixCell>
                       </TablixCells>
@@ -5643,14 +5667,14 @@ Avg(Fields!Recovery_Rate.Value))</Value>
                 </TablixRowHierarchy>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
-                <DataSetName>aig_kpi</DataSetName>
+                <DataSetName>SQL</DataSetName>
                 <PageBreak>
                   <BreakLocation>End</BreakLocation>
                 </PageBreak>
                 <PageName>Summary</PageName>
                 <Top>0.0441cm</Top>
                 <Height>1.07291in</Height>
-                <Width>12.64028in</Width>
+                <Width>12.82082in</Width>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -5737,22 +5761,22 @@ Avg(Fields!Recovery_Rate.Value))</Value>
                       <Width>1in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.84028in</Width>
+                      <Width>1.13195in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.86111in</Width>
+                      <Width>1.15278in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.75694in</Width>
+                      <Width>1.06944in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.77778in</Width>
+                      <Width>0.98611in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.84028in</Width>
+                      <Width>1.09028in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.79167in</Width>
+                      <Width>1.04167in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>1.18056in</Width>
@@ -5764,7 +5788,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
                       <Width>1in</Width>
                     </TablixColumn>
                     <TablixColumn>
-                      <Width>0.82639in</Width>
+                      <Width>0.93056in</Width>
                     </TablixColumn>
                     <TablixColumn>
                       <Width>0.86806in</Width>
@@ -12776,11 +12800,11 @@ Avg(Fields!Recovery_Rate.Value))</Value>
                 </TablixRowHierarchy>
                 <FixedColumnHeaders>true</FixedColumnHeaders>
                 <NoRowsMessage>=First(Fields!tblData_NoRowsMessage.Value, "DefaultProperties")</NoRowsMessage>
-                <DataSetName>aig_kpi</DataSetName>
+                <DataSetName>SQL</DataSetName>
                 <PageName>Full Data</PageName>
                 <Top>2.85309cm</Top>
                 <Height>0.78124in</Height>
-                <Width>55.6125in</Width>
+                <Width>57.32083in</Width>
                 <ZIndex>1</ZIndex>
                 <Style>
                   <Border>
@@ -12795,7 +12819,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
             </ReportItems>
             <Top>0.3175cm</Top>
             <Height>1.97222in</Height>
-            <Width>55.6125in</Width>
+            <Width>57.32083in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -12839,7 +12863,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
           </BackgroundImage>
         </Style>
       </Body>
-      <Width>55.6125in</Width>
+      <Width>57.32083in</Width>
       <Page>
         <PageHeader>
           <Height>1.07457in</Height>
@@ -12883,7 +12907,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
                   </Paragraphs>
                   <Top>0.03528cm</Top>
                   <Height>0.24208in</Height>
-                  <Width>55.6125in</Width>
+                  <Width>57.32083in</Width>
                   <Visibility>
                     <Hidden>=CBool(First(Fields!txtTotalPages_Hidden.Value, "DefaultProperties"))</Hidden>
                   </Visibility>
@@ -12926,7 +12950,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
               <KeepTogether>true</KeepTogether>
               <Top>0.78124in</Top>
               <Height>0.25597in</Height>
-              <Width>55.6125in</Width>
+              <Width>57.32083in</Width>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
               </Visibility>
@@ -13027,7 +13051,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
               <Top>0.125in</Top>
               <Left>1.8in</Left>
               <Height>0.64235in</Height>
-              <Width>53.8125in</Width>
+              <Width>55.52083in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=CBool(First(Fields!imgLogo2_Hidden.Value, "DefaultProperties"))</Hidden>
@@ -13114,7 +13138,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
               </Paragraphs>
               <Top>0.35569cm</Top>
               <Height>0.25in</Height>
-              <Width>55.6125in</Width>
+              <Width>57.32083in</Width>
               <Visibility>
                 <Hidden>=CBool(First(Fields!txtPageNumber_Visibility_Hidden.Value, "DefaultProperties"))</Hidden>
               </Visibility>
@@ -13266,7 +13290,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
               </Paragraphs>
               <Top>0.7853in</Top>
               <Height>0.36938in</Height>
-              <Width>55.6125in</Width>
+              <Width>57.32083in</Width>
               <ZIndex>1</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
@@ -13320,7 +13344,7 @@ Avg(Fields!Recovery_Rate.Value))</Value>
               </ActionInfo>
               <Top>0.45948in</Top>
               <Height>0.25638in</Height>
-              <Width>55.6125in</Width>
+              <Width>57.32083in</Width>
               <ZIndex>2</ZIndex>
               <Visibility>
                 <Hidden>=IIF(Globals!RenderFormat.Name="EXCELOPENXML", True, False)</Hidden>
