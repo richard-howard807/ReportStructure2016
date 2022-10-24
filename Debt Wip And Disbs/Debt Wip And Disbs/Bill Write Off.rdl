@@ -2468,6 +2468,12 @@ WHERE  name ='Bill Write Off.png'</CommandText>
           <QueryParameter Name="@EndDate">
             <Value>=Parameters!EndDate.Value</Value>
           </QueryParameter>
+          <QueryParameter Name="@MatterOwner">
+            <Value>=JOIN(Parameters!MatterOwner.Value,"|")</Value>
+          </QueryParameter>
+          <QueryParameter Name="@ClientPartner">
+            <Value>=JOIN(Parameters!ClientPartner.Value,"|")</Value>
+          </QueryParameter>
         </QueryParameters>
         <CommandType>StoredProcedure</CommandType>
         <CommandText>dbo.WrittenOffBills</CommandText>
@@ -2619,6 +2625,75 @@ WHERE  name ='Bill Write Off.png'</CommandText>
         <Field Name="EndDate">
           <DataField>EndDate</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="MatterOwner">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT matter_owner_full_name
+FROM red_dw.dbo.fact_bill_write_off
+INNER JOIN red_dw.dbo.dim_matter_header_current
+ ON dim_matter_header_current.dim_matter_header_curr_key = fact_bill_write_off.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+INNER JOIN red_dw.dbo.dim_write_off_date
+ ON dim_write_off_date.dim_write_off_date_key = fact_bill_write_off.dim_write_off_date_key
+
+INNER JOIN red_dw.dbo.dim_client
+ ON dim_client.client_code = dim_matter_header_current.client_code
+
+WHERE CONVERT(DATE,write_off_calendar_date,103) BETWEEN @StartDate AND @EndDate
+
+ORDER BY 1 ASC</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="matter_owner_full_name">
+          <DataField>matter_owner_full_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="ClientPartner">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <QueryParameters>
+          <QueryParameter Name="@StartDate">
+            <Value>=Parameters!StartDate.Value</Value>
+          </QueryParameter>
+          <QueryParameter Name="@EndDate">
+            <Value>=Parameters!EndDate.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+        <CommandText>SELECT DISTINCT client_partner_name
+FROM red_dw.dbo.fact_bill_write_off
+INNER JOIN red_dw.dbo.dim_matter_header_current
+ ON dim_matter_header_current.dim_matter_header_curr_key = fact_bill_write_off.dim_matter_header_curr_key
+INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
+ ON fed_code=fee_earner_code COLLATE DATABASE_DEFAULT AND dss_current_flag='Y'
+INNER JOIN red_dw.dbo.dim_write_off_date
+ ON dim_write_off_date.dim_write_off_date_key = fact_bill_write_off.dim_write_off_date_key
+
+INNER JOIN red_dw.dbo.dim_client
+ ON dim_client.client_code = dim_matter_header_current.client_code
+
+WHERE CONVERT(DATE,write_off_calendar_date,103) BETWEEN @StartDate AND @EndDate
+
+ORDER BY 1 ASC
+</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="client_partner_name">
+          <DataField>client_partner_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
     </DataSet>
@@ -5393,6 +5468,42 @@ WHERE  name ='Bill Write Off.png'</CommandText>
       </DefaultValue>
       <Prompt>End Date</Prompt>
     </ReportParameter>
+    <ReportParameter Name="MatterOwner">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>MatterOwner</DataSetName>
+          <ValueField>matter_owner_full_name</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Matter Owner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>MatterOwner</DataSetName>
+          <ValueField>matter_owner_full_name</ValueField>
+          <LabelField>matter_owner_full_name</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
+    <ReportParameter Name="ClientPartner">
+      <DataType>String</DataType>
+      <DefaultValue>
+        <DataSetReference>
+          <DataSetName>ClientPartner</DataSetName>
+          <ValueField>client_partner_name</ValueField>
+        </DataSetReference>
+      </DefaultValue>
+      <Prompt>Client Partner</Prompt>
+      <ValidValues>
+        <DataSetReference>
+          <DataSetName>ClientPartner</DataSetName>
+          <ValueField>client_partner_name</ValueField>
+          <LabelField>client_partner_name</LabelField>
+        </DataSetReference>
+      </ValidValues>
+      <MultiValue>true</MultiValue>
+    </ReportParameter>
   </ReportParameters>
   <ReportParametersLayout>
     <GridLayoutDefinition>
@@ -5428,6 +5539,16 @@ WHERE  name ='Bill Write Off.png'</CommandText>
           <ColumnIndex>0</ColumnIndex>
           <RowIndex>5</RowIndex>
           <ParameterName>EndDate</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>6</RowIndex>
+          <ParameterName>MatterOwner</ParameterName>
+        </CellDefinition>
+        <CellDefinition>
+          <ColumnIndex>0</ColumnIndex>
+          <RowIndex>7</RowIndex>
+          <ParameterName>ClientPartner</ParameterName>
         </CellDefinition>
       </CellDefinitions>
     </GridLayoutDefinition>
