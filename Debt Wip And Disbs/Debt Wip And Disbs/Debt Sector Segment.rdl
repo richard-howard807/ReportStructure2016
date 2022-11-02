@@ -719,7 +719,7 @@ ORDER BY 1 desc</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>--DECLARE @Month AS INT = 202306
-SELECT DISTINCT 
+SELECT 
 
 debt_month,
 name AS    [Display_Name],
@@ -731,12 +731,13 @@ dim_client.sub_sector AS [Client Sub-Sector],
 dim_client.segment    AS [Client Segment ],
 fact_dimension_main.master_client_code AS [Client Code],
 master_matter_number AS [Matter Number],
+matter_description,
+dim_client.client_name,
+client_partner_name,
 bill_number,
-SUM(fact_debt_monthly.outstanding_total_bill) AS Debt_Value,
-SUM(CASE WHEN daysbanding ='0 - 30 Days' THEN fact_debt_monthly.outstanding_total_bill END) AS [0 - 30 Days] ,
-SUM(CASE WHEN daysbanding ='31 - 90 days' THEN fact_debt_monthly.outstanding_total_bill END) AS [31 - 90 days] ,
-SUM(CASE WHEN daysbanding ='Greater than 90 Days' THEN fact_debt_monthly.outstanding_total_bill END) AS [Greater than 90 Days], 
-
+bill_date,
+daysbanding,
+fact_debt_monthly.outstanding_total_bill,
 CASE 
 WHEN TRIM(dim_client.segment)  = 'Insurance' THEN 	'Rob Williams'
 WHEN TRIM(dim_client.segment)  = 'Public bodies' THEN 	'Martin Forshaw'
@@ -796,7 +797,7 @@ WHEN TRIM(dim_client.segment)  = 'Built environment'	AND TRIM(dim_client.[sector
 WHEN TRIM(dim_client.segment)  = 'Built environment'	AND TRIM(dim_client.[sector])  = 'Housebuilders' THEN 'TBC'  
 
 ELSE 'TBC' END                            
-   
+  ,locationidud AS Office
 
 FROM red_dw.dbo.fact_debt_monthly
 JOIN red_dw.dbo.fact_dimension_main
@@ -809,81 +810,11 @@ LEFT JOIN red_dw.dbo.dim_client
 ON dim_client.dim_client_key = fact_dimension_main.dim_client_key
 JOIN red_dw.dbo.dim_matter_header_current
 ON dim_matter_header_current.dim_matter_header_curr_key = fact_dimension_main.dim_matter_header_curr_key
-
+LEFT OUTER JOIN red_dw.dbo.dim_employee
+ ON dim_employee.dim_employee_key = dim_fed_hierarchy_history.dim_employee_key
 WHERE fact_debt_monthly.outstanding_total_bill &lt;&gt; 0 
 
-AND debt_month =   @Month
---AND dim_client.segment  = 'Insurance'
---(SELECT fin_month FROM red_dw.dbo.dim_date WHERE calendar_date = cast(getdate() - 1 as date) )
-
-
-GROUP BY 
-debt_month,
-name,
-hierarchylevel4hist,
-hierarchylevel3hist,
-hierarchylevel2hist,
-dim_client.[sector],  
-dim_client.sub_sector,
-dim_client.segment   , 
-fact_dimension_main.master_client_code ,
-master_matter_number,
-bill_number
-,CASE 
-WHEN dim_client.segment  = 'Insurance' THEN 	'Rob Williams'
-WHEN dim_client.segment  = 'Public Bodies' THEN 	'Martin Forshaw'
-WHEN dim_client.segment  = 'Health'	THEN 'Richard Jolly'
-WHEN dim_client.segment  = 'OMB'	THEN 'Paul Raftery'
-WHEN dim_client.segment  = 'Individuals' THEN 	'Emma Collins' 
-WHEN dim_client.segment  = 'Corporates'	THEN 'Sarah Walton'
-WHEN dim_client.segment  = 'Built Environment'	THEN 'Karl Jackson'
-END
-, CASE  
-WHEN TRIM(dim_client.segment)  = 'Insurance' AND TRIM(dim_client.[sector])  = 'Broker/TPA' THEN 'Iain Stark'
-WHEN TRIM(dim_client.segment)  = 'Insurance' AND TRIM(dim_client.[sector])  = 'Legacy' THEN 'Jim Bryant'
-WHEN TRIM(dim_client.segment)  = 'Insurance' AND TRIM(dim_client.[sector])  = 'Specialty' THEN 'Richard Palmer'
-WHEN TRIM(dim_client.segment)  = 'Insurance' AND TRIM(dim_client.[sector])  = 'Motor' THEN 'Chris Ball'
-WHEN TRIM(dim_client.segment)  = 'Insurance' AND TRIM(dim_client.[sector])  = 'Property &amp; Liability' THEN 'Will Quinn'
-WHEN TRIM(dim_client.segment)  = 'Insurance' AND TRIM(dim_client.[sector])  = 'Insurers/Reinsurers' THEN 'Richard Palmer/Will Quinn/Chris Ball'                             
-                   
-WHEN TRIM(dim_client.segment)  = 'Public bodies'  AND TRIM(dim_client.[sector])  = 'Education' THEN 'Martin Vincent' 
-WHEN TRIM(dim_client.segment)  = 'Public bodies'  AND TRIM(dim_client.[sector])  = 'Emergency Services' THEN 'Nathan East' 
-WHEN TRIM(dim_client.segment)  = 'Public bodies'  AND TRIM(dim_client.[sector])  = 'Local &amp; Central Government' THEN 'Helen Brown/Simon Goacher' 
-
-WHEN TRIM(dim_client.segment)  = 'Health' AND TRIM(dim_client.[sector])  = 'Medical Indemnifiers' THEN 'Simon Gomersall'
-WHEN TRIM(dim_client.segment)  = 'Health' AND TRIM(dim_client.[sector])  = 'Primary care' THEN 'Edwina Farrell'
-WHEN TRIM(dim_client.segment)  = 'Health' AND TRIM(dim_client.[sector])  = 'Secondary care' THEN 'Sejal Raja/Mike Clifford'
-
-
-                           
-
-
-WHEN TRIM(dim_client.segment)  = 'OMB'	AND TRIM(dim_client.[sector])  = 'OMB Leeds and Newcastle' THEN 'Marc Allison/Duncan Reid'
-WHEN TRIM(dim_client.segment)  = 'OMB'	AND TRIM(dim_client.[sector])  = 'OMB Liverpool' THEN 'TBC'
-WHEN TRIM(dim_client.segment)  = 'OMB'	AND TRIM(dim_client.[sector])  = 'OMB London' THEN 'Will Sharpe'
-WHEN TRIM(dim_client.segment)  = 'OMB'	AND TRIM(dim_client.[sector])  = 'OMB Manchester' THEN 'Damian Carter'
-WHEN TRIM(dim_client.segment)  = 'OMB'	AND TRIM(dim_client.[sector])  = 'OMB Midlands ' THEN 'Mark Surguy'
-WHEN TRIM(dim_client.segment)  = 'OMB'	AND TRIM(dim_client.[sector])  = 'OMB Scotland' THEN 'Claire McCracken'
-                          
-WHEN TRIM(dim_client.segment)  = 'Individuals' AND TRIM(dim_client.[sector])  = 'IND Leeds and Newcastle' THEN 'Antony Ball'
-WHEN TRIM(dim_client.segment)  = 'Individuals' AND TRIM(dim_client.[sector])  = 'IND Liverpool' THEN 'Richard Bate'
-WHEN TRIM(dim_client.segment)  = 'Individuals' AND TRIM(dim_client.[sector])  = 'IND Midlands ' THEN 'Richard Bate'
-WHEN TRIM(dim_client.segment)  = 'Individuals' AND TRIM(dim_client.[sector])  = 'IND London' THEN 'Jon Shankland'
-WHEN TRIM(dim_client.segment)  = 'Individuals' AND TRIM(dim_client.[sector])  = 'IND Manchester' THEN 'Fiona Turner'
-WHEN TRIM(dim_client.segment)  = 'Individuals' AND TRIM(dim_client.[sector])  = 'IND Scotland' THEN 'Noel Ferry'
-               
-WHEN TRIM(dim_client.segment)  = 'Corporates'	AND TRIM(dim_client.[sector])  = 'Energy &amp; Utilities' THEN 'Simon Colvin'
-WHEN TRIM(dim_client.segment)  = 'Corporates'	AND TRIM(dim_client.[sector])  = 'Financial Services' THEN 'Patricia Grinyer'
-WHEN TRIM(dim_client.segment)  = 'Corporates'	AND TRIM(dim_client.[sector])  = 'Manufacturing' THEN 'Andrew Roberts'
-WHEN TRIM(dim_client.segment)  = 'Corporates'	AND TRIM(dim_client.[sector])  = 'Retail &amp; Leisure' THEN 'Matt Williamson'
-WHEN TRIM(dim_client.segment)  = 'Corporates'	AND TRIM(dim_client.[sector])  = 'Transport &amp; Logistics' THEN 'Lili Oliver'
-
-WHEN TRIM(dim_client.segment)  = 'Built environment'	AND TRIM(dim_client.[sector])  = 'Construction/Contractors' THEN 'Colette Morgan-Ford'
-WHEN TRIM(dim_client.segment)  = 'Built environment'	AND TRIM(dim_client.[sector])  = 'Developers/Investors' THEN 'TBC'             
-WHEN TRIM(dim_client.segment)  = 'Built environment'	AND TRIM(dim_client.[sector])  = 'Registered Providers' THEN 'Sian Evans'  
-WHEN TRIM(dim_client.segment)  = 'Built environment'	AND TRIM(dim_client.[sector])  = 'Housebuilders' THEN 'TBC'  
-
-ELSE 'TBC' END</CommandText>
+AND debt_month =   @Month</CommandText>
       </Query>
       <Fields>
         <Field Name="debt_month">
@@ -930,20 +861,28 @@ ELSE 'TBC' END</CommandText>
           <DataField>bill_number</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="ID0___30_Days">
-          <DataField>0 - 30 Days</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
+        <Field Name="matter_description">
+          <DataField>matter_description</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Debt_Value">
-          <DataField>Debt_Value</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
+        <Field Name="client_name">
+          <DataField>client_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="ID31___90_days">
-          <DataField>31 - 90 days</DataField>
-          <rd:TypeName>System.Decimal</rd:TypeName>
+        <Field Name="client_partner_name">
+          <DataField>client_partner_name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Greater_than_90_Days">
-          <DataField>Greater than 90 Days</DataField>
+        <Field Name="daysbanding">
+          <DataField>daysbanding</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="bill_date">
+          <DataField>bill_date</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+        <Field Name="outstanding_total_bill">
+          <DataField>outstanding_total_bill</DataField>
           <rd:TypeName>System.Decimal</rd:TypeName>
         </Field>
         <Field Name="SegmentLead">
@@ -952,6 +891,10 @@ ELSE 'TBC' END</CommandText>
         </Field>
         <Field Name="SectorLead">
           <DataField>SectorLead</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Office">
+          <DataField>Office</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -2877,13 +2820,19 @@ ELSE 'TBC' END</CommandText>
                   <Width>1.25306in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1.25306in</Width>
+                  <Width>1.27514in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.74264in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1.25306in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>3.25in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.84375in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1in</Width>
@@ -2898,13 +2847,25 @@ ELSE 'TBC' END</CommandText>
                   <Width>1in</Width>
                 </TablixColumn>
                 <TablixColumn>
+                  <Width>1.20833in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.34375in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.35417in</Width>
+                </TablixColumn>
+                <TablixColumn>
                   <Width>1in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1.17708in</Width>
+                  <Width>1in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.375in</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -2932,6 +2893,76 @@ ELSE 'TBC' END</CommandText>
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>Textbox71</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox2">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Client Partner</Value>
+                                  <Style>
+                                    <FontFamily>Tahoma</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox2</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox7">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Client Name</Value>
+                                  <Style>
+                                    <FontFamily>Tahoma</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox7</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -2983,14 +3014,14 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox75">
+                        <Textbox Name="Textbox22">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Bill number</Value>
+                                  <Value EvaluationMode="Constant">Matter Description</Value>
                                   <Style>
                                     <FontFamily>Tahoma</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3001,7 +3032,147 @@ ELSE 'TBC' END</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox75</rd:DefaultName>
+                          <rd:DefaultName>Textbox22</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox9">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Matter Owner</Value>
+                                  <Style>
+                                    <FontFamily>Tahoma</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox9</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox12">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Mtr Office</Value>
+                                  <Style>
+                                    <FontFamily>Tahoma</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox12</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox15">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Mtr Owner Depart</Value>
+                                  <Style>
+                                    <FontFamily>Tahoma</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox15</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <BackgroundColor>#00535f</BackgroundColor>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Textbox20">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value EvaluationMode="Constant">Mtr Team</Value>
+                                  <Style>
+                                    <FontFamily>Tahoma</FontFamily>
+                                    <FontWeight>Bold</FontWeight>
+                                    <Color>White</Color>
+                                  </Style>
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Textbox20</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3158,14 +3329,14 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox87">
+                        <Textbox Name="Textbox24">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>0 - 30 Days</Value>
+                                  <Value EvaluationMode="Constant">Inv No.</Value>
                                   <Style>
                                     <FontFamily>Tahoma</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3176,7 +3347,7 @@ ELSE 'TBC' END</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox87</rd:DefaultName>
+                          <rd:DefaultName>Textbox24</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3193,14 +3364,14 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox89">
+                        <Textbox Name="Textbox26">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>31 - 90 days</Value>
+                                  <Value EvaluationMode="Constant">Inv Date.</Value>
                                   <Style>
                                     <FontFamily>Tahoma</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3211,7 +3382,7 @@ ELSE 'TBC' END</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox89</rd:DefaultName>
+                          <rd:DefaultName>Textbox26</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3228,14 +3399,14 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox91">
+                        <Textbox Name="Textbox28">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Greater than 90 Days</Value>
+                                  <Value EvaluationMode="Constant">Days</Value>
                                   <Style>
                                     <FontFamily>Tahoma</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3246,7 +3417,7 @@ ELSE 'TBC' END</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox91</rd:DefaultName>
+                          <rd:DefaultName>Textbox28</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3263,14 +3434,14 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Textbox83">
+                        <Textbox Name="Textbox30">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Total Debt Value</Value>
+                                  <Value EvaluationMode="Constant">Total Unpaid Bal £</Value>
                                   <Style>
                                     <FontFamily>Tahoma</FontFamily>
                                     <FontWeight>Bold</FontWeight>
@@ -3281,7 +3452,7 @@ ELSE 'TBC' END</CommandText>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Textbox83</rd:DefaultName>
+                          <rd:DefaultName>Textbox30</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3333,6 +3504,66 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
+                        <Textbox Name="client_partner_name">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!client_partner_name.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>client_partner_name</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="client_name">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!client_name.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>client_name</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
                         <Textbox Name="Matter_Number1">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
@@ -3363,21 +3594,141 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="bill_number1">
+                        <Textbox Name="matter_description">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!bill_number.Value</Value>
+                                  <Value>=Fields!matter_description.Value</Value>
                                   <Style />
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>bill_number1</rd:DefaultName>
+                          <rd:DefaultName>matter_description</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Display_Name">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Display_Name.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Display_Name</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Office">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Office.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Office</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Practice_Area">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Practice_Area.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Practice_Area</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
+                          </Style>
+                        </Textbox>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="Team">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!Team.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>Team</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3513,23 +3864,21 @@ ELSE 'TBC' END</CommandText>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="ID0___30_Days">
+                        <Textbox Name="bill_number">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!ID0___30_Days.Value</Value>
-                                  <Style>
-                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
-                                  </Style>
+                                  <Value>=Fields!bill_number.Value</Value>
+                                  <Style />
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>ID0___30_Days</rd:DefaultName>
+                          <rd:DefaultName>bill_number</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3539,30 +3888,29 @@ ELSE 'TBC' END</CommandText>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
-                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="ID31___90_days">
+                        <Textbox Name="bill_date">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!ID31___90_days.Value</Value>
+                                  <Value>=Fields!bill_date.Value</Value>
                                   <Style>
-                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
+                                    <Format>d</Format>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>ID31___90_days</rd:DefaultName>
+                          <rd:DefaultName>bill_date</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3572,30 +3920,60 @@ ELSE 'TBC' END</CommandText>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
-                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
+                          </Style>
+                        </Textbox>
+                        <rd:Selected>true</rd:Selected>
+                      </CellContents>
+                    </TablixCell>
+                    <TablixCell>
+                      <CellContents>
+                        <Textbox Name="daysbanding">
+                          <CanGrow>true</CanGrow>
+                          <KeepTogether>true</KeepTogether>
+                          <Paragraphs>
+                            <Paragraph>
+                              <TextRuns>
+                                <TextRun>
+                                  <Value>=Fields!daysbanding.Value</Value>
+                                  <Style />
+                                </TextRun>
+                              </TextRuns>
+                              <Style />
+                            </Paragraph>
+                          </Paragraphs>
+                          <rd:DefaultName>daysbanding</rd:DefaultName>
+                          <Style>
+                            <Border>
+                              <Color>LightGrey</Color>
+                              <Style>Solid</Style>
+                            </Border>
+                            <PaddingLeft>2pt</PaddingLeft>
+                            <PaddingRight>2pt</PaddingRight>
+                            <PaddingTop>2pt</PaddingTop>
+                            <PaddingBottom>2pt</PaddingBottom>
                           </Style>
                         </Textbox>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
                       <CellContents>
-                        <Textbox Name="Greater_than_90_Days">
+                        <Textbox Name="outstanding_total_bill">
                           <CanGrow>true</CanGrow>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Greater_than_90_Days.Value</Value>
+                                  <Value>=Fields!outstanding_total_bill.Value</Value>
                                   <Style>
-                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
+                                    <Format>#,0.00;(#,0.00)</Format>
                                   </Style>
                                 </TextRun>
                               </TextRuns>
                               <Style />
                             </Paragraph>
                           </Paragraphs>
-                          <rd:DefaultName>Greater_than_90_Days</rd:DefaultName>
+                          <rd:DefaultName>outstanding_total_bill</rd:DefaultName>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -3605,40 +3983,6 @@ ELSE 'TBC' END</CommandText>
                             <PaddingRight>2pt</PaddingRight>
                             <PaddingTop>2pt</PaddingTop>
                             <PaddingBottom>2pt</PaddingBottom>
-                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
-                          </Style>
-                        </Textbox>
-                      </CellContents>
-                    </TablixCell>
-                    <TablixCell>
-                      <CellContents>
-                        <Textbox Name="Debt_Value">
-                          <CanGrow>true</CanGrow>
-                          <KeepTogether>true</KeepTogether>
-                          <Paragraphs>
-                            <Paragraph>
-                              <TextRuns>
-                                <TextRun>
-                                  <Value>=Fields!Debt_Value.Value</Value>
-                                  <Style>
-                                    <Format>'£'#,0.00;('£'#,0.00)</Format>
-                                  </Style>
-                                </TextRun>
-                              </TextRuns>
-                              <Style />
-                            </Paragraph>
-                          </Paragraphs>
-                          <rd:DefaultName>Debt_Value</rd:DefaultName>
-                          <Style>
-                            <Border>
-                              <Color>LightGrey</Color>
-                              <Style>Solid</Style>
-                            </Border>
-                            <PaddingLeft>2pt</PaddingLeft>
-                            <PaddingRight>2pt</PaddingRight>
-                            <PaddingTop>2pt</PaddingTop>
-                            <PaddingBottom>2pt</PaddingBottom>
-                            <rd:FormatSymbolCulture>en-GB</rd:FormatSymbolCulture>
                           </Style>
                         </Textbox>
                       </CellContents>
@@ -3649,6 +3993,12 @@ ELSE 'TBC' END</CommandText>
             </TablixBody>
             <TablixColumnHierarchy>
               <TablixMembers>
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
+                <TablixMember />
                 <TablixMember />
                 <TablixMember />
                 <TablixMember />
@@ -3679,7 +4029,7 @@ ELSE 'TBC' END</CommandText>
             <PageName>List</PageName>
             <Top>4.29042in</Top>
             <Height>0.5in</Height>
-            <Width>11.93626in</Width>
+            <Width>22.8989in</Width>
             <ZIndex>4</ZIndex>
             <Style>
               <Border>
@@ -3691,7 +4041,7 @@ ELSE 'TBC' END</CommandText>
         <Height>6.93366in</Height>
         <Style />
       </Body>
-      <Width>11.93626in</Width>
+      <Width>24.70098in</Width>
       <Page>
         <LeftMargin>1in</LeftMargin>
         <RightMargin>1in</RightMargin>
