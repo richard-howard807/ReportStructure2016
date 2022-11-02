@@ -2450,13 +2450,18 @@ WHERE  name ='Zurich_Detailed_Debt_Report.png'</CommandText>
     <DataSet Name="Zurich_debt_sql">
       <Query>
         <DataSourceName>ReportingOnSQL2012</DataSourceName>
-        <CommandText>--=========================================================================================================================
+        <CommandText>
+
+
+
+--=========================================================================================================================
 -- temp table for Zurich Arcs comments
 --=========================================================================================================================
 DROP TABLE IF EXISTS #zurich_arcs
 SELECT
 	ds_sh_arcs_tblactivityinstance.invoice_num,
 	CAST(ISNULL(ds_sh_arcs_tblactivity.modifydate, ds_sh_arcs_tblactivity.createdate) AS DATE) AS modifydate,
+	ISNULL(modified_by.username, created_by.username)		AS modified_by,
 	ds_sh_arcs_tblactivity.active,
 	ds_sh_arcs_tbludf.value,
 	ds_sh_arcs_udf_code_group.uct_name,
@@ -2472,6 +2477,10 @@ FROM red_dw.dbo.ds_sh_arcs_tblactivity
 		ON ds_sh_arcs_tbludf.activityid = ds_sh_arcs_tblactivity.activityid
 	LEFT OUTER JOIN red_dw.dbo.ds_sh_arcs_udf_code_group
 		ON ds_sh_arcs_tbludf.value = ds_sh_arcs_udf_code_group.uct_code
+	LEFT OUTER JOIN red_dw.dbo.ds_sh_arcs_tbluser AS created_by 
+		ON created_by.userid = ds_sh_arcs_tblactivity.createuserid
+	LEFT OUTER JOIN red_dw.dbo.ds_sh_arcs_tbluser AS modified_by
+		ON modified_by.userid = ds_sh_arcs_tblactivity.modifyuserid
 WHERE 
 	ds_sh_arcs_tblactivity.createuserid NOT IN (2,14) 
 	AND ds_sh_arcs_tblactivity.active = 1 AND ds_sh_arcs_tblactivity.deleteuserid IS null
@@ -2577,7 +2586,7 @@ SELECT
 	, ''		AS [IPU Comments]
 	, ''		AS [Supplier Additional Comments]
 	, #zurich_address.FormattedString AS 'PayorFormattedString'
-	, #zurich_arcs.modifydate		AS [ARCS Modified By]
+	, #zurich_arcs.modified_by		AS [ARCS Modified By]
 	, #zurich_arcs.narrative				AS [ARCS Narrative]
 	,dim_detail_client.[is_there_a_catalina_claim_number_on_this_claim]
 	,dim_detail_client.[multiple_claim_numbers_zurich_or_catalina]
@@ -2621,7 +2630,8 @@ WHERE
 	InvPayor.BalAmt &lt;&gt; 0
 	AND dim_matter_header_current.master_client_code = 'Z1001'
 ORDER BY 
-	ISNULL(LEFT(Matter.loadnumber,(CHARINDEX('-',Matter.loadnumber)-1)),Client.altnumber)</CommandText>
+	ISNULL(LEFT(Matter.loadnumber,(CHARINDEX('-',Matter.loadnumber)-1)),Client.altnumber)
+</CommandText>
       </Query>
       <Fields>
         <Field Name="Supplier_Name">
@@ -2726,7 +2736,7 @@ ORDER BY
         </Field>
         <Field Name="ARCS_Modified_By">
           <DataField>ARCS Modified By</DataField>
-          <rd:TypeName>System.DateTime</rd:TypeName>
+          <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="ARCS_Narrative">
           <DataField>ARCS Narrative</DataField>
