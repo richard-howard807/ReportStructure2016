@@ -2462,7 +2462,6 @@ WHERE  name ='LTA_Live_files_to_close'</CommandText>
           </QueryParameter>
         </QueryParameters>
         <CommandText>
-
 /* =============================================
 -- Author:		Orlagh Kelly 
 -- Create date: 04-12-2018
@@ -2484,9 +2483,9 @@ LD 20190904  Amended the logic so that it follows the below as requested by Hele
 	ES	2019-11-01	37619, added archive details
 	ES  2020-01-16  43630, amended logic - remove any file where matter description contains "billing"
 								 - remove any file where the Case Manager Name contains "Property View"
+	RD 2022-12-06   #181972, renamed 'work type' column to 'matter type' and excluded debt recovery type.
+								- also removed calls to ms_prod and added keys to try and make it faster
 */
-
-
 
 
 DROP TABLE  IF EXISTS #fedcode ;
@@ -2508,13 +2507,10 @@ INNER JOIN red_dw.dbo.dim_employee ON dim_employee.dim_employee_key = dim_fed_hi
 WHERE dim_fed_hierarchy_history_key IN ('+@FEDCode+')'
 
 
-
 INSERT into #fedcode 
 exec sp_executesql @sql  
 
 
-
- 
     SELECT RTRIM(fact_dimension_main.client_code) + '/' + fact_dimension_main.matter_number AS [Weightmans Reference],
            RTRIM(dim_matter_header_current.master_client_code) + '-' + dim_matter_header_current.master_matter_number AS [Mattershere Weightmans Reference],
 		   fact_finance_summary.disbursement_balance,
@@ -2531,7 +2527,7 @@ exec sp_executesql @sql
            dim_fed_hierarchy_history.hierarchylevel4hist [Team],
            dim_fed_hierarchy_history.hierarchylevel3hist [Department],
            dim_fed_hierarchy_history.hierarchylevel2hist [Division],
-           dim_matter_worktype.work_type_name AS [Work Type ],
+           dim_matter_worktype.work_type_name AS [Matter Type ],
            dim_client.client_name [Client Name],
            red_dw.dbo.dim_matter_header_current.date_opened_case_management [Open Date ],
            red_dw.dbo.dim_matter_header_current.date_closed_case_management [Closed Date ],
@@ -2545,22 +2541,19 @@ exec sp_executesql @sql
            fact_matter_summary_current.unpaid_bill_balance [Unpaid Bill Balance ],
            last_bill_date [Last Bill Date],
            last_time_transaction_date [Date of Last time Posting  ]
-		  -- fact_bill_matter.last_bill_date [Last Bill Date Composite]
-		  	,archive_details.[latest_archive_date] as [Latest Archive Date]
-			,archive_details.[latest_archive_status] AS [Latest Archive Status]
-			,archive_details.[latest_archive_type] AS [Latest Archive Type]
+		   ,dbo.dim_matter_header_current.latest_archive_date AS [Latest Archive Date]
+			,dim_matter_header_current.latest_archive_status AS [Latest Archive Status]
+			,dbo.dim_matter_header_current.latest_archive_type AS [Latest Archive Type]
 
     FROM red_dw.dbo.fact_dimension_main
         INNER JOIN red_dw.dbo.dim_fed_hierarchy_history
             ON dim_fed_hierarchy_history.dim_fed_hierarchy_history_key = fact_dimension_main.dim_fed_hierarchy_history_key
         INNER JOIN red_dw.dbo.dim_client
-            ON dim_client.client_code = fact_dimension_main.client_code
+			ON dim_client.dim_client_key = fact_dimension_main.dim_client_key
         LEFT OUTER JOIN red_dw.dbo.dim_detail_client
-            ON fact_dimension_main.client_code = dim_detail_client.client_code
-               AND dim_detail_client.matter_number = fact_dimension_main.matter_number
+			ON dim_detail_client.dim_detail_client_key = fact_dimension_main.dim_detail_client_key
         INNER JOIN red_dw.dbo.dim_matter_header_current
-            ON dim_matter_header_current.client_code = fact_dimension_main.client_code
-               AND dim_matter_header_current.matter_number = fact_dimension_main.matter_number
+			ON dim_matter_header_current.dim_matter_header_curr_key = dim_detail_client.dim_matter_header_curr_key
         INNER JOIN red_dw.dbo.fact_detail_client
             ON fact_dimension_main.master_fact_key = fact_detail_client.master_fact_key
         LEFT OUTER JOIN red_dw.dbo.dim_client_involvement
@@ -2572,14 +2565,11 @@ exec sp_executesql @sql
         INNER JOIN red_dw.dbo.fact_finance_summary
             ON fact_finance_summary.master_fact_key = fact_dimension_main.master_fact_key
         LEFT OUTER JOIN red_dw.dbo.dim_detail_outcome
-            ON dim_detail_outcome.client_code = dim_matter_header_current.client_code
-               AND dim_detail_outcome.matter_number = dim_matter_header_current.matter_number
-        LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
-            ON dim_detail_core_details.client_code = dim_matter_header_current.client_code
-               AND dim_detail_core_details.matter_number = dim_matter_header_current.matter_number
+			ON dim_detail_outcome.dim_detail_outcome_key = fact_dimension_main.dim_detail_outcome_key    
+		LEFT OUTER JOIN red_dw.dbo.dim_detail_core_details
+			ON dim_detail_core_details.dim_detail_core_detail_key = fact_dimension_main.dim_detail_core_detail_key
         LEFT OUTER JOIN red_dw.dbo.dim_detail_previous_details
-            ON dim_detail_previous_details.client_code = fact_dimension_main.client_code
-               AND dim_detail_previous_details.matter_number = fact_dimension_main.matter_number
+			ON dim_detail_previous_details.dim_detail_previous_details_key = fact_dimension_main.dim_detail_previous_details_key
         LEFT OUTER JOIN red_dw.dbo.dim_detail_hire_details
             ON dim_detail_hire_details.dim_detail_hire_detail_key = fact_dimension_main.dim_detail_hire_detail_key
         LEFT OUTER JOIN red_dw.dbo.fact_detail_recovery_detail
@@ -2594,28 +2584,9 @@ exec sp_executesql @sql
             ON dim_detail_incident.dim_detail_incident_key = fact_dimension_main.dim_detail_incident_key
         LEFT OUTER JOIN red_dw.dbo.dim_detail_compliance
             ON dim_detail_compliance.dim_detail_compliance_key = fact_dimension_main.dim_detail_compliance_key
-				/* Archive Details */
-	LEFT OUTER JOIN (
-
-	 SELECT  
-		udDeedWill.fileID
-		,udDeedWill.dwArchivedDate [latest_archive_date]
-		,archstatus.cdDesc [latest_archive_status] 
-		,archtype.cdDesc [latest_archive_type]
-
-
-	FROM MS_Prod.dbo.udDeedWill udDeedWill
-	INNER JOIN MS_Prod.config.dbFile dbFile ON dbFile.fileID = udDeedWill.fileID
-	INNER JOIN MS_Prod.config.dbClient dbClient ON dbClient.clID = dbFile.clID
-	INNER JOIN (SELECT fileID,MAX(dwID) [dwID] FROM MS_Prod.dbo.udDeedWill GROUP BY fileID) d ON udDeedWill.dwID = d.dwID 
-	LEFT OUTER JOIN MS_PROD.dbo.dbCodeLookup archstatus ON cdType='ARCHSTATUS' AND archstatus.cdCode = udDeedWill.Status
-	LEFT OUTER JOIN MS_PROD.dbo.dbCodeLookup archtype ON archtype.cdType='ARCHTYPE' AND archtype.cdCode = udDeedWill.Status
-
-	) archive_details ON archive_details.fileID = dim_matter_header_current.ms_fileid
-
 
     WHERE 
-	
+
 	 dim_matter_header_current.matter_number &lt;&gt; 'ML'
     AND dim_fed_hierarchy_history.hierarchylevel2hist='Legal Ops - LTA'
           AND dim_client.client_code NOT IN ( '00030645', '95000C', '00453737' )
@@ -2624,18 +2595,14 @@ exec sp_executesql @sql
 		  AND dim_matter_header_current.date_opened_case_management &lt;= DATEADD(MONTH,-4,GETDATE())
 		  AND ISNULL(fact_matter_summary_current.last_time_transaction_date,'19000101') &lt;= DATEADD(MONTH,-6,GETDATE())
 		  AND wip &lt;= 50
-		  AND work_type_name  NOT IN ('Plot Sales','Property View')
+		  AND work_type_name NOT IN ('Plot Sales','Property View','Debt Recovery')
 		  AND NOT LOWER(matter_description)  LIKE '%billing%'
 		  AND NOT LOWER(name) LIKE '%property view%'
-
+		  
 	      AND dim_fed_hierarchy_history.dim_fed_hierarchy_history_key
 		 IN (
 		 SELECT fedcode FROM #fedcode
-		 )
-
-
-
-</CommandText>
+		 )</CommandText>
       </Query>
       <Fields>
         <Field Name="count">
@@ -2685,8 +2652,8 @@ exec sp_executesql @sql
           <DataField>Division</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
-        <Field Name="Work_Type_">
-          <DataField>Work Type </DataField>
+        <Field Name="Matter_Type_">
+          <DataField>Matter Type </DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
         <Field Name="Client_Name">
@@ -10646,7 +10613,7 @@ exec sp_executesql @sql
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Work Type </Value>
+                                  <Value EvaluationMode="Constant">Matter Type</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -12460,7 +12427,7 @@ exec sp_executesql @sql
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Work_Type_.Value</Value>
+                                  <Value>=Fields!Matter_Type_.Value</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -24822,7 +24789,7 @@ exec sp_executesql @sql
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>Work Type </Value>
+                                  <Value EvaluationMode="Constant">Matter Type</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataHeader_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataHeader_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -26636,7 +26603,7 @@ exec sp_executesql @sql
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>=Fields!Work_Type_.Value</Value>
+                                  <Value>=Fields!Matter_Type_.Value</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
