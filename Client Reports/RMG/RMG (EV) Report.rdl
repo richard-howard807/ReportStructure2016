@@ -2518,6 +2518,7 @@ dim_detail_property[contact_property],
                fact_finance_summary[unpaid_bill_balance],
    dim_detail_property[status_rm],
    dim_date_last_time[last_time_calendar_date],
+   dim_matter_header_current[ms_fileid],
    "RMG Instruction Type", IF(PATHCONTAINS("P00010|P00020", dim_client[client_code]), "Real Estate",
    							IF(dim_client[client_code]="P00012" &amp;&amp; dim_matter_header_current[matter_number]&lt;&gt;"00000001", "Real Estate",
    							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Transactional Work (BAU)|Real Estate Transactional Work (Volume)|Real Estate Advisory Work (Volume)", dim_instruction_type[instruction_type]), "Real Estate",
@@ -2729,6 +2730,10 @@ ORDER BY
           <DataField>dim_detail_property[status_rm]</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
+        <Field Name="dim_matter_header_current_ms_fileid_">
+          <DataField>dim_matter_header_current[ms_fileid]</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
         <Field Name="dim_date_last_time_last_time_calendar_date_">
           <DataField>dim_date_last_time[last_time_calendar_date]</DataField>
           <rd:TypeName>System.DateTime</rd:TypeName>
@@ -2818,6 +2823,25 @@ ORDER BY
         </Field>
         <Field Name="client_matter">
           <DataField>FEDCode</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="Undertakings">
+      <Query>
+        <DataSourceName>ReportingOnSQL2012</DataSourceName>
+        <CommandText>SELECT fileID,STRING_AGG(CAST(undDesc AS NVARCHAR(MAX)),'|') AS Undertakings
+FROM ms_prod.dbo.dbundertakings
+WHERE undActive=1
+GROUP BY fileID</CommandText>
+      </Query>
+      <Fields>
+        <Field Name="fileID">
+          <DataField>fileID</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="Undertakings">
+          <DataField>Undertakings</DataField>
           <rd:TypeName>System.String</rd:TypeName>
         </Field>
       </Fields>
@@ -5576,7 +5600,7 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value />
+                                      <Value>=IIF(ISNOTHING(ReportItems("Textbox3").Value),"No","Yes")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5643,7 +5667,8 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value />
+                                      <Value>=Lookup(Fields!dim_matter_header_current_ms_fileid_.Value
+,Fields!fileID.Value,Fields!Undertakings.Value, "Undertakings")</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -10845,7 +10870,7 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>=IIF(ISNOTHING(ReportItems("Textbox6").Value),"No","Yes")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -10901,6 +10926,7 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                             <WritingMode>=First(Fields!tblDataRows_WritingMode.Value, "DefaultProperties")</WritingMode>
                           </Style>
                         </Textbox>
+                        <rd:Selected>true</rd:Selected>
                       </CellContents>
                     </TablixCell>
                     <TablixCell>
@@ -10912,7 +10938,8 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value />
+                                  <Value>=Lookup(Fields!dim_matter_header_current_ms_fileid_.Value
+,Fields!fileID.Value,Fields!Undertakings.Value, "Undertakings")</Value>
                                   <Style>
                                     <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                     <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
