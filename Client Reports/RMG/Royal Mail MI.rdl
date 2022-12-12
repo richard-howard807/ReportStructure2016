@@ -2471,13 +2471,12 @@ Version	ChangedBy Date		Details
 LD Added Master Matter numbers as these have now all migrated to mattersphere
 LD   08/08/2018 replaced status_asw with status_rm
 ES 	10/12/2018 added last time recorded date and RMG Instruction Type to match RMG Billing Summary report #1992
-                                     
+RD  08/12/22   added IF OTHER logic on External Agent and Case Officer fields as per #182373                                   
 
 */
 
-
 EVALUATE
- (
+(
     FILTER (
         CALCULATETABLE (
             SUMMARIZE (
@@ -2488,6 +2487,7 @@ EVALUATE
                 dim_fed_hierarchy_history_matter_owner[matter_owner_name],
                 dim_detail_property[client_case_reference],
                 dim_detail_property[external_surveyor],
+                dim_detail_property[other_external_surveyor],
                 dim_detail_property[be_number],
                 dim_detail_property[be_name],
                 dim_detail_property[case_classification],
@@ -2509,592 +2509,127 @@ EVALUATE
                 dim_detail_property[case_type_pol],
                 dim_detail_property[will_a_third_party_pay_our_bills],
                 fact_detail_property[third_party_pay],
-dim_detail_property[contact_property],
-                dim_instruction_type[instruction_type]
-,dim_matter_header_current[master_client_matter_combined]
-,dim_matter_header_current[master_client_code]
-,dim_matter_header_current[master_matter_number],
-               fact_finance_summary[defence_costs_billed],
-               fact_finance_summary[unpaid_bill_balance],
-   dim_detail_property[status_rm],
-   dim_date_last_time[last_time_calendar_date],
-   "RMG Instruction Type", IF(PATHCONTAINS("P00010|P00020", dim_client[client_code]), "Real Estate",
-   							IF(dim_client[client_code]="P00012" &amp;&amp; dim_matter_header_current[matter_number]&lt;&gt;"00000001", "Real Estate",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Transactional Work (BAU)|Real Estate Transactional Work (Volume)|Real Estate Advisory Work (Volume)", dim_instruction_type[instruction_type]), "Real Estate",
-   							IF(PATHCONTAINS ("P00011|P00021", dim_client[client_code]), "Prop Lit",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Litigation Work (BAU)|Real Estate Litigation Work (Volume)",dim_instruction_type[instruction_type]), "Prop Lit",
-   							IF(dim_client[client_code]="P00022", "Other",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Advisory Work (BAU)",dim_instruction_type[instruction_type]), "Other",
-							IF(dim_client[client_code]="P00012" &amp;&amp; dim_matter_header_current[matter_number]="00000001", "Helpline",
-							IF(fact_detail_property[fee_estimate] = fact_detail_property[third_party_pay],"Third Party"
-							))))))))),					
-   
-   
-                "Weightmans File Reference", CONCATENATE (
-                    dim_client[client_code],
-                    CONCATENATE ( "-", dim_matter_header_current[matter_number] )
-                ),
-                "RMG Case Officer", IF (
-                    ISBLANK ( dim_detail_property[property_contact] ),
-                    dim_detail_property[legal_contact],
-                    dim_detail_property[property_contact]
-                ),
-                "Property Address", IF (
-                    dim_detail_property[property_address] = "N/A",
-                    dim_matter_header_current[matter_description],
-                    dim_detail_property[property_address]
-                ),
-                "Case Type", IF (
-                    dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]
-                        &gt;= VALUE ( "2014-02-09" )
-                        &amp;&amp; (
-                            PATHCONTAINS ( "P00010|P00011|P00012|W15762", dim_client[client_code] )
-                                || PATHCONTAINS (
-                                    "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
-                                    dim_instruction_type[instruction_type]
+                dim_detail_property[contact_property],
+                dim_instruction_type[instruction_type],
+                dim_matter_header_current[master_client_matter_combined],
+                dim_matter_header_current[master_client_code],
+                dim_matter_header_current[master_matter_number],
+                fact_finance_summary[defence_costs_billed],
+                fact_finance_summary[unpaid_bill_balance],
+                dim_detail_property[status_rm],
+                dim_date_last_time[last_time_calendar_date],
+                dim_detail_property[other_property_contact],
+                "RMG Instruction Type",
+                    IF (
+                        PATHCONTAINS ( "P00010|P00020", dim_client[client_code] ),
+                        "Real Estate",
+                        IF (
+                            dim_client[client_code] = "P00012"
+                                &amp;&amp; dim_matter_header_current[matter_number] &lt;&gt; "00000001",
+                            "Real Estate",
+                            IF (
+                                PATHCONTAINS ( "R1001|W15762", dim_client[client_code] )
+                                    &amp;&amp; PATHCONTAINS (
+                                        "Real Estate Transactional Work (BAU)|Real Estate Transactional Work (Volume)|Real Estate Advisory Work (Volume)",
+                                        dim_instruction_type[instruction_type]
+                                    ),
+                                "Real Estate",
+                                IF (
+                                    PATHCONTAINS ( "P00011|P00021", dim_client[client_code] ),
+                                    "Prop Lit",
+                                    IF (
+                                        PATHCONTAINS ( "R1001|W15762", dim_client[client_code] )
+                                            &amp;&amp; PATHCONTAINS (
+                                                "Real Estate Litigation Work (BAU)|Real Estate Litigation Work (Volume)",
+                                                dim_instruction_type[instruction_type]
+                                            ),
+                                        "Prop Lit",
+                                        IF (
+                                            dim_client[client_code] = "P00022",
+                                            "Other",
+                                            IF (
+                                                PATHCONTAINS ( "R1001|W15762", dim_client[client_code] )
+                                                    &amp;&amp; PATHCONTAINS (
+                                                        "Real Estate Advisory Work (BAU)",
+                                                        dim_instruction_type[instruction_type]
+                                                    ),
+                                                "Other",
+                                                IF (
+                                                    dim_client[client_code] = "P00012"
+                                                        &amp;&amp; dim_matter_header_current[matter_number] = "00000001",
+                                                    "Helpline",
+                                                    IF (
+                                                        fact_detail_property[fee_estimate] = fact_detail_property[third_party_pay],
+                                                        "Third Party"
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
                                 )
-                        ),
-                    dim_detail_property[case_type_rmg],
-                    dim_detail_property[case_type_pol]
-                )
+                            )
+                        )
+                    ),
+                "Weightmans File Reference",
+                    CONCATENATE (
+                        dim_client[client_code],
+                        CONCATENATE ( "-", dim_matter_header_current[matter_number] )
+                    ),
+                "RMG Case Officer",
+                    IF (
+                        dim_detail_property[contact_property] = "Other", dim_detail_property[other_property_contact],
+                        dim_detail_property[contact_property]
+                    ),
+                "Property Address",
+                    IF (
+                        dim_detail_property[property_address] = "N/A",
+                        dim_matter_header_current[matter_description],
+                        dim_detail_property[property_address]
+                    ),
+                "Case Type",
+                    IF (
+                        dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]
+                            &gt;= VALUE ( "2014-02-09" )
+                            &amp;&amp; (
+                                PATHCONTAINS ( "P00010|P00011|P00012|W15762", dim_client[client_code] )
+                                    || PATHCONTAINS (
+                                        "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
+                                        dim_instruction_type[instruction_type]
+                                    )
+                            ),
+                        dim_detail_property[case_type_rmg],
+                        dim_detail_property[case_type_pol]
+                    ),
+                "External Agent",
+                    IF (
+                        dim_detail_property[external_surveyor] = "Other",
+                        dim_detail_property[other_external_surveyor],
+                        dim_detail_property[external_surveyor]
+                    )
             ),
             dim_matter_header_current[matter_number] &lt;&gt; "ML",
             ISBLANK ( dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date] ),
-  dim_matter_header_current[master_client_matter_combined]&lt;&gt; "R1001-20580", 
+            dim_matter_header_current[master_client_matter_combined] &lt;&gt; "R1001-20580",
             dim_matter_header_current[reporting_exclusions] = 0
         ),
         PATHCONTAINS (
             "P00010|P00011|P00012|P00020|P00021|P00022|W15762",
             dim_client[client_code]
         )
-           || --1.0
-            (dim_client[client_code] = "R1001"
-                &amp;&amp; PATHCONTAINS (
-                    "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
-                    dim_instruction_type[instruction_type]
-                )
-                &amp;&amp; dim_matter_header_current[matter_number] &lt;&gt; "00020312"
-                )
+            || --1.0
+            (
+                dim_client[client_code] = "R1001"
+                    &amp;&amp; PATHCONTAINS (
+                        "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
+                        dim_instruction_type[instruction_type]
+                    )
+                    &amp;&amp; dim_matter_header_current[matter_number] &lt;&gt; "00020312"
+            )
     )
 )
 ORDER BY
     dim_client[client_code],
     dim_matter_header_current[matter_number]</CommandText>
-        <rd:DesignerState>
-          <QueryDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.microsoft.com/AnalysisServices/QueryDefinition">
-            <CommandType>DMX</CommandType>
-            <Type>Query</Type>
-            <QuerySpecification xsi:type="DMXQuerySpecification">
-              <Select>
-                <Items>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_client[client_code]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_client[client_code]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[matter_number]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[matter_number]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[matter_description]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[matter_description]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_fed_hierarchy_history_matter_owner[matter_owner_name]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_fed_hierarchy_history_matter_owner[matter_owner_name]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[client_case_reference]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[client_case_reference]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[external_surveyor]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[external_surveyor]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[be_number]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[be_number]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[be_name]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[be_name]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[case_classification]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[case_classification]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[complexity]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[complexity]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_client[present_position]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_client[present_position]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[status_asw]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[status_asw]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[completion_date]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[completion_date]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[next_key_date_action]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[next_key_date_action]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[fixed_feehourly_rate]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[fixed_feehourly_rate]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[budget_code]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[budget_code]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[gl_code]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[gl_code]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_detail_property[fee_estimate]</ColumnName>
-                    </ID>
-                    <ItemCaption>fact_detail_property[fee_estimate]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[costs_to_date]</ColumnName>
-                    </ID>
-                    <ItemCaption>fact_finance_summary[costs_to_date]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[property_contact]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[property_contact]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[legal_contact]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[legal_contact]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[property_address]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[property_address]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[case_type_rmg]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[case_type_rmg]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[case_type_pol]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[case_type_pol]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[will_a_third_party_pay_our_bills]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[will_a_third_party_pay_our_bills]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_detail_property[third_party_pay]</ColumnName>
-                    </ID>
-                    <ItemCaption>fact_detail_property[third_party_pay]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[contact_property]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[contact_property]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_instruction_type[instruction_type]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_instruction_type[instruction_type]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[master_client_matter_combined]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[master_client_matter_combined]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[master_client_code]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[master_client_code]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_matter_header_current[master_matter_number]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_matter_header_current[master_matter_number]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[defence_costs_billed]</ColumnName>
-                    </ID>
-                    <ItemCaption>fact_finance_summary[defence_costs_billed]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>fact_finance_summary[unpaid_bill_balance]</ColumnName>
-                    </ID>
-                    <ItemCaption>fact_finance_summary[unpaid_bill_balance]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_detail_property[status_rm]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_detail_property[status_rm]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>dim_date_last_time[last_time_calendar_date]</ColumnName>
-                    </ID>
-                    <ItemCaption>dim_date_last_time[last_time_calendar_date]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[RMG Instruction Type]</ColumnName>
-                    </ID>
-                    <ItemCaption>[RMG Instruction Type]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[Weightmans File Reference]</ColumnName>
-                    </ID>
-                    <ItemCaption>[Weightmans File Reference]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[RMG Case Officer]</ColumnName>
-                    </ID>
-                    <ItemCaption>[RMG Case Officer]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[Property Address]</ColumnName>
-                    </ID>
-                    <ItemCaption>[Property Address]</ItemCaption>
-                  </Item>
-                  <Item>
-                    <ID xsi:type="Column">
-                      <ColumnName>[Case Type]</ColumnName>
-                    </ID>
-                    <ItemCaption>[Case Type]</ItemCaption>
-                  </Item>
-                </Items>
-              </Select>
-              <AutoExecute>false</AutoExecute>
-              <Data>&lt;?xml version="1.0" encoding="utf-16"?&gt;
-&lt;DataminingQueryBuilderState xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;SelectTablesControlState&gt;
-    &lt;Tables /&gt;
-  &lt;/SelectTablesControlState&gt;
-  &lt;IsSingletonQuery&gt;false&lt;/IsSingletonQuery&gt;
-  &lt;View&gt;Text&lt;/View&gt;
-  &lt;QueryText&gt;/*
-****Version History****
-
-Version	ChangedBy Date		Details
-1.0		JL		  10-8-16	Added in new client code of R1001 and instruction type
-        SP        6-9-16 	more instruction types added
-        ES 		  23-9-16	Added third_party_pay - 174310
-        SP 		  20-12-16  added client code W15762 - 195532
-LD Added Master Matter numbers as these have now all migrated to mattersphere
-LD   08/08/2018 replaced status_asw with status_rm
-ES 	10/12/2018 added last time recorded date and RMG Instruction Type to match RMG Billing Summary report #1992
-                                     
-
-*/
-
-
-EVALUATE
- (
-    FILTER (
-        CALCULATETABLE (
-            SUMMARIZE (
-                fact_dimension_main,
-                dim_client[client_code],
-                dim_matter_header_current[matter_number],
-                dim_matter_header_current[matter_description],
-                dim_fed_hierarchy_history_matter_owner[matter_owner_name],
-                dim_detail_property[client_case_reference],
-                dim_detail_property[external_surveyor],
-                dim_detail_property[be_number],
-                dim_detail_property[be_name],
-                dim_detail_property[case_classification],
-                dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date],
-                dim_detail_property[complexity],
-                dim_detail_client[present_position],
-                dim_detail_property[status_asw],
-                dim_detail_property[completion_date],
-                dim_detail_property[next_key_date_action],
-                dim_detail_property[fixed_feehourly_rate],
-                dim_detail_property[budget_code],
-                dim_detail_property[gl_code],
-                fact_detail_property[fee_estimate],
-                fact_finance_summary[costs_to_date],
-                dim_detail_property[property_contact],
-                dim_detail_property[legal_contact],
-                dim_detail_property[property_address],
-                dim_detail_property[case_type_rmg],
-                dim_detail_property[case_type_pol],
-                dim_detail_property[will_a_third_party_pay_our_bills],
-                fact_detail_property[third_party_pay],
-dim_detail_property[contact_property],
-                dim_instruction_type[instruction_type]
-,dim_matter_header_current[master_client_matter_combined]
-,dim_matter_header_current[master_client_code]
-,dim_matter_header_current[master_matter_number],
-               fact_finance_summary[defence_costs_billed],
-               fact_finance_summary[unpaid_bill_balance],
-   dim_detail_property[status_rm],
-   dim_date_last_time[last_time_calendar_date],
-   "RMG Instruction Type", IF(PATHCONTAINS("P00010|P00020", dim_client[client_code]), "Real Estate",
-   							IF(dim_client[client_code]="P00012" &amp;amp;&amp;amp; dim_matter_header_current[matter_number]&amp;lt;&amp;gt;"00000001", "Real Estate",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;amp;&amp;amp; PATHCONTAINS("Real Estate Transactional Work (BAU)|Real Estate Transactional Work (Volume)|Real Estate Advisory Work (Volume)", dim_instruction_type[instruction_type]), "Real Estate",
-   							IF(PATHCONTAINS ("P00011|P00021", dim_client[client_code]), "Prop Lit",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;amp;&amp;amp; PATHCONTAINS("Real Estate Litigation Work (BAU)|Real Estate Litigation Work (Volume)",dim_instruction_type[instruction_type]), "Prop Lit",
-   							IF(dim_client[client_code]="P00022", "Other",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;amp;&amp;amp; PATHCONTAINS("Real Estate Advisory Work (BAU)",dim_instruction_type[instruction_type]), "Other",
-							IF(dim_client[client_code]="P00012" &amp;amp;&amp;amp; dim_matter_header_current[matter_number]="00000001", "Helpline",
-							IF(fact_detail_property[fee_estimate] = fact_detail_property[third_party_pay],"Third Party"
-							))))))))),					
-   
-   
-                "Weightmans File Reference", CONCATENATE (
-                    dim_client[client_code],
-                    CONCATENATE ( "-", dim_matter_header_current[matter_number] )
-                ),
-                "RMG Case Officer", IF (
-                    ISBLANK ( dim_detail_property[property_contact] ),
-                    dim_detail_property[legal_contact],
-                    dim_detail_property[property_contact]
-                ),
-                "Property Address", IF (
-                    dim_detail_property[property_address] = "N/A",
-                    dim_matter_header_current[matter_description],
-                    dim_detail_property[property_address]
-                ),
-                "Case Type", IF (
-                    dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]
-                        &amp;gt;= VALUE ( "2014-02-09" )
-                        &amp;amp;&amp;amp; (
-                            PATHCONTAINS ( "P00010|P00011|P00012|W15762", dim_client[client_code] )
-                                || PATHCONTAINS (
-                                    "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
-                                    dim_instruction_type[instruction_type]
-                                )
-                        ),
-                    dim_detail_property[case_type_rmg],
-                    dim_detail_property[case_type_pol]
-                )
-            ),
-            dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "ML",
-            ISBLANK ( dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date] ),
-  dim_matter_header_current[master_client_matter_combined]&amp;lt;&amp;gt; "R1001-20580", 
-            dim_matter_header_current[reporting_exclusions] = 0
-        ),
-        PATHCONTAINS (
-            "P00010|P00011|P00012|P00020|P00021|P00022|W15762",
-            dim_client[client_code]
-        )
-           || --1.0
-            (dim_client[client_code] = "R1001"
-                &amp;amp;&amp;amp; PATHCONTAINS (
-                    "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
-                    dim_instruction_type[instruction_type]
-                )
-                &amp;amp;&amp;amp; dim_matter_header_current[matter_number] &amp;lt;&amp;gt; "00020312"
-                )
-    )
-)
-ORDER BY
-    dim_client[client_code],
-    dim_matter_header_current[matter_number]&lt;/QueryText&gt;
-  &lt;DatabaseId /&gt;
-  &lt;MiningStructureId /&gt;
-  &lt;MiningModelId /&gt;
-  &lt;ColumnMappings /&gt;
-  &lt;GridRows /&gt;
-&lt;/DataminingQueryBuilderState&gt;</Data>
-            </QuerySpecification>
-            <Query>
-              <Statement>/*
-****Version History****
-
-Version	ChangedBy Date		Details
-1.0		JL		  10-8-16	Added in new client code of R1001 and instruction type
-        SP        6-9-16 	more instruction types added
-        ES 		  23-9-16	Added third_party_pay - 174310
-        SP 		  20-12-16  added client code W15762 - 195532
-LD Added Master Matter numbers as these have now all migrated to mattersphere
-LD   08/08/2018 replaced status_asw with status_rm
-ES 	10/12/2018 added last time recorded date and RMG Instruction Type to match RMG Billing Summary report #1992
-                                     
-
-*/
-
-
-EVALUATE
- (
-    FILTER (
-        CALCULATETABLE (
-            SUMMARIZE (
-                fact_dimension_main,
-                dim_client[client_code],
-                dim_matter_header_current[matter_number],
-                dim_matter_header_current[matter_description],
-                dim_fed_hierarchy_history_matter_owner[matter_owner_name],
-                dim_detail_property[client_case_reference],
-                dim_detail_property[external_surveyor],
-                dim_detail_property[be_number],
-                dim_detail_property[be_name],
-                dim_detail_property[case_classification],
-                dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date],
-                dim_detail_property[complexity],
-                dim_detail_client[present_position],
-                dim_detail_property[status_asw],
-                dim_detail_property[completion_date],
-                dim_detail_property[next_key_date_action],
-                dim_detail_property[fixed_feehourly_rate],
-                dim_detail_property[budget_code],
-                dim_detail_property[gl_code],
-                fact_detail_property[fee_estimate],
-                fact_finance_summary[costs_to_date],
-                dim_detail_property[property_contact],
-                dim_detail_property[legal_contact],
-                dim_detail_property[property_address],
-                dim_detail_property[case_type_rmg],
-                dim_detail_property[case_type_pol],
-                dim_detail_property[will_a_third_party_pay_our_bills],
-                fact_detail_property[third_party_pay],
-dim_detail_property[contact_property],
-                dim_instruction_type[instruction_type]
-,dim_matter_header_current[master_client_matter_combined]
-,dim_matter_header_current[master_client_code]
-,dim_matter_header_current[master_matter_number],
-               fact_finance_summary[defence_costs_billed],
-               fact_finance_summary[unpaid_bill_balance],
-   dim_detail_property[status_rm],
-   dim_date_last_time[last_time_calendar_date],
-   "RMG Instruction Type", IF(PATHCONTAINS("P00010|P00020", dim_client[client_code]), "Real Estate",
-   							IF(dim_client[client_code]="P00012" &amp;&amp; dim_matter_header_current[matter_number]&lt;&gt;"00000001", "Real Estate",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Transactional Work (BAU)|Real Estate Transactional Work (Volume)|Real Estate Advisory Work (Volume)", dim_instruction_type[instruction_type]), "Real Estate",
-   							IF(PATHCONTAINS ("P00011|P00021", dim_client[client_code]), "Prop Lit",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Litigation Work (BAU)|Real Estate Litigation Work (Volume)",dim_instruction_type[instruction_type]), "Prop Lit",
-   							IF(dim_client[client_code]="P00022", "Other",
-   							IF(PATHCONTAINS ("R1001|W15762", dim_client[client_code]) &amp;&amp; PATHCONTAINS("Real Estate Advisory Work (BAU)",dim_instruction_type[instruction_type]), "Other",
-							IF(dim_client[client_code]="P00012" &amp;&amp; dim_matter_header_current[matter_number]="00000001", "Helpline",
-							IF(fact_detail_property[fee_estimate] = fact_detail_property[third_party_pay],"Third Party"
-							))))))))),					
-   
-   
-                "Weightmans File Reference", CONCATENATE (
-                    dim_client[client_code],
-                    CONCATENATE ( "-", dim_matter_header_current[matter_number] )
-                ),
-                "RMG Case Officer", IF (
-                    ISBLANK ( dim_detail_property[property_contact] ),
-                    dim_detail_property[legal_contact],
-                    dim_detail_property[property_contact]
-                ),
-                "Property Address", IF (
-                    dim_detail_property[property_address] = "N/A",
-                    dim_matter_header_current[matter_description],
-                    dim_detail_property[property_address]
-                ),
-                "Case Type", IF (
-                    dim_date_matter_opened_case_management[matter_opened_case_management_calendar_date]
-                        &gt;= VALUE ( "2014-02-09" )
-                        &amp;&amp; (
-                            PATHCONTAINS ( "P00010|P00011|P00012|W15762", dim_client[client_code] )
-                                || PATHCONTAINS (
-                                    "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
-                                    dim_instruction_type[instruction_type]
-                                )
-                        ),
-                    dim_detail_property[case_type_rmg],
-                    dim_detail_property[case_type_pol]
-                )
-            ),
-            dim_matter_header_current[matter_number] &lt;&gt; "ML",
-            ISBLANK ( dim_date_matter_closed_case_management[matter_closed_case_management_calendar_date] ),
-  dim_matter_header_current[master_client_matter_combined]&lt;&gt; "R1001-20580", 
-            dim_matter_header_current[reporting_exclusions] = 0
-        ),
-        PATHCONTAINS (
-            "P00010|P00011|P00012|P00020|P00021|P00022|W15762",
-            dim_client[client_code]
-        )
-           || --1.0
-            (dim_client[client_code] = "R1001"
-                &amp;&amp; PATHCONTAINS (
-                    "Real Estate Transactional Work (Outside Retainer)|Real Estate Litigation Work (Outside Retainer)|Real Estate Advisory Work (Outside Retainer)|Real Estate Transactional Work (Annual Retainer)|Real Estate Litigation Work (Annual Retainer)|Real Estate Advisory Work (Annual Retainer)|Real Estate Transactional Work (Volume)|Real Estate Transactional Work (BAU)|Real Estate Litigation Work (Volume)|Real Estate Litigation Work (BAU)|Real Estate Advisory Work (Volume)|Real Estate Advisory Work (BAU)",
-                    dim_instruction_type[instruction_type]
-                )
-                &amp;&amp; dim_matter_header_current[matter_number] &lt;&gt; "00020312"
-                )
-    )
-)
-ORDER BY
-    dim_client[client_code],
-    dim_matter_header_current[matter_number]</Statement>
-              <ParameterDefinitions />
-            </Query>
-          </QueryDefinition>
-        </rd:DesignerState>
       </Query>
       <Fields>
         <Field Name="dim_client_client_code_">
@@ -3269,6 +2804,10 @@ ORDER BY
         </Field>
         <Field Name="MS_client_matter">
           <Value>=Fields!dim_matter_header_current_master_client_matter_combined_.Value</Value>
+        </Field>
+        <Field Name="ID_External_Agent_">
+          <DataField>[External Agent]</DataField>
+          <rd:UserDefined>true</rd:UserDefined>
         </Field>
       </Fields>
     </DataSet>
@@ -5643,7 +5182,7 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_detail_property_external_surveyor_.Value</Value>
+                                      <Value>=Fields!ID_External_Agent_.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
@@ -5777,7 +5316,7 @@ cstr(Day(Globals!ExecutionTime)) &amp; "/" &amp; CStr(Month(Globals!ExecutionTim
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
-                                      <Value>=Fields!dim_detail_property_contact_property_.Value</Value>
+                                      <Value>=Fields!ID_RMG_Case_Officer_.Value</Value>
                                       <Style>
                                         <FontStyle>=First(Fields!tblDataRows_Font_FontStyle.Value, "DefaultProperties")</FontStyle>
                                         <FontFamily>=First(Fields!tblDataRows_Font_FontFamily.Value, "DefaultProperties")</FontFamily>
